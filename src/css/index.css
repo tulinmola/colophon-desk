@@ -1,0 +1,13 @@
+:root {
+  color-scheme: light dark;
+  --ink: light-dark(#1c1f23, #e3e5e2);
+  --ground: light-dark(#edeff1, #1a1c20);
+}
+
+body {
+  margin: 0;
+  padding: 2rem;
+  font-family: system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--ground);
+}

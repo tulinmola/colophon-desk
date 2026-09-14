@@ -1,0 +1,27 @@
+{
+  "name": "colophon-desk",
+  "version": "0.0.1",
+  "description": "The machine seen whole, standing on a desk",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "prettier:check": "npx prettier . --check",
+    "prettier:write": "npx prettier . --write",
+    "lint": "eslint 'src/**/*.js' 'vite.config.js' 'eslint.config.js'",
+    "check": "npm run prettier:check && npm run lint"
+  },
+  "author": "tulinmola",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6",
+    "vite": "^8.3.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
