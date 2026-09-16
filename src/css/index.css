@@ -11,3 +11,12 @@ body {
   color: var(--ink);
   background: var(--ground);
 }
+
+colophon-cpc-desk {
+  display: block;
+  height: 70vh;
+
+  canvas {
+    display: block;
+  }
+}

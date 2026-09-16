@@ -12,15 +12,13 @@ Node and npm are the whole toolchain.
 
 ```sh
 npm install
-npm start        # serve the page
-npm run build    # write the site to dist/
-npm run check    # formatting and linting
+npm start            # serve the page
+npm run build        # write the site to dist/
+npm run models:build # write the models and their prints to src/assets/
+npm run check        # formatting and linting
+npm run test:e2e     # the page driven in a browser
 ```
-
-## Where it stands
-
-The desk is laid, and nothing stands on it yet. The first to stand there is a Spanish CPC 6128 with its colour monitor, the CTM644.
 
 ## License
 
-MIT, like the rest of Colophon.
+MIT, like the rest of Colophon. The fonts in `tools/fonts/` are TeX Gyre Heros 2.004 by Bogusław Jackowski and Janusz M. Nowacki, its Vietnamese characters by Hàn Thế Thành, shipped unmodified under the GUST Font License; that licence, the family's manifest and its readme stand beside them. They are the builder's, not the page's: the prints are rendered from them, and nothing of them reaches the browser.

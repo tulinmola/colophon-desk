@@ -10,7 +10,8 @@ A model someone else made is a cross-check, never a part: nothing here is copied
 
 ## The machine
 
-- The geometry is generated from a description of the machine, not modelled by hand, so a better measurement changes a number and not the code. Geometry holds what a reader would see to be wrong — the silhouette, the key grid, the openings, the glass — and everything smaller is texture.
+- Each model — a computer, a monitor, a cassette unit, a drive — is built by a file of its own in `tools/models/`, as it is made: solids cut and filleted by a CAD kernel, in the terms of its own parts, from named constants cited where they stand. A better measurement changes a number and not the code. Nothing is shared between models until two of them really share it. Geometry holds what a reader would see to be wrong — the silhouette, the key grid, the openings, the glass — and everything smaller is texture.
+- `npm run models:build` writes each model to `src/assets/models/` as glTF — in metres, y up, the front toward +z — and the page only loads it. The file is committed with the change that made it and never edited by hand. A printed part carries its own vector artwork, which the builder renders to `src/assets/textures/<language>/` as PNG in TeX Gyre Heros from `tools/fonts/`, under the GUST Font License beside them; the page lays each print on the part that names it. The keycaps name one print of all their legends, each key carrying its rectangle of it in `_LEGEND`, and the page inks it over the plastic with a node material written in TSL for `WebGPURenderer`. Whatever changes while the machine runs — a key going down, a legend, the picture on the glass — belongs to the page, which finds the parts by their names and a key by the number it carries, `_KEY`, its number in the firmware's key matrix.
 - When the desk runs a machine, it is compiled here by Emscripten from a checkout of the emulator standing beside this one, with a host of the desk's own, as `colophon-archive` does it. A host function is added the day the desk needs it and not before.
 - One clock drives everything: `renderer.setAnimationLoop`. Each frame the machine runs the cycles it is owed since the last, capped, on to the next retrace so the picture is whole, and only then is the picture laid on the glass and the scene drawn. A key's release waits until a frame has been presented, or the firmware never sees the keystroke. Both rules are the player's own, in its `src/js/emulator/machine.js`, and are kept as the player keeps them.
 
@@ -29,7 +30,7 @@ A model someone else made is a cross-check, never a part: nothing here is copied
 - Private fields and methods (`#`) for internal state and helpers; `on*` handlers stay public when they are called from outside.
 - Prefer `function` over arrows, except for a short one-line expression. Names say what a thing holds; no cryptic abbreviations.
 - Prefer `==`, and `===` only where strictly needed. `for...of` for plain iteration; an indexed `for` when index arithmetic, several cursors, in-loop mutation control or coupled temporal variables are wanted; never `.forEach`.
-- One export a file, and a named one; a folder's `index.js` alone may name several. It is the folder's surface, for outsiders: files inside import their siblings directly, because reaching a sibling through the index closes a cycle and `extends` is evaluated too early to survive one. No `.js` extension in imports.
+- One export a file, and a named one; a folder's `index.js` alone may name several. It is the folder's surface, for outsiders: files inside import their siblings directly, because reaching a sibling through the index closes a cycle and `extends` is evaluated too early to survive one. No `.js` extension in the page's own imports, which Vite resolves; the tools, which Node runs, write theirs, and a package's subpath keeps whatever its exports map demands, as `three/addons/…` does.
 - A comment is a battle the code lost, in stylesheets as much as in JavaScript, and the fix is never the comment. A name that does not say what the thing is: rename it. A hack: stop hacking. A diary entry nobody wants on Thursday: delete it. A claim about the code: it is a lie already or will become one. What survives is a fact no name can carry — an upstream constraint, a clause of a spec — in a line or two.
 - What the code does, why an approach was chosen and what a decision cost belong in the commit message, not the code; a stylesheet is not annotated rule by rule.
 - A source is cited where it is used: the link, and what was taken from it. Provenance is the one thing a name cannot carry.
@@ -53,11 +54,11 @@ A model someone else made is a cross-check, never a part: nothing here is copied
 
 ## Working
 
-- A change to what the desk does updates `README.md` in the same change.
-- A module gets its tests in the change that writes it, and they join `npm run check`.
-- `npm run check` before handing work back.
+- `README.md` holds what the code cannot: what the desk is for and how it is built. It never describes a model or how far one has been drawn; the model's own file shows that, and a second account only goes stale.
+- A test proves what the code does, never what it says: a test that repeats a model's figures or its placement proves nothing, and a model is checked by looking at it. Tests arrive in the change that writes the code they prove.
+- `npm run check` before handing work back. `npm run test:e2e` drives the page in a browser with Playwright; run it too when the change reaches the page.
 - Never commit, never push. The human reviews; the human commits.
 
 ## Unsettled
 
-How the desk is distributed. What the description looks like on disk. How the textures are made for each country.
+How the desk is distributed. How the textures are made for each country.
