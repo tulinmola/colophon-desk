@@ -5,6 +5,7 @@ import { Color } from "three"
 import { EXTMeshGPUInstancing } from "@gltf-transform/extensions"
 import { Resvg } from "@resvg/resvg-js"
 import { buildCpc6128 } from "./models/cpc6128.js"
+import { buildCtm644 } from "./models/ctm644.js"
 import { fileURLToPath } from "node:url"
 import opencascade from "replicad-opencascadejs"
 import { setOC } from "replicad"
@@ -12,8 +13,6 @@ import { setOC } from "replicad"
 // How far the triangles may stray from a curved face, in millimetres, and turn from one another along it, in radians.
 const TOLERANCE = 0.1,
   ANGULAR_TOLERANCE = 0.5
-
-const PIXELS_PER_MILLIMETRE = 12
 
 const KERNEL_WASM_URL = import.meta.resolve("replicad-opencascadejs/wasm"),
   KERNEL_WASM = fileURLToPath(KERNEL_WASM_URL),
@@ -67,7 +66,7 @@ const FONT_NAMES = readdirSync(FONTS_DIR).filter(fontName => fontName.endsWith("
 
 function writePrint(modelName, print) {
   const rendering = new Resvg(print.svg, {
-      fitTo: { mode: "zoom", value: PIXELS_PER_MILLIMETRE },
+      fitTo: { mode: "zoom", value: print.pixels },
       font: { loadSystemFonts: false, fontFiles: FONT_FILES }
     }),
     png = rendering.render().asPng(),
@@ -81,6 +80,16 @@ function writePrint(modelName, print) {
 
 function createAccessor(document, buffer, type, array) {
   return document.createAccessor().setType(type).setArray(array).setBuffer(buffer)
+}
+
+function createInstancing(document, parts) {
+  const standsForKeys = parts.some(part => Object.hasOwn(part, "keys"))
+
+  if (standsForKeys) {
+    return document.createExtension(EXTMeshGPUInstancing).setRequired(true)
+  }
+
+  return null
 }
 
 function createMaterials(document, parts) {
@@ -126,7 +135,7 @@ async function writeModel(name, parts) {
   const document = new Document(),
     buffer = document.createBuffer(),
     scene = document.createScene(name),
-    instancing = document.createExtension(EXTMeshGPUInstancing).setRequired(true),
+    instancing = createInstancing(document, parts),
     gltfMaterials = createMaterials(document, parts)
 
   for (const part of parts) {
@@ -149,12 +158,28 @@ async function writeModel(name, parts) {
       standsForKeys = Object.hasOwn(part, "keys"),
       faced = Object.hasOwn(part, "face"),
       printed = Object.hasOwn(part, "print"),
-      lettered = Object.hasOwn(part, "legends")
+      lettered = Object.hasOwn(part, "legends"),
+      screened = Object.hasOwn(part, "screen"),
+      placed = Object.hasOwn(part, "place"),
+      turned = Object.hasOwn(part, "tilt") && !standsForKeys
 
     if (standsForKeys) {
       const keyInstances = createKeyInstances(document, buffer, instancing, part)
 
       node.setExtension("EXT_mesh_gpu_instancing", keyInstances)
+    }
+
+    if (turned) {
+      const tilt = tiltAboutX(part.tilt)
+
+      node.setRotation(tilt)
+    }
+
+    if (placed) {
+      const place = toGltf(part.place, METRES_PER_MILLIMETRE),
+        translation = Array.from(place)
+
+      node.setTranslation(translation)
     }
 
     if (faced) {
@@ -164,14 +189,21 @@ async function writeModel(name, parts) {
       primitive.setAttribute("TEXCOORD_0", texcoord)
     }
 
+    const extras = {}
+
     if (printed) {
-      node.setExtras({ print: `${name}-${part.print}` })
+      extras.print = `${name}-${part.print}`
     }
 
     if (lettered) {
-      node.setExtras({ legends: `${name}-${part.legends}` })
+      extras.legends = `${name}-${part.legends}`
     }
 
+    if (screened) {
+      extras.screen = true
+    }
+
+    node.setExtras(extras)
     scene.addChild(node)
   }
 
@@ -186,10 +218,15 @@ const oc = await opencascade({ locateFile: () => KERNEL_WASM })
 
 setOC(oc)
 
-const cpc6128 = buildCpc6128()
+const models = [
+  { name: "cpc6128", built: buildCpc6128() },
+  { name: "ctm644", built: buildCtm644() }
+]
 
-await writeModel("cpc6128", cpc6128.parts)
+for (const model of models) {
+  await writeModel(model.name, model.built.parts)
 
-for (const print of cpc6128.prints) {
-  writePrint("cpc6128", print)
+  for (const print of model.built.prints) {
+    writePrint(model.name, print)
+  }
 }

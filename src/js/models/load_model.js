@@ -1,22 +1,14 @@
-import { SRGBColorSpace, TextureLoader } from "three/webgpu"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { createKeycapMaterial } from "./keycap_material"
+import { loadTexture } from "./load_texture"
 
-// glTF lays a texture's first row at the top of its image, as the builder's prints are made: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#images
-async function loadPrint(name, language, anisotropy) {
-  const loader = new TextureLoader(),
-    url = new URL(`../../assets/textures/${language}/${name}.png`, import.meta.url),
-    print = await loader.loadAsync(url.href)
-
-  print.colorSpace = SRGBColorSpace
-  print.flipY = false
-  print.anisotropy = anisotropy
-
-  return print
+function printUrl(name, language) {
+  return new URL(`../../assets/textures/${language}/${name}.png`, import.meta.url)
 }
 
 async function printOn(mesh, language, anisotropy) {
-  const print = await loadPrint(mesh.userData.print, language, anisotropy)
+  const url = printUrl(mesh.userData.print, language),
+    print = await loadTexture(url, anisotropy)
 
   mesh.material.color.setRGB(1, 1, 1)
   mesh.material.map = print
@@ -24,7 +16,8 @@ async function printOn(mesh, language, anisotropy) {
 
 async function letter(keycaps, language, anisotropy) {
   const [keycap] = keycaps,
-    atlas = await loadPrint(keycap.userData.legends, language, anisotropy),
+    url = printUrl(keycap.userData.legends, language),
+    atlas = await loadTexture(url, anisotropy),
     material = createKeycapMaterial(keycap.material, atlas)
 
   for (const lettered of keycaps) {

@@ -269,6 +269,10 @@ const PLATE = { name: "plate", colour: "#4e4d53" },
   PLATE_GREEN = "#368943",
   PLATE_BLUE = "#1e4784"
 
+// How finely a print is rendered. A plate's hairlines and its 1.6 capitals want 12 pixels to the millimetre; the legend atlas, a tile to a key across the whole block, would stand 4115 wide at that density, past the 4096 a mobile GPU may hold, and takes 10 — which still gives a word's 2.5 capital 25 pixels.
+const PLATE_PIXELS = 12,
+  LEGEND_PIXELS = 10
+
 const LANGUAGE = "es",
   DRIVE_PLATE_PRINT = "drive-plate",
   LEGENDS_PRINT = "legends",
@@ -1330,10 +1334,10 @@ export function buildCpc6128() {
       buildPowerLamp()
     ],
     prints: [
-      { name: DRIVE_PLATE_PRINT, language: LANGUAGE, svg: drivePlatePrint },
-      { name: LEGENDS_PRINT, language: LANGUAGE, svg: legendsPrint },
-      { name: NAMEPLATE_PRINT, language: LANGUAGE, svg: nameplatePrint },
-      { name: BADGE_PRINT, language: LANGUAGE, svg: badgePrint }
+      { name: DRIVE_PLATE_PRINT, language: LANGUAGE, svg: drivePlatePrint, pixels: PLATE_PIXELS },
+      { name: LEGENDS_PRINT, language: LANGUAGE, svg: legendsPrint, pixels: LEGEND_PIXELS },
+      { name: NAMEPLATE_PRINT, language: LANGUAGE, svg: nameplatePrint, pixels: PLATE_PIXELS },
+      { name: BADGE_PRINT, language: LANGUAGE, svg: badgePrint, pixels: PLATE_PIXELS }
     ]
   }
 }
