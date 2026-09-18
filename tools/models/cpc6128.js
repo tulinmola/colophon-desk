@@ -34,10 +34,10 @@ const PLATE_WIDTH = 92.5,
   PLATE_FROM_REAR = 26.25,
   PLATE_THICKNESS = 0.3
 
-// The drive section is 104.5 across with the plate centred on it: the Spanish photograph from above gives 103.5 to 105.3 by its key pitch, and the Spanish and French photographs of the front 104.5 and 104.8 by the drive's 95 opening [E].
-// The French photograph from above, rectified on 65 key centres at their 19.05 mm pitch, gave 397 for its step, the rectification carried about 100 past the keys it was fitted on; read at its nearest keys' own pitch, it gives 104.5 to 106.8. It shows the section standing flush with the rear strip, the corner between the two rounded to about 5 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// The drive section is 106.5 across with the plate centred on it. Two photographs of the front, a 1988 French and a 1989 Spanish, read at the slot's own 81 [A], give 106.7 and 106.3, the end taken at the foot of its face: on both its silhouette leans in 1.5 toward the top, and whether the moulding or the camera leans it is not known [E].
+// The photographs from above give 103.5 to 105.3 by the Spanish one's key pitch and 104.5 to 106.8 at the French one's nearest keys. The French shows the section standing flush with the rear strip, the corner between the two rounded to about 5 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 // A monitor stand made to hold the machine on its front edge leaves it 40 to 41.2 there [D]: https://www.printables.com/model/527817. A 1988 French front, at 6.05 pixels to the millimetre, makes the section 40.8 from its top edge to the cabinet's bottom edge and 44.1 to the table, and a 1989 Spanish one 41.6 to that edge [E]. Amstrad's 48 overall would want a 7 foot standing where that same front shows lit wood, and the row it stands in gives the 664 the 464's own width; the disagreement stands until a real unit is measured.
-const DRIVE_SECTION_WIDTH = 104.5,
+const DRIVE_SECTION_WIDTH = 106.5,
   DRIVE_SECTION_LEFT = WIDTH - DRIVE_SECTION_WIDTH,
   DRIVE_SECTION_HEIGHT = REAR_STRIP_HEIGHT,
   DRIVE_SECTION_CORNER_RADIUS = 5
@@ -183,11 +183,11 @@ const KEY_OPENING_LEFT = KEY_BLOCK_LEFT + CAP_GAP / 2 - KEY_CLEARANCE_SIDES,
 const FLOOR_BELOW_SLOPE = 8
 
 // Parts made to plug the drive's opening give it 95 × 36 [D]: https://www.thingiverse.com/thing:2876318. A mash-up of them made for a "tight fit on the CPC case" gives 94.5 to 96.5 across and 35.6 high: https://www.printables.com/model/284516
-// A photograph of the same machine's front, scaled by that opening, puts it 3.3 from the right end and splits the face above and below it about two to one [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// The 1988 French and 1989 Spanish photographs of the front read it 94.9 and 94.7 across at the face, the bezel filling it, and put its right edge 4.8 and 4.5 short of the end's foot; the face above and below it splits about two to one [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 // How far the drive's bezel stands back from the cabinet is not known; 2 is taken until a real unit is measured.
 const DRIVE_OPENING_WIDTH = 95,
   DRIVE_OPENING_HEIGHT = 36,
-  DRIVE_OPENING_RIGHT = WIDTH - 3.3,
+  DRIVE_OPENING_RIGHT = WIDTH - 4.7,
   DRIVE_OPENING_BOTTOM = (DRIVE_SECTION_HEIGHT - DRIVE_OPENING_HEIGHT) / 3,
   BEZEL_SET_BACK = 2
 
@@ -214,16 +214,23 @@ const DRIVE_OPENING_LEFT = DRIVE_OPENING_RIGHT - DRIVE_OPENING_WIDTH,
   DRIVE_OPENING_TOP = DRIVE_OPENING_BOTTOM + DRIVE_OPENING_HEIGHT,
   DRIVE_BAY_DEPTH = BEZEL_SET_BACK + DRIVE_LENGTH
 
-// The same two photographs, rectified, measure the drive's fittings, their heights from the opening's lower edge [E]: the lamp behind an opening 6.9 across and 4 high and about 1.1 deep, by the lit floor showing below its lens, which sits on that floor; the eject button 15.1 by 4.3, a millimetre proud of its recess's back wall and a millimetre behind that face, ribbed four times at a 1 pitch; its recess 18.2 by 9; and a notch 5.5 across reaching 3.7 above the slot's upper edge, with a lever standing inside it.
+// The same two photographs place the drive's fittings, their heights from the opening's lower edge and their places across read at the slot's own scale, ±1 [E]. The bezel stands behind the face and the camera looks at it from the left, so what lies on it shows too far left against the face: the slot, centred on the bezel, reads 1.0 and 0.9 left of the opening's middle, and every fitting is moved right by that.
+// The lamp stands behind an opening 6.6 and 6.5 across, 6.5 taken, and 4 high and about 1.1 deep, by the lit floor showing below its lens, which sits on that floor; the eject button 4.3 high, 3.3 and 3.6 in from its recess's left end, 3.4 taken, a millimetre proud of the recess's back wall and a millimetre behind that face, ribbed four times at a 1 pitch, its right end not to be told from the recess's right wall and drawn 0.2 short of it; its recess 18.6 by 9; and a notch 4.0 and 5.6 across, 4.8 taken, reaching 3.7 above the slot's upper edge, with a lever standing inside it. The slot runs on beneath the notch, and on both units the notch, the slot and the recess end within a millimetre of one another, in that order.
 // The drawing of the EME-150 does not show the notch, and what it is remains unknown; both its walls read dark from its top edge to the slot, so nothing bounds its depth and 2 is taken. The recess's floor reads about 1 in front of the button and the button's own face about 1 more behind it, so 2 is taken for the recess. A lens's own thickness is not known and 0.6 is taken, and the button's grooves are not measured either: 0.35 tall and 0.3 deep are taken.
-const DRIVE_LAMP_OPENING = { left: 416.6, right: 423.5, bottom: 2, top: 6, depth: 1.1 },
-  DRIVE_LAMP = { left: 417.7, right: 423.4, bottom: 4, top: 6 },
-  EJECT_RECESS = { left: 479.3, right: 497.5, bottom: 2.9, top: 11.8, depth: 2 },
-  EJECT_BUTTON = { left: 481.7, right: 496.8, bottom: 3.2, top: 7.45, standing: -1 },
+const DRIVE_LAMP_OPENING = { left: 418.5, right: 425, bottom: 2, top: 6, depth: 1.1 },
+  DRIVE_LAMP = { left: 419, right: 424, bottom: 4, top: 6 },
+  EJECT_RECESS = { left: 480.1, right: 498.7, bottom: 2.9, top: 11.8, depth: 2 },
+  EJECT_BUTTON = {
+    left: EJECT_RECESS.left + 3.4,
+    right: EJECT_RECESS.right - 0.2,
+    bottom: 3.2,
+    top: 7.45,
+    standing: -1
+  },
   EJECT_RIBS = { count: 4, pitch: 1, groove: 0.35, depth: 0.3 },
   DRIVE_NOTCH = {
-    left: 495.3,
-    right: 500.9,
+    left: 493.3,
+    right: 498.1,
     bottom: SLOT_MIDDLE_ABOVE_OPENING + SLOT_HEIGHT / 2,
     top: SLOT_MIDDLE_ABOVE_OPENING + SLOT_HEIGHT / 2 + 3.7,
     depth: 2
