@@ -35,6 +35,12 @@ npm run perf     # the generated fragment shader, against its recorded cost
 
 `npm run perf` compares the fragment shader the screen material compiles to — statements, operators, texture fetches and the calls that cost — against `perf/shader.spec.js-snapshots/`; `--update-snapshots` records a new cost. It counts what the shader asks for, not what a GPU charges for it.
 
+## Publishing
+
+Pushing to `main` checks the site, builds it and publishes it to GitHub Pages at [desk.colophon-project.com](https://desk.colophon-project.com/).
+
+The models, their prints and the machine's module go out as they were committed: the workflow runs neither `npm run models:build` nor `npm run emulator:build`.
+
 ## Sources
 
 Every figure is cited at the line that uses it. This is the other view: what the desk stands on, and what each source gives it.

@@ -59,9 +59,9 @@ Where no figure exists the part is drawn anyway and says so: a dead flat screen 
 
 - `README.md` holds what the code cannot: what the desk is for and how it is built. It never describes a model or how far one has been drawn; the model's own file shows that, and a second account only goes stale. A check the repository offers is named there with what it needs to run, because a check nobody can run is worse than no check, and its caveats travel with its output.
 - A test proves what the code does, never what it says: a test that repeats a model's figures or its placement proves nothing, and a model is checked by looking at it. Tests arrive in the change that writes the code they prove.
-- `npm run check` before handing work back. `npm run test:e2e` drives the page in a browser with Playwright; run it too when the change reaches the page.
+- `npm run check` before handing work back. The Pages workflow runs the same command, so what fails here fails there. `npm run test:e2e` drives the page in a browser with Playwright; run it too when the change reaches the page.
 - Never commit, never push. The human reviews; the human commits.
 
 ## Unsettled
 
-How the desk is distributed. How the textures are made for each country. What the glass shows beyond the picture, and what evidence could ever settle a tube's own figures.
+Whether the desk is ever carried by another page, as the player is. How the textures are made for each country. What the glass shows beyond the picture, and what evidence could ever settle a tube's own figures.
