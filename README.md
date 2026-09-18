@@ -43,6 +43,7 @@ Every figure is cited at the line that uses it. This is the other view: what the
 
 - [CPC6128 Service Manual](https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a) — Amstrad's own dimensions and technical specifications.
 - [SOFT 968](https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual) — the firmware manual, and each key's number in the matrix.
+- [Reading the keyboard and Joysticks](https://cpctech.cpcwiki.de/docs/keyboard.html) — which line and bit each key sits on, and so where a browser's own keys reach the machine.
 - [CTM644 amendment service manual](https://retronik.silicium.org/DOCUMENTS/Info/Amstrad_CPC/Amstrad%20CPC464%206128%20GT65%20CTM644%20MP3%20CT1%20amendment%20service%20manual.pdf) — the monitor's cabinet mouldings, by part number.
 - [oldcrap.org](https://oldcrap.org) — photographs of a 2020 CTM644, rectified here to measure from.
 - [amstrad.eu](https://www.amstrad.eu) — the monitor seen three-quarters on, where no square view reaches.

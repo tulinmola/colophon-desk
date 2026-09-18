@@ -17,6 +17,14 @@ colophon-cpc-desk {
   display: block;
   height: 70vh;
 
+  /* A desk holding the focus is a desk holding the keyboard: arrow keys stop
+     scrolling the page and Escape stops meaning escape, so it says so. Not
+     :focus-visible, because the ordinary way to reach it is a click. */
+  &:focus {
+    outline: 2px solid color-mix(in srgb, var(--ink) 60%, transparent);
+    outline-offset: 0.2rem;
+  }
+
   canvas {
     display: block;
   }

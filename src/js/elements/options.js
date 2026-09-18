@@ -11,7 +11,7 @@ class OptionsElement extends Element {
       <details>
         <summary>Options</summary>
         <form>
-          <p>The tube's figures are provisional. Turn them.</p>
+          <p>These figures are provisional, the tube's and the keys' alike. Turn them.</p>
           <label class="switch">
             <input name="enabled" type="checkbox" /> Phosphors and scanlines
           </label>
@@ -61,6 +61,10 @@ class OptionsElement extends Element {
           <label>
             Vertical position<output aria-hidden="true"></output>
             <input name="pictureY" type="range" min="-0.15" max="0.15" step="0.001" />
+          </label>
+          <label>
+            Key travel (mm)<output aria-hidden="true"></output>
+            <input name="keyTravel" type="range" min="0" max="6" step="0.1" />
           </label>
           <button type="button" name="direct">Direct phosphor light</button>
           <button type="reset">Reset</button>

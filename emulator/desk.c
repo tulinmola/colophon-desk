@@ -90,3 +90,15 @@ uint32_t desk_run_until_retrace(uint32_t limit) {
 /* One sample off the cable, as 0xRRGGBB: the hardware colour code the Gate
    Array puts on it, decoded as the monitor decodes it. */
 uint32_t desk_rgb(uint8_t colour_code) { return gate_array_rgb(colour_code); }
+
+void desk_press(uint8_t key) { keyboard_press(&cpc.keyboard, key); }
+
+void desk_release(uint8_t key) { keyboard_release(&cpc.keyboard, key); }
+
+void desk_release_all(void) { keyboard_release_all(&cpc.keyboard); }
+
+/* The matrix as the machine reads it: one byte a line, a set bit meaning
+   released. */
+uint8_t *desk_keyboard(void) { return cpc.keyboard.lines; }
+
+uint8_t desk_keyboard_lines(void) { return CPC_KEYBOARD_LINES; }

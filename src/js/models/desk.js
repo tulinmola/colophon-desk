@@ -34,7 +34,7 @@ export default class Desk {
   camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, NEAREST, FARTHEST)
   scene = new Scene()
   target = new Vector3(...TARGET)
-  screen
+  settings
   #models = []
   #textures = []
 
@@ -47,14 +47,16 @@ export default class Desk {
     this.scene.add(sky, sun)
   }
 
-  async load(anisotropy, picture) {
+  async load(anisotropy, { picture, keys }) {
     const loading = [
-        loadModel(CPC6128_URL, LANGUAGE, anisotropy),
-        loadModel(CTM644_URL, LANGUAGE, anisotropy)
+        loadModel(CPC6128_URL, LANGUAGE, anisotropy, keys),
+        loadModel(CTM644_URL, LANGUAGE, anisotropy, keys)
       ],
       [machine, monitor] = await Promise.all(loading)
 
-    this.screen = showPicture(monitor.model, picture)
+    const screen = showPicture(monitor.model, picture)
+
+    this.settings = { ...screen.settings, ...machine.keyboard }
     monitor.model.position.z = MONITOR_BEHIND
     this.#models = [machine.model, monitor.model]
     this.#textures = [...machine.textures, ...monitor.textures]
