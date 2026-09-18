@@ -1,6 +1,6 @@
 import { draw, drawRectangle, makeBox, makeCompound, makeCylinder } from "replicad"
 
-// x runs from the left end, y back from the front and z up from the lower edge, in millimetres.
+// x runs from the left end, y back from the front and z up from the cabinet's lower edge, in millimetres. The feet stand below that edge, under a negative z.
 
 // "DIMENSIONS (mm): w h d — Keyboard 510 48 170" [A], CPC6128 Service Manual, technical specification: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
 const WIDTH = 510,
@@ -16,6 +16,16 @@ const FRONT_HEIGHT = 25.9,
   SLOPE_RISE = SLOPE_REAR_HEIGHT - FRONT_HEIGHT,
   SLOPE_ANGLE = (Math.atan(SLOPE_RISE / SLOPE_DEPTH) * 180) / Math.PI
 
+// Four grey rubber feet about 10 across, their centres measured on a 1988 French underside at 5.833 pixels to the millimetre, ±3 across and in depth [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// No photograph gives their height. The void under the cabinet's bottom front edge, read on a 1988 French front at 6.05 pixels to the millimetre, gives 3.3 under the keyboard and 2.3 under the drive, and a 1989 Spanish front 1.9; a rounded bottom edge and the contact shadow carry every one of those high, and the 464's feet, traced the same way against its own rear connectors, stand about 2 [E]. 2 is taken.
+const FOOT = { diameter: 10, height: 2 },
+  FOOT_PLACES = [
+    { middle: 28, fromRear: 30 },
+    { middle: 35, fromRear: 141 },
+    { middle: 490, fromRear: 18 },
+    { middle: 490, fromRear: 149 }
+  ]
+
 // The drive plate is screen-printed metal, showing bright where scratched in the photographs and standing a hair proud of the drive section, under 0.5 thick and 0.3 taken [E].
 // A Spanish photograph from above makes it 92.5 across, +3.5/−1 [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html
 // Against the case's 170, that photograph and a French one put its rear edge 25.7 and 26.8 from the rear and make it 139.8 and 139.0 deep, taken here at the middle [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
@@ -26,7 +36,7 @@ const PLATE_WIDTH = 92.5,
 
 // The drive section is 104.5 across with the plate centred on it: the Spanish photograph from above gives 103.5 to 105.3 by its key pitch, and the Spanish and French photographs of the front 104.5 and 104.8 by the drive's 95 opening [E].
 // The French photograph from above, rectified on 65 key centres at their 19.05 mm pitch, gave 397 for its step, the rectification carried about 100 past the keys it was fitted on; read at its nearest keys' own pitch, it gives 104.5 to 106.8. It shows the section standing flush with the rear strip, the corner between the two rounded to about 5 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
-// A monitor stand made to hold the machine on its front edge leaves it 40 to 41.2 there [D]: https://www.printables.com/model/527817. Against that, Amstrad's 48 overall is most likely the drive section's height, and the photograph of the front below makes it about 46; the disagreement stands until a real unit is measured.
+// A monitor stand made to hold the machine on its front edge leaves it 40 to 41.2 there [D]: https://www.printables.com/model/527817. A 1988 French front, at 6.05 pixels to the millimetre, makes the section 40.8 from its top edge to the cabinet's bottom edge and 44.1 to the table, and a 1989 Spanish one 41.6 to that edge [E]. Amstrad's 48 overall would want a 7 foot standing where that same front shows lit wood, and the row it stands in gives the 664 the 464's own width; the disagreement stands until a real unit is measured.
 const DRIVE_SECTION_WIDTH = 104.5,
   DRIVE_SECTION_LEFT = WIDTH - DRIVE_SECTION_WIDTH,
   DRIVE_SECTION_HEIGHT = REAR_STRIP_HEIGHT,
@@ -185,11 +195,13 @@ const DRIVE_OPENING_WIDTH = 95,
 const DRIVE_LENGTH = 152,
   SLOT_LENGTH = 81
 
-// Two photographs of the front, the 1989 Spanish and a 1988 French, rectified for the camera's elevation by the opening's 95 × 36 and scaled by the slot's 81, put the slot's middle 21.65 and 21.8 above the opening's lower edge and make it 4.4 and 5.1 high; the drawing's 21 [A], read in the machine's own orientation, agrees [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// Two photographs of the front, the 1989 Spanish and a 1988 French, rectified for the camera's elevation by the opening's 95 × 36 and scaled by the slot's 81, put the slot's middle 21.65 and 21.8 above the opening's lower edge; the drawing's 21 [A], read in the machine's own orientation, agrees [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 // At the slot's middle a bevel for the finger, 30.5 and 30.3 wide in the two rectified photographs and its centre 1.25 left of the slot's in both, reaching 6.5 and 6.9 below the slot's lower edge; a near-frontal photograph of another unit among the Commons ones gives 5.4 [E]: https://commons.wikimedia.org/wiki/Category:Amstrad_CPC6128. A 1985 French photograph reads 2.5 there, its whole drive front soft, and the disagreement stands.
 // Above the slot nothing shows. Every photograph of a drive front here looks down on it from 34 to 44°, where a face turned downward is hidden, and the bright block seen through the slot is this same lower bevel; that same near-frontal photograph, at 1.7 pixels to the millimetre, reads the band above the slot as tall inside the bevel as outside it [E]. The upper bevel therefore rests on the drawing alone, which widens the slot's middle both ways [A], and its reach is taken at 1.2, the most that photograph could hide.
 // The bevels' faces are taken at 45° to the slot's floor, and the slot, hidden past its first millimetres, is taken 10 deep.
-const SLOT_HEIGHT = 4.7,
+// The slot's height is dimensioned nowhere, and the drawing does not hold it either: its own slot rectangle scales to 10.3 where its 95 and 81 both scale true. Remeasured on the 1988 French front at 6.05 pixels to the millimetre, set by the front face's 25.9 and the opening's 36, the slot and the lit jaw below it read 5.0, +0.5/−0.4; the 1989 Spanish front reads 2.0 there [E].
+// The 3-inch Compact Floppy the drive takes, one medium across every maker's mechanism, is 5 thick [A], Hitachi HFD305SX instruction manual, Fig. 4: https://archive.org/details/hitachi-compact-floppy-disk-drive-model-hfd-305-sx. No slot can be narrower than the disc it passes, which leaves 5.0 to 5.5 of that range standing. The clearance over the disc is not measured and 0.2 is taken.
+const SLOT_HEIGHT = 5.2,
   SLOT_MIDDLE_ABOVE_OPENING = 21.7,
   FINGER_BEVEL_WIDTH = 30.4,
   FINGER_BEVEL_FROM_MIDDLE = -1.25,
@@ -239,6 +251,9 @@ const NAMEPLATE = { left: 25.2, right: 143.2, fromRear: 8.6, depth: 13.2 },
 
 // Sampled on the cabinet left of the keys in an uncalibrated photograph of aged plastic, good for the hue and no more [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg
 const CABINET = { name: "cabinet", colour: "#535459" }
+
+// Sampled on a foot and on the case around it in the underside photograph, which reads the case #404b52 where the cabinet's own photograph reads #535459, and corrected by that difference: the feet stand a little lighter and cooler than the case. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+const FOOT_RUBBER = { name: "foot", colour: "#575e6b" }
 
 // Sampled on the drive's bezel in the photograph of the machine's front, uncalibrated and dark, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 const BEZEL = { name: "bezel", colour: "#1c1918" }
@@ -442,7 +457,7 @@ const OVERRUN = 1
 // Where one part lies in another's recess or opening, a hairline holds the two apart, so that no face of either stands in the plane of a face of the other.
 const HAIRLINE = 0.1
 
-const CENTRING = [-WIDTH / 2, -DEPTH / 2, 0],
+const CENTRING = [-WIDTH / 2, -DEPTH / 2, FOOT.height],
   QUARTERS = ["", "¼", "½", "¾"]
 
 function slopeHeightAt(fromFront) {
@@ -644,6 +659,21 @@ function buildPowerLamp() {
   return { name: "power-lamp", shape: lens.translate(CENTRING), material: LAMP }
 }
 
+function buildFeet() {
+  const feet = []
+
+  for (const place of FOOT_PLACES) {
+    const base = [place.middle, DEPTH - place.fromRear, -FOOT.height],
+      foot = makeCylinder(FOOT.diameter / 2, FOOT.height, base)
+
+    feet.push(foot)
+  }
+
+  const standing = makeCompound(feet)
+
+  return { name: "feet", shape: standing.translate(CENTRING), material: FOOT_RUBBER }
+}
+
 function buildInterior() {
   const cavity = buildVentCavity(HAIRLINE)
 
@@ -701,7 +731,7 @@ function layKey(number, [left, row], [width, rows]) {
     place = [
       KEY_BLOCK_LEFT + axis + CENTRING[0],
       fromFront + CENTRING[1],
-      slopeHeightAt(fromFront)
+      slopeHeightAt(fromFront) + CENTRING[2]
     ],
     legend = [
       (axis - faceWidth / 2) / LEGEND_ATLAS_WIDTH,
@@ -1322,6 +1352,7 @@ export function buildCpc6128() {
   return {
     parts: [
       { name: "cabinet", shape: cabinet.translate(CENTRING), material: CABINET },
+      buildFeet(),
       buildInterior(),
       { name: "drive", shape: drive.translate(CENTRING), material: BEZEL },
       buildEjectButton(),
