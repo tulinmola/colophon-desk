@@ -22,6 +22,7 @@ export default defineConfig([
       "max-lines-per-function": "off",
       "max-params": ["error", 5],
       "max-statements": "off",
+      "new-cap": ["error", { capIsNewExceptions: ["Fn", "If"] }],
       "no-await-in-loop": "off",
       "no-bitwise": "off",
       "no-console": "off",

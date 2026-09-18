@@ -1,0 +1,17 @@
+{
+  "statements": 568,
+  "divisions": 41,
+  "multiplies": 122,
+  "branches": 32,
+  "calls": {
+    "textureGrad": 23,
+    "floor": 17,
+    "fract": 16,
+    "smoothstep": 15,
+    "exp": 6,
+    "sqrt": 1,
+    "min": 18,
+    "max": 16,
+    "mix": 18
+  }
+}

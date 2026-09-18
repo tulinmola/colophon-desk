@@ -1,2 +1,4 @@
-export { loadModel } from "./load_model"
-export { showPicture } from "./show_picture"
+import Desk from "./desk"
+import ScreenMaterial from "./screen_material"
+
+export { Desk, ScreenMaterial }

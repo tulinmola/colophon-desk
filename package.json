@@ -10,9 +10,11 @@
     "models:build": "node tools/build_models.js",
     "prettier:check": "npx prettier . --check",
     "prettier:write": "npx prettier . --write",
-    "test:e2e": "playwright test",
-    "lint": "eslint 'src/**/*.js' 'e2e/**/*.js' 'tools/**/*.js' 'vite.config.js' 'playwright.config.js' 'eslint.config.js'",
-    "check": "npm run prettier:check && npm run lint"
+    "test:e2e": "playwright test --config playwright.e2e.config.js",
+    "lint": "eslint 'src/**/*.js' 'e2e/**/*.js' 'perf/**/*.js' 'tools/**/*.js' 'vite.config.js' 'playwright*.config.js' 'eslint.config.js'",
+    "check": "npm run prettier:check && npm run lint",
+    "browsers": "playwright install chromium",
+    "perf": "playwright test --config playwright.perf.config.js"
   },
   "author": "tulinmola",
   "license": "MIT",

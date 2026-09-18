@@ -7,7 +7,7 @@ const WIDTH = 510,
   DEPTH = 170
 
 // Traced from a square-on photograph of a 1985 French CPC 6128's left end, scaled by its joystick socket's pins across and down, the end measuring 169.7 against Amstrad's 170 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
-// Heights stand above the end's lower edge, the feet not included. denisstephane's model, a cross-check, gives the rear strip 46.2, https://sketchfab.com/3d-models/amstrad-cpc-6128-877bbe563043437b9db029bf867ed0f0; the disagreement stands until a real unit is measured.
+// Heights stand above the end's lower edge, the feet not included.
 const FRONT_HEIGHT = 25.9,
   SLOPE_REAR_HEIGHT = 36.1,
   REAR_STRIP_HEIGHT = 40.7,
@@ -26,7 +26,7 @@ const PLATE_WIDTH = 92.5,
 
 // The drive section is 104.5 across with the plate centred on it: the Spanish photograph from above gives 103.5 to 105.3 by its key pitch, and the Spanish and French photographs of the front 104.5 and 104.8 by the drive's 95 opening [E].
 // The French photograph from above, rectified on 65 key centres at their 19.05 mm pitch, gave 397 for its step, the rectification carried about 100 past the keys it was fitted on; read at its nearest keys' own pitch, it gives 104.5 to 106.8. It shows the section standing flush with the rear strip, the corner between the two rounded to about 5 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
-// A monitor stand made to hold the machine on its front edge leaves it 40 to 41.2 there [D]: https://www.printables.com/model/527817. Against that, Amstrad's 48 overall is most likely the drive section's height, denisstephane's model, a cross-check, gives it 46.3, and the photograph of the front below makes it about 46; the disagreement stands until a real unit is measured.
+// A monitor stand made to hold the machine on its front edge leaves it 40 to 41.2 there [D]: https://www.printables.com/model/527817. Against that, Amstrad's 48 overall is most likely the drive section's height, and the photograph of the front below makes it about 46; the disagreement stands until a real unit is measured.
 const DRIVE_SECTION_WIDTH = 104.5,
   DRIVE_SECTION_LEFT = WIDTH - DRIVE_SECTION_WIDTH,
   DRIVE_SECTION_HEIGHT = REAR_STRIP_HEIGHT,

@@ -8,6 +8,8 @@ The desk honours the real machine. Every figure it is built from says where it c
 
 A model someone else made is a cross-check, never a part: nothing here is copied from one. The research behind the figures is kept outside this repository; its downloads are other people's — manuals, photographs, firmware — and none of them is ever committed here.
 
+Where no figure exists the part is drawn anyway and says so: a dead flat screen is further from the machine than a provisional tube. A look no measurement supports declares in its own file, in the plainest words, which of its figures are guesses, and wears no tag it did not earn — a number tuned until it pleases the eye is a guess however finely it was measured afterwards, and a citation tag on it is a lie with a footnote. A harness that weighs the shader does not settle the tube's figures either; it only measures the guess more precisely.
+
 ## The machine
 
 - Each model — a computer, a monitor, a cassette unit, a drive — is built by a file of its own in `tools/models/`, as it is made: solids cut and filleted by a CAD kernel, in the terms of its own parts, from named constants cited where they stand. A better measurement changes a number and not the code. Nothing is shared between models until two of them really share it. Geometry holds what a reader would see to be wrong — the silhouette, the key grid, the openings, the glass — and everything smaller is texture.
@@ -30,10 +32,10 @@ A model someone else made is a cross-check, never a part: nothing here is copied
 - Private fields and methods (`#`) for internal state and helpers; `on*` handlers stay public when they are called from outside.
 - Prefer `function` over arrows, except for a short one-line expression. Names say what a thing holds; no cryptic abbreviations.
 - Prefer `==`, and `===` only where strictly needed. `for...of` for plain iteration; an indexed `for` when index arithmetic, several cursors, in-loop mutation control or coupled temporal variables are wanted; never `.forEach`.
-- One export a file, and a named one; a folder's `index.js` alone may name several. It is the folder's surface, for outsiders: files inside import their siblings directly, because reaching a sibling through the index closes a cycle and `extends` is evaluated too early to survive one. No `.js` extension in the page's own imports, which Vite resolves; the tools, which Node runs, write theirs, and a package's subpath keeps whatever its exports map demands, as `three/addons/…` does.
-- A comment is a battle the code lost, in stylesheets as much as in JavaScript, and the fix is never the comment. A name that does not say what the thing is: rename it. A hack: stop hacking. A diary entry nobody wants on Thursday: delete it. A claim about the code: it is a lie already or will become one. What survives is a fact no name can carry — an upstream constraint, a clause of a spec — in a line or two.
+- Exports are chosen for what a module announces and how it is meant to be used, never by habit, and no file scatters them through its code for a reader to collect: a file offers one thing, or a few named together in a single statement. The shape is the contract, chosen for what the module is: a file that is one thing exports it as its `default`, so an importer names it what it is, and a file offering several names them; never both. A folder's `index.js` is its surface and may name several. It is for outsiders: files inside import their siblings directly, because reaching a sibling through the index closes a cycle and `extends` is evaluated too early to survive one. No `.js` extension in the page's own imports, which Vite resolves; the tools, which Node runs, write theirs, and a package's subpath keeps whatever its exports map demands, as `three/addons/…` does.
+- A comment is a battle the code, the design or the architecture lost, in stylesheets as much as in JavaScript, and the fix is never the comment. The question to ask of one is not whether it reads well but what it is standing in for. A name that does not say what the thing is: rename it. A hack: stop hacking. A diary entry nobody wants on Thursday: delete it. A claim about the code: it is a lie already or will become one. Worst, a design that has to be argued for in prose to be understood: prose is where that argument hides instead of being settled, so settle it. One is added only where its absence would likely lead a future editor into a bug — a non-obvious invariant, a footgun, an upstream constraint, a clause of a spec — and then it carries the fact alone, in a line or two. In a test the name is that slot: a comment above one is a name that was not found.
 - What the code does, why an approach was chosen and what a decision cost belong in the commit message, not the code; a stylesheet is not annotated rule by rule.
-- A source is cited where it is used: the link, and what was taken from it. Provenance is the one thing a name cannot carry.
+- A source is cited where it is used: the link, and what was taken from it. Provenance is the one thing a name cannot carry. The README's `Sources` section is a view over those citations and never a collection of its own: a source is promoted there the day the code starts citing it, in one line saying what it is and what it gives the desk.
 - Plain CSS: custom properties, nesting, `light-dark()`.
 
 ## Simplicity and ownership
@@ -41,6 +43,7 @@ A model someone else made is a cross-check, never a part: nothing here is copied
 - Structure follows need: build nothing for a consumer that does not exist, and bring in a tool with the first thing that uses it.
 - Elements handle the page and its events. Loading, fetching, the WASM module and the geometry belong to modules of their own.
 - APIs are the desk's own, in the machine's terms; no generic abstractions for app-specific work.
+- What measures the desk lives in the tree that runs it, never in the page: a harness, a timing rig, a compiler report. A figure the desk admits it guessed is one the reader may turn, and the knob belongs on the glass beside it.
 - Of two options that work, the one with fewer concepts and fewer lines. Change what the task needs and no more; a rewrite that was asked for is a clean one rather than a patch. Finish with a pass that removes redundant checks, temporary indirections and duplicated logic.
 
 ## Voice
@@ -54,11 +57,11 @@ A model someone else made is a cross-check, never a part: nothing here is copied
 
 ## Working
 
-- `README.md` holds what the code cannot: what the desk is for and how it is built. It never describes a model or how far one has been drawn; the model's own file shows that, and a second account only goes stale.
+- `README.md` holds what the code cannot: what the desk is for and how it is built. It never describes a model or how far one has been drawn; the model's own file shows that, and a second account only goes stale. A check the repository offers is named there with what it needs to run, because a check nobody can run is worse than no check, and its caveats travel with its output.
 - A test proves what the code does, never what it says: a test that repeats a model's figures or its placement proves nothing, and a model is checked by looking at it. Tests arrive in the change that writes the code they prove.
 - `npm run check` before handing work back. `npm run test:e2e` drives the page in a browser with Playwright; run it too when the change reaches the page.
 - Never commit, never push. The human reviews; the human commits.
 
 ## Unsettled
 
-How the desk is distributed. How the textures are made for each country.
+How the desk is distributed. How the textures are made for each country. What the glass shows beyond the picture, and what evidence could ever settle a tube's own figures.

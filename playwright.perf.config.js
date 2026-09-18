@@ -3,8 +3,8 @@ import { defineConfig } from "@playwright/test"
 const PORT = 5175
 
 export default defineConfig({
-  testDir: "./e2e",
-  fullyParallel: true,
+  testDir: "./perf",
+  snapshotPathTemplate: "{testDir}/{testFileName}-snapshots/{arg}{ext}",
   use: { baseURL: `http://localhost:${PORT}` },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {

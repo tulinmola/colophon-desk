@@ -1,15 +1,18 @@
-import { MeshBasicNodeMaterial } from "three/webgpu"
-import { loadTexture } from "./load_texture"
+import ScreenMaterial from "./screen_material"
+import loadTexture from "./load_texture"
 
-export async function showPicture(model, url, anisotropy) {
-  const picture = await loadTexture(url, anisotropy),
-    material = new MeshBasicNodeMaterial({ map: picture })
+export default async function showPicture(model, url, anisotropy) {
+  const picture = await loadTexture(url, anisotropy)
+  let screen = null
 
   model.traverse(function (object) {
     const lit = Object.hasOwn(object.userData, "screen")
 
     if (lit) {
-      object.material = material
+      screen = new ScreenMaterial(object.geometry, picture)
+      object.material = screen
     }
   })
+
+  return screen
 }

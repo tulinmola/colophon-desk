@@ -1,6 +1,6 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
-import { createKeycapMaterial } from "./keycap_material"
-import { loadTexture } from "./load_texture"
+import createKeycapMaterial from "./keycap_material"
+import loadTexture from "./load_texture"
 
 function printUrl(name, language) {
   return new URL(`../../assets/textures/${language}/${name}.png`, import.meta.url)
@@ -12,6 +12,8 @@ async function printOn(mesh, language, anisotropy) {
 
   mesh.material.color.setRGB(1, 1, 1)
   mesh.material.map = print
+
+  return print
 }
 
 async function letter(keycaps, language, anisotropy) {
@@ -23,9 +25,11 @@ async function letter(keycaps, language, anisotropy) {
   for (const lettered of keycaps) {
     lettered.material = material
   }
+
+  return atlas
 }
 
-export async function loadModel(url, language, anisotropy) {
+export default async function loadModel(url, language, anisotropy) {
   const loader = new GLTFLoader(),
     gltf = await loader.loadAsync(url.href),
     printed = [],
@@ -48,7 +52,7 @@ export async function loadModel(url, language, anisotropy) {
     printing = printed.map(mesh => printOn(mesh, language, anisotropy)),
     lettering = Array.from(byAtlas.values(), keycaps => letter(keycaps, language, anisotropy))
 
-  await Promise.all([...printing, ...lettering])
+  const textures = await Promise.all([...printing, ...lettering])
 
-  return gltf.scene
+  return { model: gltf.scene, textures }
 }

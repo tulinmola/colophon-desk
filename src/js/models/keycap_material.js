@@ -1,7 +1,7 @@
 import { attribute, materialColor, mix, select, texture, uv } from "three/tsl"
 import { MeshStandardNodeMaterial } from "three/webgpu"
 
-export function createKeycapMaterial(keycap, atlas) {
+export default function createKeycapMaterial(keycap, atlas) {
   const legend = attribute("_LEGEND", "vec4"),
     legendCorner = legend.xy,
     legendSize = legend.zw,
