@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test"
 import { resolve } from "node:path"
 
-const PROBE = resolve(import.meta.dirname, "../perf/screen_probe.js"),
-  MATERIAL = resolve(import.meta.dirname, "../src/js/models/screen_material.js")
+const PROBE = resolve(import.meta.dirname, "../perf/screen_probe.js")
 
 async function prepare(page) {
   const fixture = `/@fs${PROBE}`
@@ -283,32 +282,4 @@ test("picture glow crosses a source edge while distant black stays black", async
   expect(result.sums.far).toBe(0)
   expect(result.means[0]).toBe(0)
   expect(result.means[2]).toBe(0)
-})
-
-test("a disposed material leaves the picture it shared still drawable", async function ({ page }) {
-  await prepare(page)
-
-  const result = await page.evaluate(async function (url) {
-    const { default: ScreenMaterial } = await import(url),
-      screen = window.screenTest,
-      other = new ScreenMaterial(screen.geometry, screen.picture),
-      before = await screen.render(0.3)
-    let disposals = 0
-
-    screen.picture.addEventListener("dispose", function () {
-      disposals++
-    })
-    other.dispose()
-
-    const after = await screen.render(0.3),
-      whileShared = disposals
-
-    screen.dispose()
-
-    return { before: before.pixels, after: after.pixels, whileShared, afterRelease: disposals }
-  }, `/@fs${MATERIAL}`)
-
-  expect(result.after).toEqual(result.before)
-  expect(result.whileShared).toBe(0)
-  expect(result.afterRelease).toBe(1)
 })

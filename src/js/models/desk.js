@@ -5,9 +5,6 @@ import showPicture from "./show_picture"
 const CPC6128_URL = new URL("../../assets/models/cpc6128.glb", import.meta.url),
   CTM644_URL = new URL("../../assets/models/ctm644.glb", import.meta.url)
 
-// A frame the machine drew itself, taken with the emulator standing beside this one: `emulator boot --machine cpc6128 --roms ROMS --full-raster --screenshot PATH`, on the Spanish firmware, Amstrad part 40038, SHA-256 49c5b2da99bf3230dec3e4bfbb136609ae5f8d250d8920be0ebda1e5a256f88a, fetched for the capture and never kept here.
-const READY_URL = new URL("../../assets/screens/es/cpc6128-ready.png", import.meta.url)
-
 const LANGUAGE = "es"
 
 // Camera and light levels are presentation choices, not measurements of the machine.
@@ -50,14 +47,14 @@ export default class Desk {
     this.scene.add(sky, sun)
   }
 
-  async load(anisotropy) {
+  async load(anisotropy, picture) {
     const loading = [
         loadModel(CPC6128_URL, LANGUAGE, anisotropy),
         loadModel(CTM644_URL, LANGUAGE, anisotropy)
       ],
       [machine, monitor] = await Promise.all(loading)
 
-    this.screen = await showPicture(monitor.model, READY_URL, anisotropy)
+    this.screen = showPicture(monitor.model, picture)
     monitor.model.position.z = MONITOR_BEHIND
     this.#models = [machine.model, monitor.model]
     this.#textures = [...machine.textures, ...monitor.textures]
@@ -67,7 +64,7 @@ export default class Desk {
   dispose() {
     const geometries = new Set(),
       materials = new Set(),
-      textures = new Set([this.screen.picture, ...this.#textures])
+      textures = new Set(this.#textures)
 
     for (const model of this.#models) {
       model.traverse(function (object) {

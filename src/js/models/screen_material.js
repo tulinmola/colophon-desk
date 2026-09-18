@@ -1,8 +1,5 @@
 import { Box2, MeshBasicNodeMaterial, Vector2, Vector3 } from "three/webgpu"
-import { Fn, If, dFdx, dFdy, float, fwidth, mix, texture, uniform, uv, vec2, vec3 } from "three/tsl"
-
-// The capture repeats each of its 312 raster lines twice [A], colophon-emulator/docs/command-line.en.md, --full-raster.
-const ROWS_PER_LINE = 2
+import { Fn, If, dFdx, dFdy, float, fwidth, mix, uniform, uv, vec2, vec3 } from "three/tsl"
 
 // Trial slot fill; the CTM644 slot proportions remain unmeasured.
 const SLOT_FILL = 0.8
@@ -115,7 +112,7 @@ function phosphors(at) {
 
 // CRT spot size and video bandwidth both spread the signal spatially, AAPM TG18 §2.3.1.3: https://www.aapm.org/pubs/reports/OR_03.pdf
 function horizontalLight(picture, at, gradientX, gradientY, width) {
-  const source = texture(picture, at).grad(gradientX, gradientY),
+  const source = picture.sample(at).grad(gradientX, gradientY),
     across = gradientX.x.abs(),
     down = gradientY.x.abs(),
     footprint = across.add(down),
@@ -135,8 +132,8 @@ function horizontalLight(picture, at, gradientX, gradientY, width) {
         offset = vec2(distance, 0),
         before = at.sub(offset),
         after = at.add(offset),
-        left = texture(picture, before).grad(gradientX, gradientY),
-        right = texture(picture, after).grad(gradientX, gradientY),
+        left = picture.sample(before).grad(gradientX, gradientY),
+        right = picture.sample(after).grad(gradientX, gradientY),
         sides = left.rgb.add(right.rgb),
         centre = source.rgb.mul(4),
         blurred = sides.add(centre).div(6),
@@ -151,9 +148,8 @@ function horizontalLight(picture, at, gradientX, gradientY, width) {
   return { light: reconstruct(), source: source.rgb }
 }
 
-function pictureLight(picture, at, width, horizontalWidth) {
-  const lines = picture.image.height / ROWS_PER_LINE,
-    gradientX = dFdx(at).toVar(),
+function pictureLight(picture, at, lines, width, horizontalWidth) {
+  const gradientX = dFdx(at).toVar(),
     gradientY = dFdy(at).toVar(),
     footprint = fwidth(at).y.mul(lines),
     unresolved = footprint.smoothstep(...LINE_CUTOFF),
@@ -237,7 +233,7 @@ function glowLight(picture, at, radius, source) {
 
           const displacement = vec2(column, row).mul(step),
             sampleAt = at.add(displacement),
-            sample = texture(picture, sampleAt).grad(gradientX, gradientY),
+            sample = picture.sample(sampleAt).grad(gradientX, gradientY),
             afterStart = sampleAt.greaterThanEqual(0).all(),
             beforeEnd = sampleAt.lessThanEqual(1).all(),
             inside = afterStart.and(beforeEnd),
@@ -266,7 +262,7 @@ function glowLight(picture, at, radius, source) {
 
 export default class ScreenMaterial extends MeshBasicNodeMaterial {
   // CTM644 macro photographs show segmented RGB columns [D]: http://cpc.sylvestre.org/technique/technique_gfx8.html
-  // Ten green columns there across seven Mode 1 pixels is 1.4 capture samples to a triad, and the sweep is laid 308.0 mm across its 800 sampled columns, so 0.385 mm a sample gives the 0.54 below [E].
+  // Ten green columns there across seven Mode 1 pixels is 1.4 raster samples to a triad, and the sweep is laid 308.0 mm across its 800 swept columns, so 0.385 mm a sample gives the 0.54 below [E].
   // Every other tube figure here is a trial setting tuned by eye, not a measured property.
   settings = {
     phosphorPitch: uniform(0.54),
@@ -284,7 +280,7 @@ export default class ScreenMaterial extends MeshBasicNodeMaterial {
     enabled: uniform(1)
   }
 
-  constructor(geometry, picture) {
+  constructor(geometry, picture, lines) {
     super()
 
     const settings = this.settings,
@@ -300,7 +296,13 @@ export default class ScreenMaterial extends MeshBasicNodeMaterial {
       physical = at.mul(millimetres).add(origin).div(pitch),
       horizontalWidth = settings.excitationWidth.div(millimetres.x).div(settings.pictureWidth),
       radius = settings.glowRadius.div(millimetres).div(scale),
-      pictureLightAt = pictureLight(picture, pictureAt, settings.scanlineWidth, horizontalWidth),
+      pictureLightAt = pictureLight(
+        picture,
+        pictureAt,
+        lines,
+        settings.scanlineWidth,
+        horizontalWidth
+      ),
       mask = phosphors(physical),
       mean = pictureLightAt.mean.mul(MASK_MEAN),
       compensation = mean.reciprocal(),
@@ -336,7 +338,6 @@ export default class ScreenMaterial extends MeshBasicNodeMaterial {
       }),
       emitted = combine()
 
-    this.picture = picture
     this.colorNode = mix(source, emitted, settings.enabled)
     this.toneMapped = false
   }

@@ -8,6 +8,7 @@
     "start": "vite",
     "build": "vite build",
     "models:build": "node tools/build_models.js",
+    "emulator:build": "node tools/build_emulator.js",
     "prettier:check": "npx prettier . --check",
     "prettier:write": "npx prettier . --write",
     "test:e2e": "playwright test --config playwright.e2e.config.js",

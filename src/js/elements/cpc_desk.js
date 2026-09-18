@@ -1,3 +1,4 @@
+import { Cpc } from "../emulator"
 import { Desk } from "../models"
 import Element from "./element"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
@@ -38,9 +39,10 @@ class CpcDeskElement extends Element {
     await renderer.init()
 
     const wireframe = this.hasAttribute("wireframe"),
-      anisotropy = renderer.getMaxAnisotropy()
+      anisotropy = renderer.getMaxAnisotropy(),
+      cpc = await Cpc.create(signal, anisotropy)
 
-    await desk.load(anisotropy)
+    await desk.load(anisotropy, cpc.picture)
     desk.scene.traverse(function (object) {
       const drawn = object.isMesh
 
@@ -55,10 +57,13 @@ class CpcDeskElement extends Element {
       const options = this.querySelector("colophon-options")
 
       options.use(desk.screen.settings)
-      renderer.setAnimationLoop(() => renderer.render(desk.scene, desk.camera))
+      renderer.setAnimationLoop(function (now) {
+        cpc.advance(now)
+        renderer.render(desk.scene, desk.camera)
+      })
     }
 
-    return desk
+    return { cpc, desk }
   }
 
   dispose() {
@@ -67,12 +72,24 @@ class CpcDeskElement extends Element {
     renderer.setAnimationLoop(null)
     this.#observer.disconnect()
     this.#controls.dispose()
-    this.#initialising.then(function (desk) {
-      desk.dispose()
-
-      renderer.dispose()
-    })
+    this.#release(renderer)
     renderer.domElement.remove()
+  }
+
+  // A load that threw built nothing to release, but the device it was building
+  // on is owed its disposal either way. Its failure is left to the promise
+  // nobody else took, which is where the page reports it.
+  async #release(renderer) {
+    try {
+      const { cpc, desk } = await this.#initialising
+
+      cpc.dispose()
+      desk.dispose()
+    } catch {
+      // Reported there; catching it here only keeps it from being told twice.
+    } finally {
+      renderer.dispose()
+    }
   }
 
   onResized([entry]) {

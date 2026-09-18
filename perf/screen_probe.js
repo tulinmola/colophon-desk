@@ -11,12 +11,16 @@ import {
   WebGPURenderer
 } from "three/webgpu"
 import { ScreenMaterial } from "../src/js/models/index.js"
+import { texture } from "three/tsl"
 
-// The plane carries the emulator's full raster at its own aspect, not the CTM644's aperture: the probe exercises the shader's arithmetic, not the tube.
+// CPC_FRAMEBUFFER_WIDTH and CPC_FRAMEBUFFER_HEIGHT in the emulator's src/cpc.h, which the probe cannot ask for because it stands without the module.
+const RASTER = { columns: 1024, rows: 312 }
+
+// The plane carries that raster at the shape the beam sweeps, not the CTM644's aperture: the probe exercises the shader's arithmetic, not the tube.
 export default async function createScreen(options = {}) {
   const renderer = new WebGPURenderer(options),
-    data = new Uint8Array(1024 * 624 * 4),
-    picture = new DataTexture(data, 1024, 624),
+    data = new Uint8Array(RASTER.columns * RASTER.rows * 4),
+    picture = new DataTexture(data, RASTER.columns, RASTER.rows),
     geometry = new PlaneGeometry(0.394, 0.24),
     target = new RenderTarget(256, 192, { depthBuffer: false }),
     camera = new PerspectiveCamera(35, 256 / 192, 0.01, 5),
@@ -34,7 +38,8 @@ export default async function createScreen(options = {}) {
   geometry.rotateX(-Math.PI / 2)
   camera.up.set(0, 0, -1)
 
-  const material = new ScreenMaterial(geometry, picture),
+  const node = texture(picture),
+    material = new ScreenMaterial(geometry, node, RASTER.rows),
     settings = material.settings,
     screen = new Mesh(geometry, material)
 
@@ -42,7 +47,7 @@ export default async function createScreen(options = {}) {
 
   function frame(red, green, blue, start = 0) {
     for (let index = 0; index < data.length; index += 4) {
-      const column = (index / 4) % picture.image.width,
+      const column = (index / 4) % RASTER.columns,
         lit = column >= start
 
       data[index] = lit ? red : 0
@@ -96,5 +101,5 @@ export default async function createScreen(options = {}) {
   camera.lookAt(0, 0, 0)
   await renderer.compileAsync(scene, camera)
 
-  return { frame, render, settings, picture, geometry, shader, dispose }
+  return { frame, render, settings, shader, dispose }
 }

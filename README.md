@@ -8,15 +8,20 @@ The [emulator](https://github.com/tulinmola/colophon-emulator) runs them from th
 
 ## Building
 
-Node and npm are the whole toolchain for building the site and checking it.
+Node and npm build the site and check it. Compiling the machine it runs wants Emscripten as well, and a checkout of [the emulator](https://github.com/tulinmola/colophon-emulator) standing beside this one.
 
 ```sh
 npm install
-npm start            # serve the page
-npm run build        # write the site to dist/
-npm run models:build # write the models and their prints to src/assets/
-npm run check        # formatting and linting
+npm start              # serve the page
+npm run build          # write the site to dist/
+npm run models:build   # write the models and their prints to src/assets/
+npm run emulator:build # compile the machine and this host into src/js/vendor/
+npm run check          # formatting and linting
 ```
+
+The built module is named for the emulator commit it came from and a digest of `emulator/`, so a change to either gives it a new name: `src/js/emulator/module.js` follows that name, and the superseded build is deleted rather than left to be picked up by mistake.
+
+No firmware is kept here and none is served from here. The page fetches the images itself, pinned by hash and verified in the browser before the machine is booted, and keeps them in the reader's own storage — so a reader obtains their own copy, from the sources named below, exactly as anyone running the emulator's fetch script does.
 
 ## Weighing the tube
 
@@ -25,6 +30,8 @@ npm run browsers # Chromium for Playwright to drive, once
 npm run test:e2e # the page driven in a browser
 npm run perf     # the generated fragment shader, against its recorded cost
 ```
+
+`npm run test:e2e` stands a machine up, so it fetches firmware from the sources below and needs the network; `npm run perf` does not.
 
 `npm run perf` compares the fragment shader the screen material compiles to — statements, operators, texture fetches and the calls that cost — against `perf/shader.spec.js-snapshots/`; `--update-snapshots` records a new cost. It counts what the shader asks for, not what a GPU charges for it.
 
@@ -45,6 +52,12 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - [Retroleum](https://retroleum.co.uk/cpc-kb) — keycap heights for the later 464, which bound the 6128's.
 - [Panasonic EME-150](https://www.cpcwiki.eu/index.php/File:Panasonic-3_inch_Floppy_Drive_EME-150.pdf) — the drawing of the drive's sister, its length and the slot across it.
 - Parts printed to fit: a [monitor stand](https://www.printables.com/model/527817), a [key cover](https://www.printables.com/model/1334008) and two drive plugs ([one](https://www.thingiverse.com/thing:2876318), [two](https://www.printables.com/model/284516)) — they measure the openings they fill.
+
+**The firmware.**
+
+- [Amstrad's permission](https://worldofspectrum.net/app/themes/wosc-classic/static/legacy/amstrad-roms.txt) — Cliff Lawson's 1999 answer, under which these images are fetched, and which the emulator's own `tools/fetch-roms.sh` records in full along with what it does not reach.
+- [Arnold](https://github.com/rofl0r/arnold) — the two halves of the Spanish 6128's firmware, Amstrad part 40038, which the page joins and checks against its pin.
+- [Caprice32](https://github.com/ColinPitrat/caprice32) — Amstrad's AMSDOS image, the ROM the disc interface brings.
 
 **The glass.**
 

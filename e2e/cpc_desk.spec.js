@@ -15,6 +15,14 @@ test("the desk lays a canvas the size of itself", async function ({ page }) {
   expect(canvasBox.height).toBeCloseTo(deskBox.height, 0)
 })
 
+test("the desk stands once its machine has booted", async function ({ page }) {
+  await page.goto("/")
+
+  const options = page.locator("colophon-options")
+
+  await expect(options).toBeVisible({ timeout: 30000 })
+})
+
 test("a desk laid again lays one canvas, not two", async function ({ page }) {
   await page.goto("/")
 
