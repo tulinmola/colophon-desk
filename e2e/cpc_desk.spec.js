@@ -31,7 +31,7 @@ test("a keystroke let go of within the frame still reaches the machine", async f
   const desk = page.locator("colophon-cpc-desk")
 
   await expect(page.locator("colophon-options")).toBeVisible({ timeout: 30000 })
-  await desk.click({ position: { x: 40, y: 40 } })
+  await desk.focus()
 
   const quiet = await page.screenshot()
 
@@ -57,7 +57,7 @@ test("the options keep their own arrow keys, which the machine also reads", asyn
     travel = options.locator("input[name='keyTravel']")
 
   await expect(options).toBeVisible({ timeout: 30000 })
-  await options.locator("summary").click()
+  await options.getByRole("button", { name: "Options" }).click()
 
   const before = await travel.inputValue()
 

@@ -1,33 +1,88 @@
+import { CameraRig, Desk } from "../models"
 import { Cpc, KEY_MATRIX } from "../emulator"
-import { Desk } from "../models"
+import { Vector2, WebGPURenderer } from "three/webgpu"
 import Element from "./element"
-import { OrbitControls } from "three/addons/controls/OrbitControls.js"
-import { WebGPURenderer } from "three/webgpu"
+
+const html = String.raw
+
+// A pointer that travels further than this, in CSS pixels, between going down
+// and coming up has turned the camera rather than clicked.
+const CLICK_SLACK = 10
+
+const DESK_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"
+    />
+    <path d="M8.5 13V8a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5" />
+    <path d="M8 13h8l1 4H7z" />
+  </svg>`,
+  SET_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5 14V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10" />
+    <rect x="9" y="6" width="6" height="4" rx="0.5" />
+    <path d="M4.5 14h15l2.5 8H2z" />
+    <path d="M8 18h8" />
+  </svg>`,
+  MONITOR_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="3" y="2" width="18" height="19" rx="2" />
+    <rect x="7" y="6" width="10" height="7" rx="1" />
+    <path d="M7 17h3M17 17h.01" />
+  </svg>`,
+  DRIVE_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <path d="M6 10h12M6 14h.01M15 14h3" />
+  </svg>`
+
+const VIEW_MENU = html`<menu aria-label="Views" hidden>
+  <li>
+    <button type="button" data-view="desk" title="The whole desk" aria-pressed="false">
+      ${DESK_ICON}
+    </button>
+  </li>
+  <li>
+    <button type="button" data-view="set" title="The computer and monitor" aria-pressed="false">
+      ${SET_ICON}
+    </button>
+  </li>
+  <li>
+    <button type="button" data-view="monitor" title="The monitor" aria-pressed="false">
+      ${MONITOR_ICON}
+    </button>
+  </li>
+  <li>
+    <button type="button" data-view="drive" title="The disc drive" aria-pressed="false">
+      ${DRIVE_ICON}
+    </button>
+  </li>
+</menu>`
 
 class CpcDeskElement extends Element {
-  #camera
-  #controls
   #cpc = null
   #heldByCode = new Map()
+  #hovering
   #initialising
+  #menu
   #observer
+  #pointer = new Vector2()
+  #pressedAt = new Vector2()
   #renderer
+  #rig
+  #shown
 
   init() {
     const renderer = new WebGPURenderer({ alpha: true, antialias: true }),
+      canvas = renderer.domElement,
       desk = new Desk(),
-      camera = desk.camera,
-      controls = new OrbitControls(camera, renderer.domElement)
-
-    controls.target.copy(desk.target)
-    controls.update()
+      rig = new CameraRig(canvas)
 
     renderer.setPixelRatio(devicePixelRatio)
-    this.append(renderer.domElement)
+    this.prepend(canvas)
+    canvas.insertAdjacentHTML("afterend", VIEW_MENU)
 
-    this.#camera = camera
-    this.#controls = controls
+    this.#hovering = false
+    this.#menu = this.querySelector("menu")
     this.#renderer = renderer
+    this.#rig = rig
+    this.#shown = { view: null, lead: null }
 
     const resized = this.onResized.bind(this),
       { signal } = this
@@ -38,8 +93,91 @@ class CpcDeskElement extends Element {
     this.addEventListener("keydown", this.onKeyDown.bind(this), { signal })
     this.addEventListener("keyup", this.onKeyUp.bind(this), { signal })
     this.addEventListener("blur", this.onBlur.bind(this), { signal })
+    canvas.addEventListener("pointerdown", this.onPointerDown.bind(this), { signal })
+    canvas.addEventListener("pointermove", this.onPointerMove.bind(this), { signal })
+    canvas.addEventListener("pointerleave", this.onPointerLeave.bind(this), { signal })
+    canvas.addEventListener("click", this.onSceneClicked.bind(this), { signal })
+    this.#menu.addEventListener("click", this.onViewChosen.bind(this), { signal })
 
-    this.#initialising = this.#load(desk, renderer, signal)
+    this.#initialising = this.#load(desk, rig, renderer, signal)
+  }
+
+  onPointerDown(event) {
+    this.#pressedAt.set(event.clientX, event.clientY)
+  }
+
+  onPointerMove(event) {
+    const touching = event.pointerType == "touch",
+      pressing = event.buttons != 0
+
+    this.#hovering = !touching && !pressing
+    this.#aim(event)
+  }
+
+  onPointerLeave() {
+    this.#hovering = false
+  }
+
+  onSceneClicked(event) {
+    const travelled = this.#pressedAt.distanceTo({ x: event.clientX, y: event.clientY }),
+      turned = travelled > CLICK_SLACK
+
+    if (turned) {
+      return
+    }
+
+    this.#aim(event)
+
+    const rig = this.#rig,
+      view = rig.viewAt(this.#pointer),
+      leads = view != null && view != rig.view
+
+    if (leads) {
+      rig.look(view)
+    }
+  }
+
+  // The machine's keys reach it only while the desk holds the focus, so a
+  // view chosen from the menu hands the focus back.
+  onViewChosen(event) {
+    const button = event.target.closest("button")
+
+    if (!button) {
+      return
+    }
+
+    this.#rig.look(button.dataset.view)
+    this.focus()
+  }
+
+  #aim({ offsetX, offsetY, target }) {
+    const across = (offsetX / target.clientWidth) * 2 - 1,
+      down = (offsetY / target.clientHeight) * 2 - 1
+
+    this.#pointer.set(across, -down)
+  }
+
+  #showViews() {
+    const rig = this.#rig,
+      { view } = rig,
+      pointed = this.#hovering ? rig.viewAt(this.#pointer) : null,
+      lead = pointed == view ? null : pointed,
+      unchanged = view == this.#shown.view && lead == this.#shown.lead
+
+    if (unchanged) {
+      return
+    }
+
+    this.#shown = { view, lead }
+    this.#renderer.domElement.toggleAttribute("data-leads", lead != null)
+
+    for (const button of this.#menu.querySelectorAll("button")) {
+      const chosen = button.dataset.view == view,
+        pointedAt = button.dataset.view == lead
+
+      button.setAttribute("aria-pressed", String(chosen))
+      button.toggleAttribute("data-pointed", pointedAt)
+    }
   }
 
   onKeyDown(event) {
@@ -125,7 +263,7 @@ class CpcDeskElement extends Element {
     return keys
   }
 
-  async #load(desk, renderer, signal) {
+  async #load(desk, rig, renderer, signal) {
     await renderer.init()
 
     const wireframe = this.hasAttribute("wireframe"),
@@ -144,13 +282,18 @@ class CpcDeskElement extends Element {
     const standing = !signal.aborted
 
     if (standing) {
-      const options = this.querySelector("colophon-options")
+      const options = this.querySelector("colophon-options"),
+        showViews = this.#showViews.bind(this)
 
       this.#cpc = cpc
+      rig.use(desk)
       options.use(desk.settings)
+      this.#menu.hidden = false
       renderer.setAnimationLoop(function (now) {
         cpc.advance(now)
-        renderer.render(desk.scene, desk.camera)
+        rig.advance(now)
+        showViews()
+        renderer.render(desk.scene, rig.camera)
       })
     }
 
@@ -163,7 +306,8 @@ class CpcDeskElement extends Element {
     renderer.setAnimationLoop(null)
     this.#cpc = null
     this.#observer.disconnect()
-    this.#controls.dispose()
+    this.#rig.dispose()
+    this.#menu.remove()
     this.#release(renderer)
     renderer.domElement.remove()
   }
@@ -188,8 +332,7 @@ class CpcDeskElement extends Element {
     const { width, height } = entry.contentRect
 
     this.#renderer.setSize(width, height)
-    this.#camera.aspect = width / height
-    this.#camera.updateProjectionMatrix()
+    this.#rig.resize(width, height)
   }
 }
 
