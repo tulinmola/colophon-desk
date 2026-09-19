@@ -10,10 +10,6 @@ import { fileURLToPath } from "node:url"
 import opencascade from "replicad-opencascadejs"
 import { setOC } from "replicad"
 
-// How far the triangles may stray from a curved face, in millimetres, and turn from one another along it, in radians.
-const TOLERANCE = 0.1,
-  ANGULAR_TOLERANCE = 0.5
-
 const KERNEL_WASM_URL = import.meta.resolve("replicad-opencascadejs/wasm"),
   KERNEL_WASM = fileURLToPath(KERNEL_WASM_URL),
   ROOT = resolve(import.meta.dirname, ".."),
@@ -131,7 +127,7 @@ function createKeyInstances(document, buffer, instancing, part) {
     .setAttribute("_LEGEND", legend)
 }
 
-async function writeModel(name, parts) {
+async function writeModel(name, { tessellation, parts }) {
   const document = new Document(),
     buffer = document.createBuffer(),
     scene = document.createScene(name),
@@ -139,7 +135,7 @@ async function writeModel(name, parts) {
     gltfMaterials = createMaterials(document, parts)
 
   for (const part of parts) {
-    const meshed = part.shape.mesh({ tolerance: TOLERANCE, angularTolerance: ANGULAR_TOLERANCE }),
+    const meshed = part.shape.mesh(tessellation),
       positions = toGltf(meshed.vertices, METRES_PER_MILLIMETRE),
       normals = toGltf(meshed.normals, 1),
       triangles = new Uint32Array(meshed.triangles),
@@ -224,7 +220,7 @@ const models = [
 ]
 
 for (const model of models) {
-  await writeModel(model.name, model.built.parts)
+  await writeModel(model.name, model.built)
 
   for (const print of model.built.prints) {
     writePrint(model.name, print)
