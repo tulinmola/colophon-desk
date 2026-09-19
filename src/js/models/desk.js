@@ -1,4 +1,4 @@
-import { DirectionalLight, HemisphereLight, PerspectiveCamera, Scene, Vector3 } from "three/webgpu"
+import { DirectionalLight, HemisphereLight, Scene } from "three/webgpu"
 import loadModel from "./load_model"
 import showPicture from "./show_picture"
 
@@ -6,14 +6,6 @@ const CPC6128_URL = new URL("../../assets/models/cpc6128.glb", import.meta.url),
   CTM644_URL = new URL("../../assets/models/ctm644.glb", import.meta.url)
 
 const LANGUAGE = "es"
-
-// Camera and light levels are presentation choices, not measurements of the machine.
-const FIELD_OF_VIEW = 35,
-  NEAREST = 0.01,
-  FARTHEST = 5
-
-const EYE = [-0.6, 0.45, 0.85],
-  TARGET = [0, 0.12, -0.12]
 
 // Depths 170 mm and 365 mm [A], CPC6128 Service Manual technical specifications: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
 const MACHINE_DEPTH = 170,
@@ -23,6 +15,7 @@ const MACHINE_DEPTH = 170,
 const GAP = 30,
   MONITOR_BEHIND = -(MACHINE_DEPTH / 2 + MONITOR_DEPTH / 2 + GAP) / 1000
 
+// Light levels are presentation choices, not measurements of the machine.
 const SKY = 0xffffff,
   GROUND = 0x444444,
   SUNLIGHT = 0xffffff,
@@ -31,11 +24,10 @@ const SKY = 0xffffff,
   SUN_INTENSITY = 1.6
 
 export default class Desk {
-  camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, NEAREST, FARTHEST)
+  machine = null
+  monitor = null
   scene = new Scene()
-  target = new Vector3(...TARGET)
   settings
-  #models = []
   #textures = []
 
   constructor() {
@@ -43,7 +35,6 @@ export default class Desk {
       sun = new DirectionalLight(SUNLIGHT, SUN_INTENSITY)
 
     sun.position.set(...SUN)
-    this.camera.position.set(...EYE)
     this.scene.add(sky, sun)
   }
 
@@ -58,7 +49,8 @@ export default class Desk {
 
     this.settings = { ...screen.settings, ...machine.keyboard }
     monitor.model.position.z = MONITOR_BEHIND
-    this.#models = [machine.model, monitor.model]
+    this.machine = machine.model
+    this.monitor = monitor.model
     this.#textures = [...machine.textures, ...monitor.textures]
     this.scene.add(machine.model, monitor.model)
   }
@@ -68,7 +60,7 @@ export default class Desk {
       materials = new Set(),
       textures = new Set(this.#textures)
 
-    for (const model of this.#models) {
+    for (const model of [this.machine, this.monitor]) {
       model.traverse(function (object) {
         const drawn = object.isMesh
 
