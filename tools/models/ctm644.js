@@ -55,6 +55,9 @@ const OVERRUN = 1
 // Where two surfaces would otherwise meet along a line, one stops this far short of the other.
 const HAIRLINE = 0.1
 
+// How far the triangles may stray from a curved face, in millimetres, and turn from one another along it, in radians: a choice of how finely to draw, not a figure of the machine.
+const TESSELLATION = { tolerance: 0.1, angularTolerance: 0.5 }
+
 // No outline drawing exists for any of the Orion tubes Amstrad fitted. Philips' A34EAC00X of the same class, 34 cm and 90° with a slotted mask, draws its faceplate "AO R575 approx." [A]: 1986 data book T08, read here as the outer face radius.
 // The real tube is wider than the hole it looks through — that class's greatest bulb is 317 by 248 [A], p34 — but only the opening is ever seen, so the glass is cut to the opening and a margin the bezel's lip covers, and it is cut 35 deep, which clears the 29.45 the faceplate falls to the opening's corners.
 // How far the apex stands back is settled by parallax between two views whose poses are recovered, 1.46° and 2.82° off the axis: their apparent openings differ by 2.00 across, where a lip 15 deep predicts 2.10 and one 48 deep predicts 6.23 [E]. The lip is 15, bounded 5 to 25. A view along the face shows the glass does not stand proud of the face, which 15 satisfies [E].
@@ -614,6 +617,7 @@ export function buildCtm644() {
     )
 
   return {
+    tessellation: TESSELLATION,
     parts: [
       buildFrontCabinet(),
       buildRearCabinet(),

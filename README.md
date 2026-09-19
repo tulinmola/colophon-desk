@@ -47,7 +47,7 @@ Every figure is cited at the line that uses it. This is the other view: what the
 
 **The machine.**
 
-- [CPC6128 Service Manual](https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a) — Amstrad's own dimensions and technical specifications.
+- [CPC6128 Service Manual](https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a) — Amstrad's own dimensions and technical specifications, and the mouldings by part number.
 - [SOFT 968](https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual) — the firmware manual, and each key's number in the matrix.
 - [Reading the keyboard and Joysticks](https://cpctech.cpcwiki.de/docs/keyboard.html) — which line and bit each key sits on, and so where a browser's own keys reach the machine.
 - [CTM644 amendment service manual](https://retronik.silicium.org/DOCUMENTS/Info/Amstrad_CPC/Amstrad%20CPC464%206128%20GT65%20CTM644%20MP3%20CT1%20amendment%20service%20manual.pdf) — the monitor's cabinet mouldings, by part number.
@@ -58,6 +58,7 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - [sasfepu78](http://sasfepu78.fr/articles/Amstrad/) — a 600 dpi scan of a French 6128's keys, lying face down.
 - [Retroleum](https://retroleum.co.uk/cpc-kb) — keycap heights for the later 464, which bound the 6128's.
 - [Panasonic EME-150](https://www.cpcwiki.eu/index.php/File:Panasonic-3_inch_Floppy_Drive_EME-150.pdf) — the drawing of the drive's sister, its length and the slot across it.
+- [Hitachi HFD305SX](https://archive.org/details/hitachi-compact-floppy-disk-drive-model-hfd-305-sx) — another 3-inch drive's manual, and the one drawing of the disc itself, which the slot must pass.
 - Parts printed to fit: a [monitor stand](https://www.printables.com/model/527817), a [key cover](https://www.printables.com/model/1334008) and two drive plugs ([one](https://www.thingiverse.com/thing:2876318), [two](https://www.printables.com/model/284516)) — they measure the openings they fill.
 
 **The firmware.**
