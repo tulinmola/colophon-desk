@@ -6,50 +6,119 @@
 
 body {
   margin: 0;
-  padding: 2rem;
   font-family: system-ui, sans-serif;
   color: var(--ink);
   background: var(--ground);
 }
 
+h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
 colophon-cpc-desk {
   position: relative;
   display: block;
-  height: 70vh;
+  height: 100dvh;
 
   /* A desk holding the focus is a desk holding the keyboard: arrow keys stop
      scrolling the page and Escape stops meaning escape, so it says so. Not
      :focus-visible, because the ordinary way to reach it is a click. */
   &:focus {
-    outline: 2px solid color-mix(in srgb, var(--ink) 60%, transparent);
-    outline-offset: 0.2rem;
+    outline: 2px solid color-mix(in srgb, var(--ink) 10%, transparent);
+    outline-offset: -2px;
   }
 
   canvas {
     display: block;
+
+    &[data-leads] {
+      cursor: pointer;
+    }
+  }
+}
+
+colophon-cpc-desk :is(menu button, colophon-options > button) {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  padding: 0;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 0.4rem;
+  cursor: pointer;
+
+  &[aria-pressed="true"] {
+    color: var(--ground);
+    background: var(--ink);
+  }
+
+  &[data-pointed] {
+    border-color: var(--ink);
+  }
+
+  .icon {
+    width: 1.375rem;
+    height: 1.375rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+colophon-cpc-desk > menu {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &[hidden] {
+    display: none;
   }
 }
 
 colophon-options {
   position: absolute;
   z-index: 1;
-  top: 0;
-  right: 0;
-  width: min(18rem, 100%);
-  max-height: 100%;
-  overflow: auto;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  gap: 0.4rem;
+  max-width: calc(100% - 1.5rem);
+  max-height: calc(100% - 1.5rem);
   font-size: 0.8rem;
-  background: var(--ground);
-  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
-  border-radius: 0.4rem;
 
-  summary {
-    padding: 0.7rem;
-    cursor: pointer;
+  &[hidden] {
+    display: none;
+  }
+
+  aside {
+    width: 18rem;
+    max-width: 100%;
+    min-height: 0;
+    overflow: auto;
+    background: var(--ground);
+    border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+    border-radius: 0.4rem;
   }
 
   form {
-    padding: 0 0.7rem 0.7rem;
+    padding: 0.7rem;
   }
 
   p {

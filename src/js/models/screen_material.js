@@ -269,7 +269,7 @@ export default class ScreenMaterial extends MeshBasicNodeMaterial {
     slotPitch: uniform(0.65),
     scanlineWidth: uniform(0.3),
     excitationWidth: uniform(0.18),
-    glowRadius: uniform(0.35),
+    glowRadius: uniform(0.2),
     glow: uniform(0.35),
     compensation: uniform(1),
     pictureWidth: uniform(1),

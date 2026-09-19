@@ -2,14 +2,21 @@ import Element from "./element"
 
 const html = String.raw
 
+const GEAR = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+  <path
+    d="M9.35 5.09L9.75 2.26L14.25 2.26L14.65 5.09L16.66 6.25L19.31 5.18L21.56 9.08L19.31 10.84L19.31 13.16L21.56 14.92L19.31 18.82L16.66 17.75L14.65 18.91L14.25 21.74L9.75 21.74L9.35 18.91L7.34 17.75L4.69 18.82L2.44 14.92L4.69 13.16L4.69 10.84L2.44 9.08L4.69 5.18L7.34 6.25Z"
+  />
+  <circle cx="12" cy="12" r="3" />
+</svg>`
+
 class OptionsElement extends Element {
   #bindings = new Map()
   #settings
 
   init() {
     this.innerHTML = html`
-      <details>
-        <summary>Options</summary>
+      <button type="button" name="options" title="Options" aria-expanded="false">${GEAR}</button>
+      <aside aria-label="Options" hidden>
         <form>
           <p>These figures are provisional, the tube's and the keys' alike. Turn them.</p>
           <label class="switch">
@@ -69,7 +76,7 @@ class OptionsElement extends Element {
           <button type="button" name="direct">Direct phosphor light</button>
           <button type="reset">Reset</button>
         </form>
-      </details>
+      </aside>
     `
 
     const { signal } = this
@@ -123,20 +130,39 @@ class OptionsElement extends Element {
   }
 
   onClicked(event) {
-    const direct = event.target.name == "direct"
+    const button = event.target.closest("button")
 
-    if (direct) {
-      const settings = this.#settings
+    switch (button?.name) {
+      case "options":
+        this.#toggle(button)
+        break
+      case "direct":
+        this.#showDirectLight()
+        break
+      default:
+        break
+    }
+  }
 
-      settings.excitationWidth.value = 0
-      settings.glow.value = 0
-      settings.compensation.value = 0
-      settings.light.value = 1
-      settings.enabled.value = 1
+  #toggle(button) {
+    const aside = this.querySelector("aside"),
+      opening = aside.hidden
 
-      for (const [input, { node }] of this.#bindings) {
-        this.#show(input, node.value)
-      }
+    aside.hidden = !opening
+    button.setAttribute("aria-expanded", String(opening))
+  }
+
+  #showDirectLight() {
+    const settings = this.#settings
+
+    settings.excitationWidth.value = 0
+    settings.glow.value = 0
+    settings.compensation.value = 0
+    settings.light.value = 1
+    settings.enabled.value = 1
+
+    for (const [input, { node }] of this.#bindings) {
+      this.#show(input, node.value)
     }
   }
 

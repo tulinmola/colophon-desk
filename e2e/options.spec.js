@@ -21,7 +21,7 @@ test("the options turn the tube and put it back", async function ({ page }) {
     capture = { style: "colophon-options { visibility: hidden; }" }
 
   await expect(controls).toBeVisible()
-  await controls.locator("summary").click()
+  await controls.getByRole("button", { name: "Options" }).click()
 
   const original = await page.screenshot(capture)
 
