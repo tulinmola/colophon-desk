@@ -1,13 +1,20 @@
-import { draw, drawRectangle, makeBox, makeCompound, makeCylinder } from "replicad"
+import {
+  draw,
+  drawRectangle,
+  drawRoundedRectangle,
+  makeBox,
+  makeCompound,
+  makeCylinder
+} from "replicad"
 
-// x runs from the left end, y back from the front and z up from the cabinet's lower edge, in millimetres. The feet stand below that edge, under a negative z.
+// x runs from the left end, y back from the front and z up from the cabinet top's lower edge, where it meets the cabinet bottom, in millimetres. The cabinet bottom and the feet stand below it, under a negative z.
 
 // "DIMENSIONS (mm): w h d — Keyboard 510 48 170" [A], CPC6128 Service Manual, technical specification: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
 const WIDTH = 510,
   DEPTH = 170
 
 // Traced from a square-on photograph of a 1985 French CPC 6128's left end, scaled by its joystick socket's pins across and down, the end measuring 169.7 against Amstrad's 170 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
-// Heights stand above the end's lower edge, the feet not included.
+// Its heights stand above the grey cabinet top's lower edge: the heights the same tracing gives the end's sockets place its zero on that row of the photograph [E].
 const FRONT_HEIGHT = 25.9,
   SLOPE_REAR_HEIGHT = 36.1,
   REAR_STRIP_HEIGHT = 40.7,
@@ -16,9 +23,11 @@ const FRONT_HEIGHT = 25.9,
   SLOPE_RISE = SLOPE_REAR_HEIGHT - FRONT_HEIGHT,
   SLOPE_ANGLE = (Math.atan(SLOPE_RISE / SLOPE_DEPTH) * 180) / Math.PI
 
-// Four grey rubber feet about 10 across, their centres measured on a 1988 French underside at 5.833 pixels to the millimetre, ±3 across and in depth [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
-// No photograph gives their height. The void under the cabinet's bottom front edge, read on a 1988 French front at 6.05 pixels to the millimetre, gives 3.3 under the keyboard and 2.3 under the drive, and a 1989 Spanish front 1.9; a rounded bottom edge and the contact shadow carry every one of those high, and the 464's feet, traced the same way against its own rear connectors, stand about 2 [E]. 2 is taken.
-const FOOT = { diameter: 10, height: 2 },
+// The case is two mouldings, the cabinet top assembly 170855 and under it the cabinet bottom 170857, a black tray [A], CPC6128 Service Manual p3, exploded view and parts list: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
+// The square-on 1985 French left end puts the cabinet bottom's lower edge 5.65 below the top's at the rear and 6.23 at the front third, a 1988 French one 5.5 to 5.9 and a 1989 Spanish one 5.7 to 5.85, level within 0.6; 6 is taken [E]. It stands flush with the top at the front, the ends and the rear within 0.5. Photographs of the front, looking down on it, show only 1.5 to 3.3 of it, the rest turned under by its rounded lower edge.
+// Four grey rubber feet about 10 across, their centres measured on a 1988 French underside at 5.833 pixels to the millimetre, ±3 across and in depth, stand in wells in the cabinet bottom's floor [E]. No photograph of an end shows light under its rim, 0.3 at most in the most level of them, and that is taken for the feet: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+const CABINET_BOTTOM_HEIGHT = 6,
+  FOOT = { diameter: 10, height: 0.3 },
   FOOT_PLACES = [
     { middle: 28, fromRear: 30 },
     { middle: 35, fromRear: 141 },
@@ -36,11 +45,24 @@ const PLATE_WIDTH = 92.5,
 
 // The drive section is 106.5 across with the plate centred on it. Two photographs of the front, a 1988 French and a 1989 Spanish, read at the slot's own 81 [A], give 106.7 and 106.3, the end taken at the foot of its face: on both its silhouette leans in 1.5 toward the top, and whether the moulding or the camera leans it is not known [E].
 // The photographs from above give 103.5 to 105.3 by the Spanish one's key pitch and 104.5 to 106.8 at the French one's nearest keys. The French shows the section standing flush with the rear strip, the corner between the two rounded to about 5 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
-// A monitor stand made to hold the machine on its front edge leaves it 40 to 41.2 there [D]: https://www.printables.com/model/527817. A 1988 French front, at 6.05 pixels to the millimetre, makes the section 40.8 from its top edge to the cabinet's bottom edge and 44.1 to the table, and a 1989 Spanish one 41.6 to that edge [E]. Amstrad's 48 overall would want a 7 foot standing where that same front shows lit wood, and the row it stands in gives the 664 the 464's own width; the disagreement stands until a real unit is measured.
+// A monitor stand made to hold the machine on its front edge leaves it 40 to 41.2 there [D]: https://www.printables.com/model/527817. A 1988 French front, at 6.05 pixels to the millimetre, makes the section 40.8 from its top edge to the cabinet top's lower edge, and a 1989 Spanish one 41.6 [E]. The section's 40.7, the cabinet bottom's 6 and the feet's 0.3 add up to 47, against Amstrad's 48 overall and the stand's 41.2; the disagreements stand until a real unit is measured.
 const DRIVE_SECTION_WIDTH = 106.5,
   DRIVE_SECTION_LEFT = WIDTH - DRIVE_SECTION_WIDTH,
   DRIVE_SECTION_HEIGHT = REAR_STRIP_HEIGHT,
   DRIVE_SECTION_CORNER_RADIUS = 5
+
+// The cabinet top's corners in plan read 2.5 at the rear right and 3.3 at the front left on the 1985 French photograph from above, and 3.2 at the front right on the 1989 Spanish one; 3.2 is taken. The cabinet bottom's read 3.3 and 3.9 on the 1988 French underside, and 3.6 is taken [E]. Its lower edge rounds over about 4 at the front and 4 to 5 at the ends, ±1 and more, and is taken at 3.5: a round as large as the corner it turns folds it.
+// On the square-on 1985 left end the keyboard section's top-front edge reads 2.3 and the rear strip's top-rear edge 2.65, ±0.3, where photographs of the rear read about 1 to 1.5 at low confidence; the ends' top edges read 1.2 ±0.3, and the drive section's top-front edge about 2.3, ±0.7, against the keyboard's. The key opening's corners read 1.1 ±0.4, at the rectified top's blur [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// Nothing bounds the step's front corner closer than about 3; the ends' 1.2 is taken until a real unit is measured.
+const CABINET_TOP_PLAN_RADIUS = 3.2,
+  CABINET_BOTTOM_PLAN_RADIUS = 3.6,
+  CABINET_BOTTOM_EDGE_RADIUS = 3.5,
+  FRONT_EDGE_RADIUS = 2.3,
+  REAR_EDGE_RADIUS = 2.65,
+  DRIVE_EDGE_RADIUS = 2.3,
+  END_EDGE_RADIUS = 1.2,
+  STEP_EDGE_RADIUS = END_EDGE_RADIUS,
+  KEY_OPENING_RADIUS = 1.1
 
 // The French photograph from above puts ESC's centre 33.1 from the left end and 60.3 from the rear, ±1.5 across and ±2 front to back [E].
 // All three photographs from above, the Spanish and two French, put the keypad's right edge about 32.5 short of the drive section's step, closer than Amstrad's 510 allows with ESC where it stands; their lengths add up to 503 to 508 across, and the disagreement stands until a real unit is measured [E].
@@ -183,12 +205,12 @@ const KEY_OPENING_LEFT = KEY_BLOCK_LEFT + CAP_GAP / 2 - KEY_CLEARANCE_SIDES,
 const FLOOR_BELOW_SLOPE = 8
 
 // Parts made to plug the drive's opening give it 95 × 36 [D]: https://www.thingiverse.com/thing:2876318. A mash-up of them made for a "tight fit on the CPC case" gives 94.5 to 96.5 across and 35.6 high: https://www.printables.com/model/284516
-// The 1988 French and 1989 Spanish photographs of the front read it 94.9 and 94.7 across at the face, the bezel filling it, and put its right edge 4.8 and 4.5 short of the end's foot; the face above and below it splits about two to one [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// The 1988 French and 1989 Spanish photographs of the front read it 94.9 and 94.7 across at the face, the bezel filling it, and put its right edge 4.8 and 4.5 short of the end's foot; on both it reaches down to the cabinet top's lower edge, the cabinet bottom running beneath [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 // How far the drive's bezel stands back from the cabinet is not known; 2 is taken until a real unit is measured.
 const DRIVE_OPENING_WIDTH = 95,
   DRIVE_OPENING_HEIGHT = 36,
   DRIVE_OPENING_RIGHT = WIDTH - 4.7,
-  DRIVE_OPENING_BOTTOM = (DRIVE_SECTION_HEIGHT - DRIVE_OPENING_HEIGHT) / 3,
+  DRIVE_OPENING_BOTTOM = 0,
   BEZEL_SET_BACK = 2
 
 // The drawing of the EME-150, sister to the 6128's EME-155, makes the drive 152 long from its bezel's face and its slot 81 long, and puts the slot's middle 21 above the bezel's lower edge [A]: https://www.cpcwiki.eu/index.php/File:Panasonic-3_inch_Floppy_Drive_EME-150.pdf
@@ -239,7 +261,7 @@ const DRIVE_LAMP_OPENING = { left: 418.5, right: 425, bottom: 2, top: 6, depth: 
   LENS_THICKNESS = 0.6
 
 // The rear strip is slotted for the air: 91 slots 2.55 wide at a 4.98 pitch, the first's left edge 24.4 from the left end, each running 6.7 in from the rear edge on top and 7.7 down the rear face, measured on the Spanish photograph from above and a French one of the rear, ±0.2 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. The 1985 French unit gives 23 to 479 at 5.1 [E].
-// Its rear-top edge is rounded to about 1 to 1.5, at low confidence. The case's wall is not measured and 2.5 is taken; through the slots the inside of the case shows.
+// The case's wall is not measured and 2.5 is taken; through the slots the inside of the case shows.
 const VENTS = {
     left: 24.4,
     count: 91,
@@ -257,10 +279,13 @@ const NAMEPLATE = { left: 25.2, right: 143.2, fromRear: 8.6, depth: 13.2 },
   POWER_LAMP = { left: 357.6, right: 362.9, fromRear: 16.65, depth: 2.05 }
 
 // Sampled on the cabinet left of the keys in an uncalibrated photograph of aged plastic, good for the hue and no more [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg
-const CABINET = { name: "cabinet", colour: "#535459" }
+const CABINET_TOP = { name: "cabinet-top", colour: "#535459" }
 
-// Sampled on a foot and on the case around it in the underside photograph, which reads the case #404b52 where the cabinet's own photograph reads #535459, and corrected by that difference: the feet stand a little lighter and cooler than the case. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
-const FOOT_RUBBER = { name: "foot", colour: "#575e6b" }
+// Sampled in pairs on the cabinet bottom and on the top just above it, eight across three photographs of the left end and one of the front, the bottom returns 0.16 to 0.36 of the top's light in linear terms, 0.22 at the middle, and reads neutral where the top reads blue; the top's own grey is taken at 0.22 of its light. The photographs of the rear give 0.10 to 0.14, where the top's face turns to the light and the bottom's does not. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+const CABINET_BOTTOM = { name: "cabinet-bottom", colour: "#262729" }
+
+// Sampled on a foot and on the cabinet bottom's floor around it in the underside photograph, which reads the floor #404b52 where the cabinet bottom is taken #262729 above, and corrected by that difference: the feet stand a little lighter and cooler than the floor. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+const FOOT_RUBBER = { name: "foot", colour: "#2a313b" }
 
 // Sampled on the drive's bezel in the photograph of the machine's front, uncalibrated and dark, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 const BEZEL = { name: "bezel", colour: "#1c1918" }
@@ -464,7 +489,10 @@ const OVERRUN = 1
 // Where one part lies in another's recess or opening, a hairline holds the two apart, so that no face of either stands in the plane of a face of the other.
 const HAIRLINE = 0.1
 
-const CENTRING = [-WIDTH / 2, -DEPTH / 2, FOOT.height],
+// How far the triangles may stray from a curved face, in millimetres, and turn from one another along it, in radians: a choice of how finely to draw, not a figure of the machine.
+const TESSELLATION = { tolerance: 0.25, angularTolerance: 1 }
+
+const CENTRING = [-WIDTH / 2, -DEPTH / 2, CABINET_BOTTOM_HEIGHT + FOOT.height],
   QUARTERS = ["", "¼", "½", "¾"]
 
 function slopeHeightAt(fromFront) {
@@ -526,15 +554,48 @@ function buildPowerLampWindow() {
   )
 }
 
-function buildCabinet() {
+function planOutline(radius) {
+  return drawRoundedRectangle(WIDTH, DEPTH, radius).translate(WIDTH / 2, DEPTH / 2)
+}
+
+function buildCabinetBottom() {
+  const outline = planOutline(CABINET_BOTTOM_PLAN_RADIUS),
+    block = outline.sketchOnPlane("XY", -CABINET_BOTTOM_HEIGHT).extrude(CABINET_BOTTOM_HEIGHT),
+    rounded = block.fillet(CABINET_BOTTOM_EDGE_RADIUS, edge =>
+      edge.inPlane("XY", -CABINET_BOTTOM_HEIGHT)
+    )
+
+  return { name: "cabinet-bottom", shape: rounded.translate(CENTRING), material: CABINET_BOTTOM }
+}
+
+function endTopEdges(edge) {
+  return edge
+    .either([leftEnd => leftEnd.inPlane("YZ", 0), rightEnd => rightEnd.inPlane("YZ", WIDTH)])
+    .not(lowerEdge => lowerEdge.inPlane("XY", 0))
+}
+
+function buildCabinetTop() {
   const keyOpeningFrontFloor = slopeHeightAt(KEY_OPENING_FRONT) - FLOOR_BELOW_SLOPE,
     keyOpeningRearFloor = slopeHeightAt(KEY_OPENING_REAR) - FLOOR_BELOW_SLOPE,
     corner = [DRIVE_SECTION_LEFT, SLOPE_DEPTH, (SLOPE_REAR_HEIGHT + REAR_STRIP_HEIGHT) / 2],
+    stepEdge = [DRIVE_SECTION_LEFT, 0, (FRONT_HEIGHT + DRIVE_SECTION_HEIGHT) / 2],
+    plan = planOutline(CABINET_TOP_PLAN_RADIUS)
+      .sketchOnPlane("XY", -OVERRUN)
+      .extrude(REAR_STRIP_HEIGHT + 2 * OVERRUN),
     end = draw([0, 0])
       .lineTo([0, FRONT_HEIGHT])
+      .customCorner(FRONT_EDGE_RADIUS)
       .lineTo([SLOPE_DEPTH, SLOPE_REAR_HEIGHT])
       .lineTo([SLOPE_DEPTH, REAR_STRIP_HEIGHT])
       .lineTo([DEPTH, REAR_STRIP_HEIGHT])
+      .customCorner(REAR_EDGE_RADIUS)
+      .lineTo([DEPTH, 0])
+      .close(),
+    driveEnd = draw([0, 0])
+      .lineTo([0, DRIVE_SECTION_HEIGHT])
+      .customCorner(DRIVE_EDGE_RADIUS)
+      .lineTo([DEPTH, DRIVE_SECTION_HEIGHT])
+      .customCorner(REAR_EDGE_RADIUS)
       .lineTo([DEPTH, 0])
       .close(),
     keyOpeningEnd = draw([KEY_OPENING_FRONT, keyOpeningFrontFloor])
@@ -543,12 +604,13 @@ function buildCabinet() {
       .lineTo([KEY_OPENING_FRONT, REAR_STRIP_HEIGHT])
       .close(),
     body = end.sketchOnPlane("YZ").extrude(WIDTH),
-    driveSection = makeBox([DRIVE_SECTION_LEFT, 0, 0], [WIDTH, DEPTH, DRIVE_SECTION_HEIGHT]),
+    driveSection = driveEnd.sketchOnPlane("YZ", DRIVE_SECTION_LEFT).extrude(DRIVE_SECTION_WIDTH),
     keyOpening = keyOpeningEnd
       .sketchOnPlane("YZ", KEY_OPENING_LEFT)
-      .extrude(KEY_OPENING_RIGHT - KEY_OPENING_LEFT),
+      .extrude(KEY_OPENING_RIGHT - KEY_OPENING_LEFT)
+      .fillet(KEY_OPENING_RADIUS, edge => edge.inDirection("Z")),
     driveBay = makeBox(
-      [DRIVE_OPENING_LEFT, -BEZEL_SET_BACK, DRIVE_OPENING_BOTTOM],
+      [DRIVE_OPENING_LEFT, -BEZEL_SET_BACK, DRIVE_OPENING_BOTTOM - OVERRUN],
       [DRIVE_OPENING_RIGHT, DRIVE_BAY_DEPTH, DRIVE_OPENING_TOP]
     ),
     ventCavity = buildVentCavity(),
@@ -560,6 +622,9 @@ function buildCabinet() {
   return body
     .fuse(driveSection)
     .fillet(DRIVE_SECTION_CORNER_RADIUS, edge => edge.inDirection("Z").containsPoint(corner))
+    .fillet(STEP_EDGE_RADIUS, edge => edge.inDirection("Z").containsPoint(stepEdge))
+    .fillet(END_EDGE_RADIUS, endTopEdges)
+    .intersect(plan)
     .cut(keyOpening)
     .cut(driveBay)
     .cut(ventCavity)
@@ -585,7 +650,7 @@ function buildDrive() {
     bevelSlope = tangent(FINGER_BEVEL_ANGLE),
     bevelLeft = middle + FINGER_BEVEL_FROM_MIDDLE - FINGER_BEVEL_WIDTH / 2,
     block = makeBox(
-      [DRIVE_OPENING_LEFT, BEZEL_SET_BACK, DRIVE_OPENING_BOTTOM],
+      [DRIVE_OPENING_LEFT, BEZEL_SET_BACK, DRIVE_OPENING_BOTTOM + HAIRLINE],
       [DRIVE_OPENING_RIGHT, DRIVE_BAY_DEPTH, DRIVE_OPENING_TOP]
     ),
     slot = makeBox(
@@ -670,7 +735,7 @@ function buildFeet() {
   const feet = []
 
   for (const place of FOOT_PLACES) {
-    const base = [place.middle, DEPTH - place.fromRear, -FOOT.height],
+    const base = [place.middle, DEPTH - place.fromRear, -CABINET_BOTTOM_HEIGHT - FOOT.height],
       foot = makeCylinder(FOOT.diameter / 2, FOOT.height, base)
 
     feet.push(foot)
@@ -1344,7 +1409,7 @@ function buildBadge() {
 export function buildCpc6128() {
   const keys = layKeys(),
     returnKey = layKey(RETURN_NUMBER, [RETURN_LEFT, RETURN_ROW], [RETURN_WIDTH, RETURN_ROWS]),
-    cabinet = buildCabinet(),
+    cabinetTop = buildCabinetTop(),
     drive = buildDrive(),
     keycaps = buildKeycaps(keys),
     returnKeycap = buildReturnKey(returnKey),
@@ -1357,8 +1422,10 @@ export function buildCpc6128() {
     badgePrint = drawBadge()
 
   return {
+    tessellation: TESSELLATION,
     parts: [
-      { name: "cabinet", shape: cabinet.translate(CENTRING), material: CABINET },
+      { name: "cabinet-top", shape: cabinetTop.translate(CENTRING), material: CABINET_TOP },
+      buildCabinetBottom(),
       buildFeet(),
       buildInterior(),
       { name: "drive", shape: drive.translate(CENTRING), material: BEZEL },
