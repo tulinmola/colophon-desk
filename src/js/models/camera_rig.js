@@ -8,6 +8,7 @@ import {
   Vector3
 } from "three/webgpu"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import REDUCED_MOTION from "./reduced_motion"
 
 // Where the camera stands, how far it may turn and how it travels are presentation choices, not measurements of the machine.
 const FIELD_OF_VIEW = 35,
@@ -30,8 +31,6 @@ const FLIGHT_MILLISECONDS = 900
 const GLIDE = 0.92
 
 const DRIVE_PARTS = ["drive", "drive-lamp", "drive-plate", "eject-button"]
-
-const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)")
 
 function cornersOf({ min, max }) {
   const corners = []

@@ -62,12 +62,14 @@ const NOTHING_PICKED = { name: null, view: null }
 class CpcDeskElement extends Element {
   #chooser
   #cpc = null
+  #desk
   #driveNotice
   #heldByCode = new Map()
   #hovering
   #initialising
   #menu
   #observer
+  #offered = null
   #pointer = new Vector2()
   #pressedAt = new Vector2()
   #renderer
@@ -90,6 +92,7 @@ class CpcDeskElement extends Element {
     menu.insertAdjacentHTML("afterend", DRIVE_A)
 
     this.#chooser = this.querySelector("input[type='file']")
+    this.#desk = desk
     this.#driveNotice = this.querySelector("output[name='drive']")
     this.#hovering = false
     this.#menu = menu
@@ -191,19 +194,29 @@ class CpcDeskElement extends Element {
       return
     }
 
-    const bytes = new Uint8Array(contents),
+    const bytes = new Uint8Array(contents)
+
+    this.#offered = { name: file.name, bytes }
+    this.#desk.disc.insert()
+  }
+
+  #insertOffered() {
+    const { name, bytes } = this.#offered,
       cpc = this.#cpc,
       inserted = cpc.insertDisc(bytes)
 
-    if (inserted) {
-      this.#tell(`${file.name} is in drive A`)
-    } else {
-      const problem = cpc.discProblem()
+    this.#offered = null
 
-      this.#tell(`${file.name} was refused: ${problem}`)
+    if (inserted) {
+      this.#tell(`${name} is in drive A`)
+      this.#lookBack()
+      return
     }
 
-    this.#lookBack()
+    const problem = cpc.discProblem()
+
+    this.#tell(`${name} was refused: ${problem}`)
+    this.#desk.disc.eject()
   }
 
   onChoiceCancelled() {
@@ -245,9 +258,13 @@ class CpcDeskElement extends Element {
     this.#chooser.click()
   }
 
+  // A disc still on its way in is turned around, and the machine is never
+  // given it: the reader pressed EJECT before the drive had it.
   #ejectDisc() {
     this.#rig.look("drive")
+    this.#offered = null
     this.#cpc.ejectDisc()
+    this.#desk.disc.eject()
     this.#tell("")
   }
 
@@ -392,6 +409,7 @@ class CpcDeskElement extends Element {
 
     if (standing) {
       const options = this.querySelector("colophon-options"),
+        insertOffered = this.#insertOffered.bind(this),
         showViews = this.#showViews.bind(this)
 
       this.#cpc = cpc
@@ -402,6 +420,13 @@ class CpcDeskElement extends Element {
         cpc.advance(now)
         rig.advance(now)
 
+        const seated = desk.disc.advance(now)
+
+        if (seated) {
+          insertOffered()
+        }
+
+        // Read after the insert: the machine clears the lamp's line as it is asked for it.
         const inUse = cpc.driveInUse()
 
         desk.showDriveInUse(inUse)
