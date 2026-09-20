@@ -1,5 +1,6 @@
 import { DRIVE, SLOW_WAIT, blank, pointAt, settled, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
+import { deflateRawSync } from "node:zlib"
 
 // Where the eject button stands on the canvas in the drive's view, as a fraction of its size.
 const EJECT_BUTTON = { x: 0.594, y: 0.506 }
@@ -82,6 +83,67 @@ function discHolding(name, type) {
 const OCTETS = "application/octet-stream",
   BLANK = { name: "blank.dsk", mimeType: OCTETS, buffer: blankDisc() },
   HOLDING = { name: "holding.dsk", mimeType: OCTETS, buffer: discHolding("COLOPHON", "TXT") }
+
+// An archive as a reader's own would be: each file behind a header of its own,
+// then a directory of them, then the record that ends it [C]:
+// https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
+// Deflate is what a zip tool reaches for and what the desk unpacks; the
+// checksums are left at zero, which nothing in the desk reads.
+const LOCAL_HEADER = 0x04034b50,
+  DIRECTORY_ENTRY = 0x02014b50,
+  END_OF_DIRECTORY = 0x06054b50,
+  DEFLATED = 8,
+  UNICODE_NAMES = 1 << 11
+
+function archiveOf(files) {
+  const headers = [],
+    directory = []
+
+  let at = 0
+
+  for (const { name, contents, unicode = true } of files) {
+    const named = Buffer.from(name, unicode ? "utf8" : "latin1"),
+      packed = deflateRawSync(contents),
+      flags = unicode ? UNICODE_NAMES : 0,
+      header = Buffer.alloc(30)
+
+    header.writeUInt32LE(LOCAL_HEADER, 0)
+    header.writeUInt16LE(flags, 6)
+    header.writeUInt16LE(DEFLATED, 8)
+    header.writeUInt32LE(packed.length, 18)
+    header.writeUInt32LE(contents.length, 22)
+    header.writeUInt16LE(named.length, 26)
+
+    const entry = Buffer.alloc(46)
+
+    entry.writeUInt32LE(DIRECTORY_ENTRY, 0)
+    entry.writeUInt16LE(flags, 8)
+    entry.writeUInt16LE(DEFLATED, 10)
+    entry.writeUInt32LE(packed.length, 20)
+    entry.writeUInt32LE(contents.length, 24)
+    entry.writeUInt16LE(named.length, 28)
+    entry.writeUInt32LE(at, 42)
+
+    headers.push(header, named, packed)
+    directory.push(entry, named)
+    at += header.length + named.length + packed.length
+  }
+
+  const listed = Buffer.concat(directory),
+    end = Buffer.alloc(22)
+
+  end.writeUInt32LE(END_OF_DIRECTORY, 0)
+  end.writeUInt16LE(files.length, 8)
+  end.writeUInt16LE(files.length, 10)
+  end.writeUInt32LE(listed.length, 12)
+  end.writeUInt32LE(at, 16)
+
+  return Buffer.concat([...headers, listed, end])
+}
+
+function archive(name, files) {
+  return { name, mimeType: "application/zip", buffer: archiveOf(files) }
+}
 
 // Playwright asks the browser to hand it the chooser without waiting for the
 // answer, so a click sent straight after listening can reach the browser first,
@@ -209,6 +271,97 @@ test("the disc carries the name of the file it came from, where the drive leaves
     written = !one.equals(theOther)
 
   expect(written).toBe(true)
+})
+
+test("an archive holding one disc puts that disc in, under its own name", async function ({
+  page
+}) {
+  const laidOut = await standListening(page),
+    notice = page.locator("output[name='drive']"),
+    zipped = archive("cpcrulez.zip", [
+      { name: "readme.txt", contents: Buffer.from("notes") },
+      { name: "SORCERY.dsk", contents: blankDisc() }
+    ])
+
+  await chooseAtDrive(page, laidOut, zipped)
+  await expect(notice).toHaveText("SORCERY.dsk is in drive A")
+})
+
+test("an archive holding several discs offers them, and puts in the one chosen", async function ({
+  page
+}) {
+  const laidOut = await standListening(page),
+    notice = page.locator("output[name='drive']"),
+    discs = page.locator("dialog[name='discs'] menu button"),
+    zipped = archive("set.zip", [
+      { name: "CARA A.dsk", contents: blankDisc() },
+      { name: "CARA B.dsk", contents: discHolding("COLOPHON", "TXT") },
+      { name: "readme.txt", contents: Buffer.from("notes") }
+    ])
+
+  await chooseAtDrive(page, laidOut, zipped)
+  await expect(discs).toHaveText(["CARA A.dsk", "CARA B.dsk"])
+  await discs.nth(1).click()
+  await expect(notice).toHaveText("CARA B.dsk is in drive A")
+})
+
+test("an archive holding no disc is refused", async function ({ page }) {
+  const laidOut = await standListening(page),
+    notice = page.locator("output[name='drive']"),
+    zipped = archive("notes.zip", [{ name: "readme.txt", contents: Buffer.from("notes") }])
+
+  await chooseAtDrive(page, laidOut, zipped)
+  await expect(notice).toHaveText("notes.zip was refused: it holds no disc")
+})
+
+// A name written before archives carried Unicode is in the code page those
+// machines shared, and the archive says so by leaving its flag down. Written
+// as latin1 here, \u00a5 is the single byte &A5, which that code page reads Ñ.
+test("a disc's name is read by the encoding its archive claims", async function ({ page }) {
+  const laidOut = await standListening(page),
+    discs = page.locator("dialog[name='discs'] menu button"),
+    legacy = "A\u00a5O NUEVO.dsk",
+    zipped = archive("legacy.zip", [
+      { name: "CANCIÓN.dsk", contents: blankDisc() },
+      { name: legacy, contents: blankDisc(), unicode: false }
+    ])
+
+  await chooseAtDrive(page, laidOut, zipped)
+  await expect(discs).toHaveText(["CANCIÓN.dsk", "AÑO NUEVO.dsk"])
+})
+
+// An archive is a file from a stranger, and a name in one is whatever bytes
+// were written there.
+test("a name in an archive cannot put anything of its own in the page", async function ({ page }) {
+  const laidOut = await standListening(page),
+    discs = page.locator("dialog[name='discs'] menu button"),
+    smuggled = `<img src=x onerror="window.smuggled = true">HACK.dsk`,
+    zipped = archive("hack.zip", [
+      { name: "PLAIN.dsk", contents: blankDisc() },
+      { name: smuggled, contents: blankDisc() }
+    ])
+
+  await chooseAtDrive(page, laidOut, zipped)
+  await expect(discs).toHaveText(["PLAIN.dsk", smuggled])
+
+  const ran = await page.evaluate(() => window.smuggled === true),
+    images = await page.locator("dialog[name='discs'] img").count()
+
+  expect({ ran, images }).toEqual({ ran: false, images: 0 })
+})
+
+test("an archive whose list of files is damaged is refused", async function ({ page }) {
+  const laidOut = await standListening(page),
+    notice = page.locator("output[name='drive']"),
+    zipped = archive("torn.zip", [{ name: "GAME.dsk", contents: blankDisc() }])
+
+  // The first entry of the directory, with its own mark struck out.
+  const directoryAt = zipped.buffer.readUInt32LE(zipped.buffer.length - 6)
+
+  zipped.buffer.writeUInt32LE(0, directoryAt)
+
+  await chooseAtDrive(page, laidOut, zipped)
+  await expect(notice).toHaveText("torn.zip was refused: its list of files is damaged")
 })
 
 test("a file that is not a disc is refused, and the notice says why", async function ({ page }) {

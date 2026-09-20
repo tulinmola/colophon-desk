@@ -1,6 +1,5 @@
 import Element from "./element"
-
-const html = String.raw
+import html from "../html"
 
 const GEAR = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
   <path

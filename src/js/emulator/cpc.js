@@ -21,9 +21,11 @@ export default class Cpc {
   // One entry a matrix position, 1 where the machine holds a key down.
   keys
 
+  // The room a disc is given here, which an image must stand inside.
+  discCapacity
+
   #debt = 0
   #discAt
-  #discCapacity
   #last
   #matrix
   #module
@@ -64,7 +66,7 @@ export default class Cpc {
     this.keys = new Array(lines * BITS_A_LINE)
     this.#matrix = module.HEAPU8.subarray(matrixAt, matrixAt + lines)
     this.#discAt = module._desk_disc()
-    this.#discCapacity = module._desk_disc_capacity()
+    this.discCapacity = module._desk_disc_capacity()
     this.#module = module
     this.#ticksPerFrame = module._desk_ticks_per_frame()
     this.#ticksPerMillisecond = module._desk_ticks_per_millisecond()
@@ -102,7 +104,7 @@ export default class Cpc {
   // disc's buffer into the machine's other storage.
   insertDisc(bytes) {
     const module = this.#module,
-      fits = bytes.length <= this.#discCapacity
+      fits = bytes.length <= this.discCapacity
 
     if (fits) {
       module.HEAPU8.set(bytes, this.#discAt)

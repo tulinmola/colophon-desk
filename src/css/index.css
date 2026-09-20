@@ -46,7 +46,8 @@ colophon-cpc-desk {
   }
 }
 
-colophon-cpc-desk :is(menu button, colophon-options > button) {
+colophon-cpc-desk > menu button,
+colophon-options > button {
   display: grid;
   place-items: center;
   box-sizing: border-box;
@@ -111,6 +112,48 @@ colophon-cpc-desk > output {
   &:empty {
     padding: 0;
     border: 0;
+  }
+}
+
+colophon-cpc-desk > dialog {
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+
+  &::backdrop {
+    background: color-mix(in srgb, var(--ink) 35%, transparent);
+  }
+
+  p {
+    margin: 0 0 0.6rem;
+  }
+
+  menu {
+    display: grid;
+    gap: var(--spacing);
+    max-height: 50dvh;
+    overflow-y: auto;
+    margin: 0 0 0.6rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  button {
+    width: 100%;
+    padding: 0.35rem 0.6rem;
+    font: inherit;
+    text-align: start;
+    color: var(--ink);
+    background: var(--ground);
+    border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+    border-radius: 0.4rem;
+    cursor: pointer;
+  }
+
+  menu button {
+    overflow-wrap: anywhere;
   }
 }
 
