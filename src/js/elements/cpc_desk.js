@@ -55,8 +55,14 @@ const VIEW_MENU = html`<menu aria-label="Views" hidden>
   </li>
 </menu>`
 
+const DRIVE_A = html`<input type="file" accept=".dsk" hidden /> <output name="drive"></output>`
+
+const NOTHING_PICKED = { name: null, view: null }
+
 class CpcDeskElement extends Element {
+  #chooser
   #cpc = null
+  #driveNotice
   #heldByCode = new Map()
   #hovering
   #initialising
@@ -67,6 +73,7 @@ class CpcDeskElement extends Element {
   #renderer
   #rig
   #shown
+  #viewBeforeChoosing
 
   init() {
     const renderer = new WebGPURenderer({ alpha: true, antialias: true }),
@@ -78,11 +85,17 @@ class CpcDeskElement extends Element {
     this.prepend(canvas)
     canvas.insertAdjacentHTML("afterend", VIEW_MENU)
 
+    const menu = this.querySelector("menu")
+
+    menu.insertAdjacentHTML("afterend", DRIVE_A)
+
+    this.#chooser = this.querySelector("input[type='file']")
+    this.#driveNotice = this.querySelector("output[name='drive']")
     this.#hovering = false
-    this.#menu = this.querySelector("menu")
+    this.#menu = menu
     this.#renderer = renderer
     this.#rig = rig
-    this.#shown = { view: null, lead: null }
+    this.#shown = { view: null, lead: null, answers: false }
 
     const resized = this.onResized.bind(this),
       { signal } = this
@@ -98,6 +111,8 @@ class CpcDeskElement extends Element {
     canvas.addEventListener("pointerleave", this.onPointerLeave.bind(this), { signal })
     canvas.addEventListener("click", this.onSceneClicked.bind(this), { signal })
     this.#menu.addEventListener("click", this.onViewChosen.bind(this), { signal })
+    this.#chooser.addEventListener("change", this.onDiscChosen.bind(this), { signal })
+    this.#chooser.addEventListener("cancel", this.onChoiceCancelled.bind(this), { signal })
 
     this.#initialising = this.#load(desk, rig, renderer, signal)
   }
@@ -129,11 +144,21 @@ class CpcDeskElement extends Element {
     this.#aim(event)
 
     const rig = this.#rig,
-      view = rig.viewAt(this.#pointer),
-      leads = view != null && view != rig.view
+      picked = rig.pick(this.#pointer),
+      intent = this.#intentOf(picked)
 
-    if (leads) {
-      rig.look(view)
+    switch (intent) {
+      case "eject":
+        this.#ejectDisc()
+        break
+      case "choose":
+        this.#chooseDisc()
+        break
+      case "look":
+        rig.look(picked.view)
+        break
+      default:
+        break
     }
   }
 
@@ -150,6 +175,88 @@ class CpcDeskElement extends Element {
     this.focus()
   }
 
+  // The chooser is emptied before the read, or the same file chosen again
+  // would count as no choice at all.
+  async onDiscChosen() {
+    const chooser = this.#chooser,
+      [file] = chooser.files,
+      { signal } = this
+
+    chooser.value = ""
+
+    const contents = await file.arrayBuffer(),
+      laidAway = signal.aborted
+
+    if (laidAway) {
+      return
+    }
+
+    const bytes = new Uint8Array(contents),
+      cpc = this.#cpc,
+      inserted = cpc.insertDisc(bytes)
+
+    if (inserted) {
+      this.#tell(`${file.name} is in drive A`)
+    } else {
+      const problem = cpc.discProblem()
+
+      this.#tell(`${file.name} was refused: ${problem}`)
+    }
+
+    this.#lookBack()
+  }
+
+  onChoiceCancelled() {
+    this.#lookBack()
+  }
+
+  // Where the reader stood before the drive was asked for a disc. A camera
+  // turned freely there left no view to come back to, and stays at the drive.
+  #lookBack() {
+    const left = this.#viewBeforeChoosing,
+      returning = left != null
+
+    if (returning) {
+      this.#rig.look(left)
+    }
+  }
+
+  #intentOf({ name, view }) {
+    const ejects = name == "eject-button",
+      takesDisc = view == "drive",
+      leads = view != null && view != this.#rig.view
+
+    if (ejects) {
+      return "eject"
+    }
+
+    if (takesDisc) {
+      return "choose"
+    }
+
+    return leads ? "look" : null
+  }
+
+  // A browser opens the chooser only within the click that asked for it, so
+  // nothing may be awaited before it opens.
+  #chooseDisc() {
+    this.#viewBeforeChoosing = this.#rig.view
+    this.#rig.look("drive")
+    this.#chooser.click()
+  }
+
+  #ejectDisc() {
+    this.#rig.look("drive")
+    this.#cpc.ejectDisc()
+    this.#tell("")
+  }
+
+  // The notice stays in the page, empty or not, so that a screen reader is
+  // already listening when it speaks.
+  #tell(news) {
+    this.#driveNotice.value = news
+  }
+
   #aim({ offsetX, offsetY, target }) {
     const across = (offsetX / target.clientWidth) * 2 - 1,
       down = (offsetY / target.clientHeight) * 2 - 1
@@ -160,16 +267,18 @@ class CpcDeskElement extends Element {
   #showViews() {
     const rig = this.#rig,
       { view } = rig,
-      pointed = this.#hovering ? rig.viewAt(this.#pointer) : null,
-      lead = pointed == view ? null : pointed,
-      unchanged = view == this.#shown.view && lead == this.#shown.lead
+      picked = this.#hovering ? rig.pick(this.#pointer) : NOTHING_PICKED,
+      answers = this.#intentOf(picked) != null,
+      lead = picked.view == view ? null : picked.view,
+      shown = this.#shown,
+      unchanged = view == shown.view && lead == shown.lead && answers == shown.answers
 
     if (unchanged) {
       return
     }
 
-    this.#shown = { view, lead }
-    this.#renderer.domElement.toggleAttribute("data-leads", lead != null)
+    this.#shown = { view, lead, answers }
+    this.#renderer.domElement.toggleAttribute("data-answers", answers)
 
     for (const button of this.#menu.querySelectorAll("button")) {
       const chosen = button.dataset.view == view,
@@ -292,6 +401,10 @@ class CpcDeskElement extends Element {
       renderer.setAnimationLoop(function (now) {
         cpc.advance(now)
         rig.advance(now)
+
+        const inUse = cpc.driveInUse()
+
+        desk.showDriveInUse(inUse)
         showViews()
         renderer.render(desk.scene, rig.camera)
       })
@@ -308,6 +421,8 @@ class CpcDeskElement extends Element {
     this.#observer.disconnect()
     this.#rig.dispose()
     this.#menu.remove()
+    this.#chooser.remove()
+    this.#driveNotice.remove()
     this.#release(renderer)
     renderer.domElement.remove()
   }

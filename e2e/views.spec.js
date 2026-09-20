@@ -1,14 +1,5 @@
+import { DRIVE, SLOW_WAIT, pointAt, scene, settled, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
-
-const SCENE_ONLY = {
-  fullPage: true,
-  style: `colophon-cpc-desk { outline: none !important; }
-    colophon-cpc-desk > :not(canvas) { visibility: hidden; }`
-}
-
-// A picture costs seconds to take where frames are slow, so a poll on one
-// waits as long as the desk may take to stand.
-const PICTURE_WAIT = { timeout: 30000 }
 
 const WINDOWS = [
   { width: 200, height: 900 },
@@ -16,40 +7,11 @@ const WINDOWS = [
   { width: 480, height: 480 }
 ]
 
-// Where the glass and the drive's face stand on the canvas in the whole desk's view, as fractions of its size.
-const GLASS = { x: 0.48, y: 0.38 },
-  DRIVE = { x: 0.8, y: 0.645 },
-  BESIDE = { x: 0.1, y: 0.5 },
+// Where the glass stands on the canvas in the whole desk's view, as a fraction of its size.
+const GLASS = { x: 0.48, y: 0.38 }
+
+const BESIDE = { x: 0.1, y: 0.5 },
   MIDDLE = { x: 0.5, y: 0.5 }
-
-async function stand(page) {
-  await page.setViewportSize({ width: 480, height: 360 })
-  await page.goto("/")
-  await expect(page.locator("colophon-options")).toBeVisible()
-}
-
-function scene(page) {
-  return page.screenshot(SCENE_ONLY)
-}
-
-// The machine goes on drawing its prompt after the desk stands, for longer
-// where frames are slow: each runs at most 80 ms of the machine's time.
-async function settled(page) {
-  let previous = null
-
-  await expect
-    .poll(async function () {
-      const current = await scene(page),
-        still = previous != null && current.equals(previous)
-
-      previous = current
-
-      return still
-    }, PICTURE_WAIT)
-    .toBe(true)
-
-  return previous
-}
 
 // The colours along the canvas's outermost whole pixels, and the one at its middle.
 async function readEdge(page) {
@@ -101,12 +63,6 @@ async function readEdge(page) {
   )
 }
 
-async function pointAt(page, { x, y }) {
-  const box = await page.locator("colophon-cpc-desk canvas").boundingBox()
-
-  return { x: box.x + box.width * x, y: box.y + box.height * y }
-}
-
 async function drag(page, from, by) {
   await page.mouse.move(from.x, from.y)
   await page.mouse.down()
@@ -115,7 +71,7 @@ async function drag(page, from, by) {
 }
 
 test("the whole desk stands inside a window of any shape", async function ({ page }) {
-  const allowed = WINDOWS.length * PICTURE_WAIT.timeout
+  const allowed = WINDOWS.length * SLOW_WAIT.timeout
 
   test.setTimeout(allowed)
   await stand(page)
@@ -140,7 +96,7 @@ test("the whole desk stands inside a window of any shape", async function ({ pag
         const { edge, middle } = await readEdge(page)
 
         return edge.length == 1 && middle != edge[0]
-      }, PICTURE_WAIT)
+      }, SLOW_WAIT)
       .toBe(true)
   }
 })
@@ -166,7 +122,7 @@ test("the monitor's button carries the eye to the glass, and the desk's brings i
       const moved = await scene(page)
 
       return moved.equals(original)
-    }, PICTURE_WAIT)
+    }, SLOW_WAIT)
     .toBe(false)
 
   await whole.click()
@@ -176,7 +132,7 @@ test("the monitor's button carries the eye to the glass, and the desk's brings i
       const returned = await scene(page)
 
       return returned.equals(original)
-    }, PICTURE_WAIT)
+    }, SLOW_WAIT)
     .toBe(true)
 })
 
@@ -195,7 +151,7 @@ test("the monitor and the drive answer the pointer, and a turn begun on one leav
     beside = await pointAt(page, BESIDE)
 
   await page.mouse.move(slot.x, slot.y)
-  await expect(canvas).toHaveAttribute("data-leads")
+  await expect(canvas).toHaveAttribute("data-answers")
   await expect(drive).toHaveAttribute("data-pointed")
 
   await page.mouse.move(glass.x, glass.y)
@@ -203,14 +159,16 @@ test("the monitor and the drive answer the pointer, and a turn begun on one leav
   await expect(drive).not.toHaveAttribute("data-pointed")
 
   await page.mouse.move(beside.x, beside.y)
-  await expect(canvas).not.toHaveAttribute("data-leads")
+  await expect(canvas).not.toHaveAttribute("data-answers")
   await expect(monitor).not.toHaveAttribute("data-pointed")
 
   await page.mouse.click(glass.x, glass.y)
   await expect(monitor).toHaveAttribute("aria-pressed", "true")
 
   await drag(page, glass, { x: 60, y: 0 })
-  await expect(desk.locator("button[aria-pressed='true']")).toHaveCount(0)
+  const pressed = desk.locator("button[aria-pressed='true']")
+
+  await expect(pressed).toHaveCount(0)
 })
 
 test("the eye turns and backs away no further than its bounds", async function ({ page }) {
@@ -254,7 +212,7 @@ test("a view chosen while the eye still glides is reached exactly", async functi
       const returned = await scene(page)
 
       return returned.equals(original)
-    }, PICTURE_WAIT)
+    }, SLOW_WAIT)
     .toBe(true)
 })
 
@@ -280,7 +238,7 @@ test("a view chosen while a pointer still holds the eye is reached", async funct
       const returned = await scene(page)
 
       return returned.equals(original)
-    }, PICTURE_WAIT)
+    }, SLOW_WAIT)
     .toBe(true)
 
   expect(errors).toEqual([])

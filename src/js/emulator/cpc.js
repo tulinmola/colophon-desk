@@ -13,6 +13,8 @@ const MACHINE_IMAGE = "cpc6128es",
 
 const BITS_A_LINE = 8
 
+const TEXT = new TextDecoder()
+
 export default class Cpc {
   picture
 
@@ -20,6 +22,8 @@ export default class Cpc {
   keys
 
   #debt = 0
+  #discAt
+  #discCapacity
   #last
   #matrix
   #module
@@ -59,6 +63,8 @@ export default class Cpc {
     this.picture = new CpcPicture(framebuffer, { columns, rows, rgb, anisotropy })
     this.keys = new Array(lines * BITS_A_LINE)
     this.#matrix = module.HEAPU8.subarray(matrixAt, matrixAt + lines)
+    this.#discAt = module._desk_disc()
+    this.#discCapacity = module._desk_disc_capacity()
     this.#module = module
     this.#ticksPerFrame = module._desk_ticks_per_frame()
     this.#ticksPerMillisecond = module._desk_ticks_per_millisecond()
@@ -90,6 +96,46 @@ export default class Cpc {
     this.#pendingReleases.clear()
     this.#module._desk_release_all()
     this.#readKeys()
+  }
+
+  // An image with no room for it is never written: it would run past the
+  // disc's buffer into the machine's other storage.
+  insertDisc(bytes) {
+    const module = this.#module,
+      fits = bytes.length <= this.#discCapacity
+
+    if (fits) {
+      module.HEAPU8.set(bytes, this.#discAt)
+    }
+
+    const inserted = module._desk_insert_disc(bytes.length)
+
+    return inserted != 0
+  }
+
+  ejectDisc() {
+    this.#module._desk_eject_disc()
+  }
+
+  driveInUse() {
+    const working = this.#module._desk_drive_in_use()
+
+    return working != 0
+  }
+
+  discProblem() {
+    const heap = this.#module.HEAPU8,
+      at = this.#module._desk_disc_problem(),
+      reported = at != 0
+
+    if (!reported) {
+      return null
+    }
+
+    const end = heap.indexOf(0, at),
+      sentence = heap.subarray(at, end)
+
+    return TEXT.decode(sentence)
   }
 
   advance(now) {

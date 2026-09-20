@@ -21,6 +21,10 @@ h1 {
 }
 
 colophon-cpc-desk {
+  --inset: 0.75rem;
+  --button-size: 2.25rem;
+  --spacing: 0.4rem;
+
   position: relative;
   display: block;
   height: 100dvh;
@@ -36,7 +40,7 @@ colophon-cpc-desk {
   canvas {
     display: block;
 
-    &[data-leads] {
+    &[data-answers] {
       cursor: pointer;
     }
   }
@@ -45,8 +49,9 @@ colophon-cpc-desk {
 colophon-cpc-desk :is(menu button, colophon-options > button) {
   display: grid;
   place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  box-sizing: border-box;
+  width: var(--button-size);
+  height: var(--button-size);
   flex: none;
   padding: 0;
   color: var(--ink);
@@ -77,10 +82,10 @@ colophon-cpc-desk :is(menu button, colophon-options > button) {
 
 colophon-cpc-desk > menu {
   position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
+  top: var(--inset);
+  left: var(--inset);
   display: flex;
-  gap: 0.4rem;
+  gap: var(--spacing);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -90,17 +95,36 @@ colophon-cpc-desk > menu {
   }
 }
 
+colophon-cpc-desk > output {
+  position: absolute;
+  box-sizing: border-box;
+  top: calc(var(--inset) + var(--button-size) + var(--spacing));
+  left: var(--inset);
+  max-width: calc(100% - 2 * var(--inset));
+  overflow-wrap: anywhere;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  background: var(--ground);
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 0.4rem;
+
+  &:empty {
+    padding: 0;
+    border: 0;
+  }
+}
+
 colophon-options {
   position: absolute;
   z-index: 1;
-  top: 0.75rem;
-  right: 0.75rem;
+  top: var(--inset);
+  right: var(--inset);
   display: flex;
   flex-direction: column;
   align-items: end;
-  gap: 0.4rem;
-  max-width: calc(100% - 1.5rem);
-  max-height: calc(100% - 1.5rem);
+  gap: var(--spacing);
+  max-width: calc(100% - 2 * var(--inset));
+  max-height: calc(100% - 2 * var(--inset));
   font-size: 0.8rem;
 
   &[hidden] {

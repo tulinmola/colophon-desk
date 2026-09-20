@@ -17,6 +17,9 @@ const GAP = 30,
   MONITOR_BEHIND = -(MACHINE_DEPTH / 2 + MONITOR_DEPTH / 2 + GAP) / 1000,
   DISC_REAR = (MACHINE_DEPTH / 2 + GAP) / 1000
 
+// No source here gives the colour of a lamp alight, and the lenses were sampled with the machine standing off, so a lamp glowing in its lens's own hue, and how brightly, are both guesses.
+const LAMP_GLOW = 1
+
 // Light levels are presentation choices, not measurements of the machine.
 const SKY = 0xffffff,
   GROUND = 0x444444,
@@ -31,6 +34,7 @@ export default class Desk {
   monitor = null
   scene = new Scene()
   settings
+  #driveLens
   #textures = []
 
   constructor() {
@@ -57,6 +61,7 @@ export default class Desk {
 
     driveBounds.getCenter(driveMiddle)
     this.settings = { ...screen.settings, ...machine.keyboard }
+    this.#wireLamps(machine.model)
     monitor.model.position.z = MONITOR_BEHIND
     disc.model.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
     this.disc = disc.model
@@ -74,6 +79,25 @@ export default class Desk {
     bounds.setFromObject(object)
 
     return bounds
+  }
+
+  // Both lamps are cut from one material in the model, so the drive's takes a
+  // copy of its own before either is lit.
+  #wireLamps(machine) {
+    const power = machine.getObjectByName("power-lamp"),
+      drive = machine.getObjectByName("drive-lamp"),
+      lens = drive.material.clone()
+
+    drive.material = lens
+    power.material.emissive.copy(power.material.color)
+    power.material.emissiveIntensity = LAMP_GLOW
+    lens.emissive.copy(lens.color)
+    lens.emissiveIntensity = 0
+    this.#driveLens = lens
+  }
+
+  showDriveInUse(inUse) {
+    this.#driveLens.emissiveIntensity = inUse ? LAMP_GLOW : 0
   }
 
   dispose() {

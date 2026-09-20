@@ -1,3 +1,4 @@
+import { SLOW_WAIT, scene, settled, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
 
 test("the desk lays a canvas the size of itself", async function ({ page }) {
@@ -26,26 +27,22 @@ test("the desk stands once its machine has booted", async function ({ page }) {
 // Nothing on this machine moves on its own at the prompt, so a picture that
 // changed has been typed on.
 test("a keystroke let go of within the frame still reaches the machine", async function ({ page }) {
-  await page.goto("/")
-
   const desk = page.locator("colophon-cpc-desk")
 
-  await expect(page.locator("colophon-options")).toBeVisible({ timeout: 30000 })
+  await stand(page)
   await desk.focus()
 
-  const quiet = await page.screenshot()
-
-  await page.waitForTimeout(400)
-
-  const untouched = await page.screenshot()
+  const quiet = await settled(page)
 
   await page.keyboard.press("KeyA")
-  await page.waitForTimeout(400)
 
-  const typed = await page.screenshot()
+  await expect
+    .poll(async function () {
+      const typed = await scene(page)
 
-  expect(untouched).toEqual(quiet)
-  expect(typed).not.toEqual(quiet)
+      return typed.equals(quiet)
+    }, SLOW_WAIT)
+    .toBe(false)
 })
 
 test("the options keep their own arrow keys, which the machine also reads", async function ({

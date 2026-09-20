@@ -1,12 +1,14 @@
 /*
- * desk.c — what the desk asks of a machine: a 6128 that runs, and the frame
- * it has just finished drawing.
+ * desk.c — what the desk asks of a machine: a 6128 that runs, the frame it
+ * has just finished drawing, and the disc in its drive.
  */
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "cpc.h"
+#include "dsk.h"
+#include "floppy.h"
 #include "gate_array.h"
 
 /* A 6128's 128K, and the 32K image holding its operating system and BASIC
@@ -16,11 +18,54 @@
 #define DESK_BASIC_AT 0x4000
 #define DESK_AMSDOS_SIZE 0x4000
 
+/* The 6128's own drive is A, the one the core numbers 0. */
+#define DESK_DRIVE 0
+
+/* A CPC's own discs are a fifth of this. The rest is for the extended images
+   of protected ones, which store every reading of an unstable sector. */
+#define DESK_DISC_SIZE 0x100000
+
 static cpc_t cpc;
 static uint8_t ram[DESK_RAM_SIZE];
 static uint8_t rom[DESK_ROM_SIZE];
 static uint8_t amsdos[DESK_AMSDOS_SIZE];
 static uint8_t framebuffer[CPC_FRAMEBUFFER_WIDTH * CPC_FRAMEBUFFER_HEIGHT];
+
+/* A floppy borrows its image where it lies, so this buffer is the disc while
+   it is in the drive and where its writes land. A new image is written over it
+   only on the way into desk_insert_disc, which takes the old disc out before
+   reading the new, and the machine runs no tick in between. */
+static uint8_t disc_image[DESK_DISC_SIZE];
+static floppy_t disc;
+static const char *disc_problem;
+
+/* The lamp's line as the cycles ran, held until it is read: a lens dark for a
+   frame between one command and the next would blink where the machine's does
+   not. */
+static bool drive_worked;
+
+/* What the drive's own bezel calls its IN USE lamp. The user manual has it show
+ * "data being read from, or written to the disc", and says a second drive's
+ * "will illuminate constantly. It will extinguish when the main disc drive
+ * within the computer (Drive A) is reading or writing to disc" [A]:
+ * https://archive.org/details/amstrad-cpc-6128-user-manual — the behaviour of a
+ * select line the two drives share inverted, and not of the motor, which the
+ * machine leaves running and which turns both drives at once.
+ *
+ * A drive is selected by the command that names it, so the lamp answers a try
+ * as well as a reading: a command that finds no disc names the drive, fails,
+ * and goes straight to its result phase without ever executing. A seek and a
+ * recalibrate the chip hands back at once and steps on its own time, so a
+ * stepping head stands beside the two phases here. */
+static bool drive_at_work(void) {
+  const upd765_unit_t *unit = &cpc.fdc.units[DESK_DRIVE];
+  const bool executing = cpc.fdc.phase == UPD765_PHASE_EXECUTION;
+  const bool reporting = cpc.fdc.phase == UPD765_PHASE_RESULT;
+  const bool ours = cpc.fdc.unit == DESK_DRIVE;
+  const bool answering = (executing || reporting) && ours;
+
+  return answering || unit->seeking;
+}
 
 /* The sync as of the last tick, kept between calls. The monitor holds the flag
    up for the length of the pulse and not an instant, so a frame is its rising
@@ -73,6 +118,7 @@ uint32_t desk_ticks_per_frame(void) { return CPC_TICKS_PER_STANDARD_FRAME; }
 uint32_t desk_run_until_retrace(uint32_t limit) {
   for (uint32_t ticks = 0; ticks < limit; ticks++) {
     cpc_tick(&cpc);
+    drive_worked = drive_worked || drive_at_work();
 
     const bool syncing = cpc.monitor.frame_retraced;
     const bool ended = syncing && !retraced;
@@ -102,3 +148,41 @@ void desk_release_all(void) { keyboard_release_all(&cpc.keyboard); }
 uint8_t *desk_keyboard(void) { return cpc.keyboard.lines; }
 
 uint8_t desk_keyboard_lines(void) { return CPC_KEYBOARD_LINES; }
+
+uint8_t *desk_disc(void) { return disc_image; }
+
+uint32_t desk_disc_capacity(void) { return DESK_DISC_SIZE; }
+
+/* The old disc comes out first, as a hand takes it out before offering the
+ * drive another, so a refusal of any kind leaves the drive empty; and dsk_read
+ * empties the floppy it refuses, which left mounted would be a medium with
+ * nothing on it rather than an empty drive. */
+bool desk_insert_disc(uint32_t length) {
+  disc_problem = NULL;
+  cpc_insert_disc(&cpc, DESK_DRIVE, NULL);
+
+  if (length > DESK_DISC_SIZE) {
+    disc_problem = "the image is larger than the room a disc is given here";
+    return false;
+  }
+
+  if (!dsk_read(&disc, disc_image, length, &disc_problem)) {
+    return false;
+  }
+
+  cpc_insert_disc(&cpc, DESK_DRIVE, &disc);
+  return true;
+}
+
+void desk_eject_disc(void) { cpc_insert_disc(&cpc, DESK_DRIVE, NULL); }
+
+bool desk_drive_in_use(void) {
+  const bool worked = drive_worked;
+
+  drive_worked = false;
+
+  return worked;
+}
+
+/* Why the last disc offered was refused, or NULL when it was not. */
+const char *desk_disc_problem(void) { return disc_problem; }
