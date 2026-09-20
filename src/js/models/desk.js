@@ -1,9 +1,17 @@
-import { DirectionalLight, HemisphereLight, PerspectiveCamera, Scene, Vector3 } from "three/webgpu"
+import {
+  Box3,
+  DirectionalLight,
+  HemisphereLight,
+  PerspectiveCamera,
+  Scene,
+  Vector3
+} from "three/webgpu"
 import loadModel from "./load_model"
 import showPicture from "./show_picture"
 
 const CPC6128_URL = new URL("../../assets/models/cpc6128.glb", import.meta.url),
-  CTM644_URL = new URL("../../assets/models/ctm644.glb", import.meta.url)
+  CTM644_URL = new URL("../../assets/models/ctm644.glb", import.meta.url),
+  CF2_URL = new URL("../../assets/models/cf2.glb", import.meta.url)
 
 const LANGUAGE = "es"
 
@@ -19,9 +27,10 @@ const EYE = [-0.6, 0.45, 0.85],
 const MACHINE_DEPTH = 170,
   MONITOR_DEPTH = 365
 
-// Half each depth plus a chosen 30 mm gap gives 297.5 mm between centres [E]; the gap is an arrangement choice, not a measurement.
+// One chosen gap of 30 mm stands between the machines and before the disc: half each depth and the gap give 297.5 mm between the machine's middle and the monitor's, and 115 mm from that middle to the disc's rear [E]. The gap is an arrangement choice, not a measurement.
 const GAP = 30,
-  MONITOR_BEHIND = -(MACHINE_DEPTH / 2 + MONITOR_DEPTH / 2 + GAP) / 1000
+  MONITOR_BEHIND = -(MACHINE_DEPTH / 2 + MONITOR_DEPTH / 2 + GAP) / 1000,
+  DISC_REAR = (MACHINE_DEPTH / 2 + GAP) / 1000
 
 const SKY = 0xffffff,
   GROUND = 0x444444,
@@ -50,17 +59,34 @@ export default class Desk {
   async load(anisotropy, { picture, keys }) {
     const loading = [
         loadModel(CPC6128_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CTM644_URL, LANGUAGE, anisotropy, keys)
+        loadModel(CTM644_URL, LANGUAGE, anisotropy, keys),
+        loadModel(CF2_URL, LANGUAGE, anisotropy, keys)
       ],
-      [machine, monitor] = await Promise.all(loading)
+      [machine, monitor, disc] = await Promise.all(loading)
 
-    const screen = showPicture(monitor.model, picture)
+    const screen = showPicture(monitor.model, picture),
+      drive = machine.model.getObjectByName("drive"),
+      driveBounds = this.#boundsOf(drive),
+      discBounds = this.#boundsOf(disc.model),
+      driveMiddle = new Vector3()
 
+    driveBounds.getCenter(driveMiddle)
     this.settings = { ...screen.settings, ...machine.keyboard }
     monitor.model.position.z = MONITOR_BEHIND
-    this.#models = [machine.model, monitor.model]
-    this.#textures = [...machine.textures, ...monitor.textures]
-    this.scene.add(machine.model, monitor.model)
+    disc.model.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
+    this.#models = [machine.model, monitor.model, disc.model]
+    this.#textures = [...machine.textures, ...monitor.textures, ...disc.textures]
+    this.scene.add(machine.model, monitor.model, disc.model)
+  }
+
+  // A Box3 takes an object's parents' matrices as they last stood, and no frame has been drawn yet.
+  #boundsOf(object) {
+    const bounds = new Box3()
+
+    object.updateWorldMatrix(true, false)
+    bounds.setFromObject(object)
+
+    return bounds
   }
 
   dispose() {

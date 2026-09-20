@@ -58,8 +58,14 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - [sasfepu78](http://sasfepu78.fr/articles/Amstrad/) — a 600 dpi scan of a French 6128's keys, lying face down.
 - [Retroleum](https://retroleum.co.uk/cpc-kb) — keycap heights for the later 464, which bound the 6128's.
 - [Panasonic EME-150](https://www.cpcwiki.eu/index.php/File:Panasonic-3_inch_Floppy_Drive_EME-150.pdf) — the drawing of the drive's sister, its length and the slot across it.
-- [Hitachi HFD305SX](https://archive.org/details/hitachi-compact-floppy-disk-drive-model-hfd-305-sx) — another 3-inch drive's manual, and the one drawing of the disc itself, which the slot must pass.
+- [Hitachi HFD305SX](https://archive.org/details/hitachi-compact-floppy-disk-drive-model-hfd-305-sx) — another 3-inch drive's manual, and the one drawing of the disc itself: its outline, which the slot must pass, and its hub's hole.
 - Parts printed to fit: a [monitor stand](https://www.printables.com/model/527817), a [key cover](https://www.printables.com/model/1334008) and two drive plugs ([one](https://www.thingiverse.com/thing:2876318), [two](https://www.printables.com/model/284516)) — they measure the openings they fill.
+
+**The disc.**
+
+- [CPC6128 user instructions](https://archive.org/details/amstrad-cpc-6128-user-manual) — Amstrad's own names for the disc and its parts, and the write-protect shutter at its corner.
+- [fileformat.info](https://www.fileformat.info/media/compact-floppy/index.htm) — a flatbed scan of an Amsoft blank beside a ruler, on which every opening and the label's second side are measured.
+- Wikimedia Commons, [a museum's discs](https://commons.wikimedia.org/wiki/File:79_DISQUETES.jpg) and [an Amsoft blank](https://commons.wikimedia.org/wiki/File:AMSoft_Compact_Floppy_Disc_20071208.jpg) — the plastic's and the label's colours, the strip round the label end, and the label's first side.
 
 **The firmware.**
 

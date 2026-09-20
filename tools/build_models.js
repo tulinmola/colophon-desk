@@ -4,6 +4,7 @@ import { relative, resolve } from "node:path"
 import { Color } from "three"
 import { EXTMeshGPUInstancing } from "@gltf-transform/extensions"
 import { Resvg } from "@resvg/resvg-js"
+import { buildCf2 } from "./models/cf2.js"
 import { buildCpc6128 } from "./models/cpc6128.js"
 import { buildCtm644 } from "./models/ctm644.js"
 import { fileURLToPath } from "node:url"
@@ -45,6 +46,29 @@ function faceUvs(vertices, face) {
   ) {
     uvs[uvIndex] = (vertices[positionIndex] - face.left) / width
     uvs[uvIndex + 1] = (face.rear - vertices[positionIndex + 1]) / depth
+  }
+
+  return uvs
+}
+
+// A part's own rule is asked for each vertex, in the millimetres the part was built in.
+function mappedUvs(vertices, mapping) {
+  const uvs = new Float32Array((vertices.length / 3) * 2)
+
+  for (
+    let uvIndex = 0, positionIndex = 0;
+    positionIndex < vertices.length;
+    uvIndex += 2, positionIndex += 3
+  ) {
+    const place = [
+        vertices[positionIndex],
+        vertices[positionIndex + 1],
+        vertices[positionIndex + 2]
+      ],
+      [u, v] = mapping(place)
+
+    uvs[uvIndex] = u
+    uvs[uvIndex + 1] = v
   }
 
   return uvs
@@ -152,7 +176,8 @@ async function writeModel(name, { tessellation, parts }) {
       mesh = document.createMesh(part.name).addPrimitive(primitive),
       node = document.createNode(part.name).setMesh(mesh),
       standsForKeys = Object.hasOwn(part, "keys"),
-      faced = Object.hasOwn(part, "face"),
+      mapped = Object.hasOwn(part, "mapping"),
+      laidOut = Object.hasOwn(part, "face") || mapped,
       printed = Object.hasOwn(part, "print"),
       lettered = Object.hasOwn(part, "legends"),
       screened = Object.hasOwn(part, "screen"),
@@ -178,8 +203,10 @@ async function writeModel(name, { tessellation, parts }) {
       node.setTranslation(translation)
     }
 
-    if (faced) {
-      const uvs = faceUvs(meshed.vertices, part.face),
+    if (laidOut) {
+      const uvs = mapped
+          ? mappedUvs(meshed.vertices, part.mapping)
+          : faceUvs(meshed.vertices, part.face),
         texcoord = createAccessor(document, buffer, "VEC2", uvs)
 
       primitive.setAttribute("TEXCOORD_0", texcoord)
@@ -216,7 +243,8 @@ setOC(oc)
 
 const models = [
   { name: "cpc6128", built: buildCpc6128() },
-  { name: "ctm644", built: buildCtm644() }
+  { name: "ctm644", built: buildCtm644() },
+  { name: "cf2", built: buildCf2() }
 ]
 
 for (const model of models) {
