@@ -213,14 +213,15 @@ export default class CameraRig {
     }
   }
 
-  viewAt(pointer) {
+  pick(pointer) {
     const raycaster = this.#raycaster
 
     raycaster.setFromCamera(pointer, this.camera)
 
-    const [nearest] = raycaster.intersectObjects(this.#models)
+    const [nearest] = raycaster.intersectObjects(this.#models),
+      part = nearest?.object
 
-    return this.#leadsTo.get(nearest?.object)
+    return { name: part?.name, view: this.#leadsTo.get(part) }
   }
 
   dispose() {

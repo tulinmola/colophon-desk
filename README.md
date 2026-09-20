@@ -21,7 +21,7 @@ npm run check          # formatting and linting
 
 The built module is named for the emulator commit it came from and a digest of `emulator/`, so a change to either gives it a new name: `src/js/emulator/module.js` follows that name, and the superseded build is deleted rather than left to be picked up by mistake.
 
-No firmware is kept here and none is served from here. The page fetches the images itself, pinned by hash and verified in the browser before the machine is booted, and keeps them in the reader's own storage — so a reader obtains their own copy, from the sources named below, exactly as anyone running the emulator's fetch script does.
+No firmware is kept here and none is served from here. The page fetches the images itself, pinned by hash and verified in the browser before the machine is booted, and keeps them in the reader's own storage — so a reader obtains their own copy, from the sources named below, exactly as anyone running the emulator's fetch script does. No software is kept here either: a disc goes into the drive from the reader's own files.
 
 ## Weighing the tube
 
@@ -48,8 +48,10 @@ Every figure is cited at the line that uses it. This is the other view: what the
 **The machine.**
 
 - [CPC6128 Service Manual](https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a) — Amstrad's own dimensions and technical specifications, and the mouldings by part number.
-- [SOFT 968](https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual) — the firmware manual, and each key's number in the matrix.
+- [SOFT 968](https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual) — the firmware manual, each key's number in the matrix, and the DATA format a blank disc is laid out in.
 - [Reading the keyboard and Joysticks](https://cpctech.cpcwiki.de/docs/keyboard.html) — which line and bit each key sits on, and so where a browser's own keys reach the machine.
+- [Disk image file format](https://cpctech.cpcwiki.de/docs/dsk.html) — the layout of a disc image, which the tests write to give the drive discs of their own.
+- [CP/M 2.2 disc formats](https://www.seasip.info/Cpm/format22.html) — a directory entry, and the &E5 that marks one holding no file.
 - [CTM644 amendment service manual](https://retronik.silicium.org/DOCUMENTS/Info/Amstrad_CPC/Amstrad%20CPC464%206128%20GT65%20CTM644%20MP3%20CT1%20amendment%20service%20manual.pdf) — the monitor's cabinet mouldings, by part number.
 - [oldcrap.org](https://oldcrap.org) — photographs of a 2020 CTM644, rectified here to measure from.
 - [amstrad.eu](https://www.amstrad.eu) — the monitor seen three-quarters on, where no square view reaches.
@@ -57,13 +59,13 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Amstrad_CPC6128), [one machine](https://commons.wikimedia.org/wiki/File:AMSTRAD_CPC_6128.jpg) and [another](https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg) — the drive bezel rectified, and the plastic's hue on aged cabinets.
 - [sasfepu78](http://sasfepu78.fr/articles/Amstrad/) — a 600 dpi scan of a French 6128's keys, lying face down.
 - [Retroleum](https://retroleum.co.uk/cpc-kb) — keycap heights for the later 464, which bound the 6128's.
-- [Panasonic EME-150](https://www.cpcwiki.eu/index.php/File:Panasonic-3_inch_Floppy_Drive_EME-150.pdf) — the drawing of the drive's sister, its length and the slot across it.
+- [Panasonic EME-150](https://www.cpcwiki.eu/index.php/File:Panasonic-3_inch_Floppy_Drive_EME-150.pdf) — the drawing of the drive's sister, its length, the slot across it, and the IN USE lamp on its bezel.
 - [Hitachi HFD305SX](https://archive.org/details/hitachi-compact-floppy-disk-drive-model-hfd-305-sx) — another 3-inch drive's manual, and the one drawing of the disc itself: its outline, which the slot must pass, and its hub's hole.
 - Parts printed to fit: a [monitor stand](https://www.printables.com/model/527817), a [key cover](https://www.printables.com/model/1334008) and two drive plugs ([one](https://www.thingiverse.com/thing:2876318), [two](https://www.printables.com/model/284516)) — they measure the openings they fill.
 
 **The disc.**
 
-- [CPC6128 user instructions](https://archive.org/details/amstrad-cpc-6128-user-manual) — Amstrad's own names for the disc and its parts, and the write-protect shutter at its corner.
+- [CPC6128 user instructions](https://archive.org/details/amstrad-cpc-6128-user-manual) — Amstrad's own names for the disc and its parts, the write-protect shutter at its corner, and the drive's indicator lamp with what lights it.
 - [fileformat.info](https://www.fileformat.info/media/compact-floppy/index.htm) — a flatbed scan of an Amsoft blank beside a ruler, on which every opening and the label's second side are measured.
 - Wikimedia Commons, [a museum's discs](https://commons.wikimedia.org/wiki/File:79_DISQUETES.jpg) and [an Amsoft blank](https://commons.wikimedia.org/wiki/File:AMSoft_Compact_Floppy_Disc_20071208.jpg) — the plastic's and the label's colours, the strip round the label end, and the label's first side.
 
@@ -71,7 +73,7 @@ Every figure is cited at the line that uses it. This is the other view: what the
 
 - [Amstrad's permission](https://worldofspectrum.net/app/themes/wosc-classic/static/legacy/amstrad-roms.txt) — Cliff Lawson's 1999 answer, under which these images are fetched, and which the emulator's own `tools/fetch-roms.sh` records in full along with what it does not reach.
 - [Arnold](https://github.com/rofl0r/arnold) — the two halves of the Spanish 6128's firmware, Amstrad part 40038, which the page joins and checks against its pin.
-- [Caprice32](https://github.com/ColinPitrat/caprice32) — Amstrad's AMSDOS image, the ROM the disc interface brings.
+- [Caprice32](https://github.com/ColinPitrat/caprice32) — Amstrad's AMSDOS image, the ROM the disc interface brings, whose own format table gives the filler byte the tests' discs are formatted with.
 
 **The glass.**
 

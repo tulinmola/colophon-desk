@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { blank } from "./desk_scene.js"
 import { resolve } from "node:path"
 
 const FIRMWARE = "/js/emulator/firmware.js",
@@ -12,16 +13,6 @@ const CPC6128_BYTES = 0x8000,
 const TOP_CODE = 26,
   BOTTOM_CODE = 4,
   ROUNDING = 3
-
-// The desk fetches a firmware of its own as it loads, which would race the
-// routes below, so these stand on a page with nothing else on it.
-async function blank(page) {
-  await page.route("**/machine-test", function (route) {
-    return route.fulfill({ contentType: "text/html", body: "<!doctype html><html></html>" })
-  })
-
-  await page.goto("/machine-test")
-}
 
 function fetchImage(page, name) {
   return page.evaluate(
