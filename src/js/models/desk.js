@@ -1,4 +1,5 @@
 import { Box3, DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
+import Disc from "./disc"
 import loadModel from "./load_model"
 import showPicture from "./show_picture"
 
@@ -64,7 +65,7 @@ export default class Desk {
     this.#wireLamps(machine.model)
     monitor.model.position.z = MONITOR_BEHIND
     disc.model.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
-    this.disc = disc.model
+    this.disc = new Disc(disc.model, drive)
     this.machine = machine.model
     this.monitor = monitor.model
     this.#textures = [...machine.textures, ...monitor.textures, ...disc.textures]
@@ -105,7 +106,7 @@ export default class Desk {
       materials = new Set(),
       textures = new Set(this.#textures)
 
-    for (const model of [this.machine, this.monitor, this.disc]) {
+    for (const model of [this.machine, this.monitor, this.disc.model]) {
       model.traverse(function (object) {
         const drawn = object.isMesh
 

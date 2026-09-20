@@ -4,6 +4,11 @@ import { expect, test } from "@playwright/test"
 // Where the eject button stands on the canvas in the drive's view, as a fraction of its size.
 const EJECT_BUTTON = { x: 0.594, y: 0.506 }
 
+// A disc offered while one is in comes out before it goes back in, which takes
+// longer than the camera's flight to the drive, so there is a moment with the
+// eye already still and the disc still travelling. The wait lands in it.
+const MID_JOURNEY = 1000
+
 // The original image layout [C]: a 256-byte disc header naming the tracks and
 // their size, then each track's 256-byte header listing its sectors before
 // their bytes: https://cpctech.cpcwiki.de/docs/dsk.html
@@ -80,26 +85,33 @@ const OCTETS = "application/octet-stream",
 
 // Playwright asks the browser to hand it the chooser without waiting for the
 // answer, so a click sent straight after listening can reach the browser first,
-// which opens its own dialog and cancels it. A test listens before the desk
-// stands, and the promise travels in an object, which an async function
-// returns as it is rather than waiting on it.
+// which opens its own dialog and cancels it. A page listens once, before the
+// desk stands, and goes on listening: a disc is laid out for the chooser to
+// take, and a chooser that finds none laid out is left standing open.
 async function standListening(page) {
-  const chooser = page.waitForEvent("filechooser")
+  const laidOut = []
+
+  page.on("filechooser", function (chooser) {
+    const file = laidOut.shift(),
+      offered = file != null
+
+    if (offered) {
+      chooser.setFiles(file)
+    }
+  })
 
   await page.emulateMedia({ reducedMotion: "reduce" })
   await stand(page)
 
-  return { chooser }
+  return laidOut
 }
 
-async function chooseAtDrive(page, chooser, file) {
+async function chooseAtDrive(page, laidOut, file) {
   const drive = await pointAt(page, DRIVE)
 
-  await page.mouse.click(drive.x, drive.y)
+  laidOut.push(file)
 
-  const opened = await chooser
-
-  await opened.setFiles(file)
+  return page.mouse.click(drive.x, drive.y)
 }
 
 // The machine drops keys typed while it is still drawing its prompt.
@@ -122,13 +134,13 @@ test("the machine catalogues the disc chosen at the drive", async function ({ pa
   test.setTimeout(allowed)
 
   const other = await context.newPage(),
-    { chooser } = await standListening(page),
-    { chooser: otherChooser } = await standListening(other),
+    laidOut = await standListening(page),
+    otherLaidOut = await standListening(other),
     notice = page.locator("output[name='drive']"),
     otherNotice = other.locator("output[name='drive']")
 
-  await chooseAtDrive(page, chooser, BLANK)
-  await chooseAtDrive(other, otherChooser, HOLDING)
+  await chooseAtDrive(page, laidOut, BLANK)
+  await chooseAtDrive(other, otherLaidOut, HOLDING)
   await expect(notice).toHaveText("blank.dsk is in drive A")
   await expect(otherNotice).toHaveText("holding.dsk is in drive A")
 
@@ -142,30 +154,54 @@ test("the machine catalogues the disc chosen at the drive", async function ({ pa
 test("a disc chosen at the drive is named in the notice, and the camera comes back", async function ({
   page
 }) {
-  const { chooser } = await standListening(page),
+  const laidOut = await standListening(page),
     notice = page.locator("output[name='drive']"),
     whole = page.getByRole("button", { name: "The whole desk" })
 
-  await chooseAtDrive(page, chooser, BLANK)
+  await chooseAtDrive(page, laidOut, BLANK)
   await expect(notice).toHaveText("blank.dsk is in drive A")
   await expect(whole).toHaveAttribute("aria-pressed", "true")
 })
 
+test("the machine keeps the disc it has until the next one reaches the drive", async function ({
+  page
+}) {
+  const laidOut = await standListening(page),
+    notice = page.locator("output[name='drive']")
+
+  await chooseAtDrive(page, laidOut, BLANK)
+  await expect(notice).toHaveText("blank.dsk is in drive A")
+  await page.emulateMedia({ reducedMotion: "no-preference" })
+  await chooseAtDrive(page, laidOut, HOLDING)
+  await page.waitForTimeout(MID_JOURNEY)
+  await expect(notice).toHaveText("blank.dsk is in drive A")
+
+  const eject = await pointAt(page, EJECT_BUTTON)
+
+  await page.mouse.click(eject.x, eject.y)
+  await settled(page)
+  await expect(notice).toBeHidden()
+})
+
 test("a file that is not a disc is refused, and the notice says why", async function ({ page }) {
-  const { chooser } = await standListening(page),
+  const laidOut = await standListening(page),
     notice = page.locator("output[name='drive']"),
     notes = { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("Not a disc.") }
 
-  await chooseAtDrive(page, chooser, notes)
+  await chooseAtDrive(page, laidOut, notes)
   await expect(notice).toHaveText("notes.txt was refused: the image is shorter than its own header")
+  await expect(page.getByRole("button", { name: "The disc drive" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  )
 })
 
 test("an image larger than a disc's room is refused by its size", async function ({ page }) {
-  const { chooser } = await standListening(page),
+  const laidOut = await standListening(page),
     notice = page.locator("output[name='drive']"),
     huge = { name: "huge.dsk", mimeType: OCTETS, buffer: Buffer.alloc(0x400000) }
 
-  await chooseAtDrive(page, chooser, huge)
+  await chooseAtDrive(page, laidOut, huge)
   await expect(notice).toHaveText(
     "huge.dsk was refused: the image is larger than the room a disc is given here"
   )
@@ -180,12 +216,12 @@ test("the eject button leaves the machine as if it had never been given a disc",
   test.setTimeout(allowed)
 
   const never = await context.newPage(),
-    { chooser } = await standListening(page),
+    laidOut = await standListening(page),
     notice = page.locator("output[name='drive']")
 
   await never.emulateMedia({ reducedMotion: "reduce" })
   await stand(never)
-  await chooseAtDrive(page, chooser, BLANK)
+  await chooseAtDrive(page, laidOut, BLANK)
   await expect(notice).toBeVisible()
   await page.getByRole("button", { name: "The disc drive" }).click()
 
@@ -202,15 +238,15 @@ test("the eject button leaves the machine as if it had never been given a disc",
 })
 
 test("a choice cancelled takes the camera back to the view it left", async function ({ page }) {
-  const { chooser } = await standListening(page),
-    desk = page.locator("colophon-cpc-desk"),
+  await standListening(page)
+
+  const desk = page.locator("colophon-cpc-desk"),
     driveButton = desk.getByRole("button", { name: "The disc drive" }),
     wholeButton = desk.getByRole("button", { name: "The whole desk" }),
     fileInput = desk.locator("input[type='file']"),
     drive = await pointAt(page, DRIVE)
 
   await page.mouse.click(drive.x, drive.y)
-  await chooser
   await expect(driveButton).toHaveAttribute("aria-pressed", "true")
 
   await fileInput.dispatchEvent("cancel")
