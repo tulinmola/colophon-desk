@@ -181,6 +181,7 @@ async function writeModel(name, { tessellation, parts }) {
       printed = Object.hasOwn(part, "print"),
       lettered = Object.hasOwn(part, "legends"),
       screened = Object.hasOwn(part, "screen"),
+      written = Object.hasOwn(part, "writing"),
       placed = Object.hasOwn(part, "place"),
       turned = Object.hasOwn(part, "tilt") && !standsForKeys
 
@@ -224,6 +225,10 @@ async function writeModel(name, { tessellation, parts }) {
 
     if (screened) {
       extras.screen = true
+    }
+
+    if (written) {
+      extras.writing = part.writing
     }
 
     node.setExtras(extras)

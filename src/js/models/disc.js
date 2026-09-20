@@ -1,4 +1,5 @@
 import { Box3, Vector3 } from "three/webgpu"
+import DiscLabel from "./disc_label"
 import REDUCED_MOTION from "./reduced_motion"
 
 // How long the disc takes on each leg of its journey, in milliseconds, is a presentation choice, not a measurement of the machine.
@@ -20,6 +21,7 @@ const THROWN_OUT = 0.03
 export default class Disc {
   model
   #bound
+  #label
   #from = new Vector3()
   #journey = []
   #mouth = new Vector3()
@@ -40,7 +42,10 @@ export default class Disc {
       headEnd = lying.min.z - model.position.z,
       labelEnd = lying.max.z - model.position.z
 
+    const label = model.getObjectByName("label")
+
     this.model = model
+    this.#label = new DiscLabel(label)
     this.#rest.copy(model.position)
     this.#mouth.set(across, slot - middle, face.max.z - headEnd)
     this.#seated.set(across, slot - middle, face.max.z - labelEnd)
@@ -50,12 +55,19 @@ export default class Disc {
   }
 
   // There is one disc here, so a disc offered while one is in takes its own place.
-  insert() {
+  insert(filename) {
     const swapping = this.#bound == this.#seated,
       journey = swapping ? [...this.#outward(), ...this.#inward()] : this.#inward()
 
+    this.#label.write(filename)
     this.model.visible = true
     this.#travel(journey)
+  }
+
+  // A file the machine would not read was never a disc, so the label it was
+  // shown under is taken off again.
+  erase() {
+    this.#label.erase()
   }
 
   eject() {

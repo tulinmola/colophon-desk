@@ -197,7 +197,7 @@ class CpcDeskElement extends Element {
     const bytes = new Uint8Array(contents)
 
     this.#offered = { name: file.name, bytes }
-    this.#desk.disc.insert()
+    this.#desk.disc.insert(file.name)
   }
 
   #insertOffered() {
@@ -216,6 +216,7 @@ class CpcDeskElement extends Element {
     const problem = cpc.discProblem()
 
     this.#tell(`${name} was refused: ${problem}`)
+    this.#desk.disc.erase()
     this.#desk.disc.eject()
   }
 

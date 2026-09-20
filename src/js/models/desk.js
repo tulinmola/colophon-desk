@@ -1,5 +1,6 @@
 import { Box3, DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
 import Disc from "./disc"
+import { loadHandwriting } from "./handwriting"
 import loadModel from "./load_model"
 import showPicture from "./show_picture"
 
@@ -50,7 +51,8 @@ export default class Desk {
     const loading = [
         loadModel(CPC6128_URL, LANGUAGE, anisotropy, keys),
         loadModel(CTM644_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CF2_URL, LANGUAGE, anisotropy, keys)
+        loadModel(CF2_URL, LANGUAGE, anisotropy, keys),
+        loadHandwriting()
       ],
       [machine, monitor, disc] = await Promise.all(loading)
 
