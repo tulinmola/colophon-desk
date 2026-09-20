@@ -116,6 +116,7 @@ colophon-cpc-desk > output {
 }
 
 colophon-cpc-desk > dialog {
+  margin-block: auto var(--inset);
   color: var(--ink);
   background: var(--ground);
   border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
@@ -126,8 +127,13 @@ colophon-cpc-desk > dialog {
     background: color-mix(in srgb, var(--ink) 35%, transparent);
   }
 
+  form {
+    display: grid;
+    gap: var(--spacing);
+  }
+
   p {
-    margin: 0 0 0.6rem;
+    margin: 0;
   }
 
   menu {
@@ -135,7 +141,7 @@ colophon-cpc-desk > dialog {
     gap: var(--spacing);
     max-height: 50dvh;
     overflow-y: auto;
-    margin: 0 0 0.6rem;
+    margin: 0;
     padding: 0;
     list-style: none;
   }

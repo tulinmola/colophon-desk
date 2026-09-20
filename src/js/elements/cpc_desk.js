@@ -62,6 +62,13 @@ const DRIVE_A = html`<input type="file" accept=".dsk,.zip" hidden />
       <menu aria-label="The discs in the archive"></menu>
       <button value="">Cancel</button>
     </form>
+  </dialog>
+  <dialog name="power">
+    <form method="dialog">
+      <p>Turn the computer off? Everything in its memory goes with it.</p>
+      <button value="off">Turn it off</button>
+      <button value="" autofocus>Leave it on</button>
+    </form>
   </dialog>`
 
 const NOTHING_PICKED = { name: null, view: null }
@@ -72,6 +79,7 @@ class CpcDeskElement extends Element {
   #desk
   #discs = []
   #discsDialog
+  #powerDialog
   #driveNotice
   #heldByCode = new Map()
   #hovering
@@ -85,6 +93,7 @@ class CpcDeskElement extends Element {
   #rig
   #shown
   #viewBeforeChoosing
+  #viewBeforeSwitching
 
   init() {
     const renderer = new WebGPURenderer({ alpha: true, antialias: true }),
@@ -103,6 +112,7 @@ class CpcDeskElement extends Element {
     this.#chooser = this.querySelector("input[type='file']")
     this.#desk = desk
     this.#discsDialog = this.querySelector("dialog[name='discs']")
+    this.#powerDialog = this.querySelector("dialog[name='power']")
     this.#driveNotice = this.querySelector("output[name='drive']")
     this.#hovering = false
     this.#menu = menu
@@ -127,6 +137,7 @@ class CpcDeskElement extends Element {
     this.#chooser.addEventListener("change", this.onDiscChosen.bind(this), { signal })
     this.#chooser.addEventListener("cancel", this.onChoiceCancelled.bind(this), { signal })
     this.#discsDialog.addEventListener("close", this.onDiscPicked.bind(this), { signal })
+    this.#powerDialog.addEventListener("close", this.onPowerAnswered.bind(this), { signal })
 
     this.#initialising = this.#load(desk, rig, renderer, signal)
   }
@@ -167,6 +178,9 @@ class CpcDeskElement extends Element {
         break
       case "choose":
         this.#chooseDisc()
+        break
+      case "power":
+        this.#switchPower()
         break
       case "look":
         rig.look(picked.view)
@@ -277,7 +291,7 @@ class CpcDeskElement extends Element {
     const cancelled = picked == ""
 
     if (cancelled) {
-      this.#lookBack()
+      this.#lookBack(this.#viewBeforeChoosing)
       return
     }
 
@@ -324,7 +338,7 @@ class CpcDeskElement extends Element {
 
     if (inserted) {
       this.#tell(`${name} is in drive A`)
-      this.#lookBack()
+      this.#lookBack(this.#viewBeforeChoosing)
       return
     }
 
@@ -336,14 +350,13 @@ class CpcDeskElement extends Element {
   }
 
   onChoiceCancelled() {
-    this.#lookBack()
+    this.#lookBack(this.#viewBeforeChoosing)
   }
 
-  // Where the reader stood before the drive was asked for a disc. A camera
-  // turned freely there left no view to come back to, and stays at the drive.
-  #lookBack() {
-    const left = this.#viewBeforeChoosing,
-      returning = left != null
+  // Where the reader stood before a part carried the eye away. One turned
+  // freely there left no view to come back to, and stays where it is.
+  #lookBack(left) {
+    const returning = left != null
 
     if (returning) {
       this.#rig.look(left)
@@ -353,6 +366,7 @@ class CpcDeskElement extends Element {
   #intentOf({ name, view }) {
     const ejects = name == "eject-button",
       takesDisc = view == "drive",
+      switches = view == "power",
       leads = view != null && view != this.#rig.view
 
     if (ejects) {
@@ -361,6 +375,10 @@ class CpcDeskElement extends Element {
 
     if (takesDisc) {
       return "choose"
+    }
+
+    if (switches) {
+      return "power"
     }
 
     return leads ? "look" : null
@@ -372,6 +390,44 @@ class CpcDeskElement extends Element {
     this.#viewBeforeChoosing = this.#rig.view
     this.#rig.look("drive")
     this.#chooser.click()
+  }
+
+  // A machine switched on is made afresh and asks nothing; one switched off is
+  // gone, with whatever it held, so that is the answer worth asking for.
+  #switchPower() {
+    const cpc = this.#cpc,
+      off = !cpc.running
+
+    // A machine made again carries the eye back to where the badge took it
+    // from; one about to be destroyed keeps it here to watch.
+    if (off) {
+      cpc.switchOn()
+      this.#desk.showPower(true)
+      this.#lookBack(this.#viewBeforeSwitching)
+      return
+    }
+
+    this.#viewBeforeSwitching = this.#rig.view
+    this.#rig.look("power")
+    this.#powerDialog.returnValue = ""
+    this.#powerDialog.showModal()
+  }
+
+  onPowerAnswered() {
+    const answered = this.#powerDialog.returnValue,
+      off = answered == "off"
+
+    this.focus()
+
+    // The notice stands: a disc in the drive is in it whether the machine is
+    // running or not, and it is there again when the power comes back.
+    if (off) {
+      this.#cpc.switchOff()
+      this.#desk.showPower(false)
+      return
+    }
+
+    this.#lookBack(this.#viewBeforeSwitching)
   }
 
   // A disc still on its way in is turned around, and the machine is never
@@ -564,6 +620,7 @@ class CpcDeskElement extends Element {
     this.#menu.remove()
     this.#chooser.remove()
     this.#discsDialog.remove()
+    this.#powerDialog.remove()
     this.#driveNotice.remove()
     this.#release(renderer)
     renderer.domElement.remove()

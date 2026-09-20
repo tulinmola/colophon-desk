@@ -37,6 +37,7 @@ export default class Desk {
   scene = new Scene()
   settings
   #driveLens
+  #powerLens
   #textures = []
 
   constructor() {
@@ -97,6 +98,11 @@ export default class Desk {
     lens.emissive.copy(lens.color)
     lens.emissiveIntensity = 0
     this.#driveLens = lens
+    this.#powerLens = power.material
+  }
+
+  showPower(on) {
+    this.#powerLens.emissiveIntensity = on ? LAMP_GLOW : 0
   }
 
   showDriveInUse(inUse) {

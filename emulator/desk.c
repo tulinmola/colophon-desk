@@ -39,6 +39,10 @@ static uint8_t disc_image[DESK_DISC_SIZE];
 static floppy_t disc;
 static const char *disc_problem;
 
+/* Whether the drive holds one, which a machine made again has to be told: a
+   disc left in a drive is still in it when the power comes back. */
+static bool disc_in;
+
 /* The lamp's line as the cycles ran, held until it is read: a lens dark for a
    frame between one command and the next would blink where the machine's does
    not. */
@@ -76,25 +80,41 @@ uint8_t *desk_rom(void) { return rom; }
 
 uint8_t *desk_amsdos(void) { return amsdos; }
 
+/* The beam paints only where it passes, and a tube switched on is dark where it
+ * has not yet been, so a frame starts black rather than at colour code zero,
+ * which is a grey-green. */
+void desk_blank_picture(void) { memset(framebuffer, GATE_ARRAY_BLACK, sizeof framebuffer); }
+
 /* The operating system is the image's first half and BASIC its second, which
  * goes in as upper ROM 0; the disc interface a 6128 has soldered in brings
  * AMSDOS as upper ROM 7.
  *
  * With no monitor plugged in the machine runs on and draws into the void, so
  * the framebuffer is never written and no frame ever ends.
- *
- * The beam paints only where it passes, and a tube switched on is dark where
- * it has not yet been, so the frame starts black rather than at colour code
- * zero, which is a grey-green. */
+ */
 void desk_boot_cpc6128(void) {
-  memset(framebuffer, GATE_ARRAY_BLACK, sizeof framebuffer);
+  desk_blank_picture();
+  /* cpc_init wipes the machine's own chips and not the store the host lends
+     it, so a machine made again would wake inside the dead one's memory. Zero
+     is a choice and not a figure: a real 6128 wakes in whatever its memory
+     held, and a machine made here is made new. */
+  memset(ram, 0, sizeof ram);
   cpc_init(&cpc, ram, DESK_RAM_SIZE, rom);
   cpc_set_upper_rom(&cpc, 0, rom + DESK_BASIC_AT);
   cpc_fit_disc_interface(&cpc, true);
   cpc_set_upper_rom(&cpc, 7, amsdos);
   cpc_connect_monitor(&cpc, framebuffer);
+
+  /* cpc_init clears the drive as it clears everything else, so the disc goes
+     back in behind it. */
+  if (disc_in) {
+    cpc_insert_disc(&cpc, DESK_DRIVE, &disc);
+  }
+
   retraced = false;
+  drive_worked = false;
 }
+
 
 uint8_t *desk_framebuffer(void) { return framebuffer; }
 
@@ -159,6 +179,7 @@ uint32_t desk_disc_capacity(void) { return DESK_DISC_SIZE; }
  * nothing on it rather than an empty drive. */
 bool desk_insert_disc(uint32_t length) {
   disc_problem = NULL;
+  disc_in = false;
   cpc_insert_disc(&cpc, DESK_DRIVE, NULL);
 
   if (length > DESK_DISC_SIZE) {
@@ -171,10 +192,14 @@ bool desk_insert_disc(uint32_t length) {
   }
 
   cpc_insert_disc(&cpc, DESK_DRIVE, &disc);
+  disc_in = true;
   return true;
 }
 
-void desk_eject_disc(void) { cpc_insert_disc(&cpc, DESK_DRIVE, NULL); }
+void desk_eject_disc(void) {
+  disc_in = false;
+  cpc_insert_disc(&cpc, DESK_DRIVE, NULL);
+}
 
 bool desk_drive_in_use(void) {
   const bool worked = drive_worked;
