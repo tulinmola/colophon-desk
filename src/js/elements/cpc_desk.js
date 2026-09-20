@@ -1,9 +1,8 @@
 import { CameraRig, Desk } from "../models"
-import { Cpc, KEY_MATRIX } from "../emulator"
+import { Cpc, KEY_MATRIX, discsIn } from "../emulator"
 import { Vector2, WebGPURenderer } from "three/webgpu"
 import Element from "./element"
-
-const html = String.raw
+import html from "../html"
 
 // A pointer that travels further than this, in CSS pixels, between going down
 // and coming up has turned the camera rather than clicked.
@@ -55,7 +54,15 @@ const VIEW_MENU = html`<menu aria-label="Views" hidden>
   </li>
 </menu>`
 
-const DRIVE_A = html`<input type="file" accept=".dsk" hidden /> <output name="drive"></output>`
+const DRIVE_A = html`<input type="file" accept=".dsk,.zip" hidden />
+  <output name="drive"></output>
+  <dialog name="discs">
+    <form method="dialog">
+      <p>Which disc?</p>
+      <menu aria-label="The discs in the archive"></menu>
+      <button value="">Cancel</button>
+    </form>
+  </dialog>`
 
 const NOTHING_PICKED = { name: null, view: null }
 
@@ -63,6 +70,8 @@ class CpcDeskElement extends Element {
   #chooser
   #cpc = null
   #desk
+  #discs = []
+  #discsDialog
   #driveNotice
   #heldByCode = new Map()
   #hovering
@@ -93,6 +102,7 @@ class CpcDeskElement extends Element {
 
     this.#chooser = this.querySelector("input[type='file']")
     this.#desk = desk
+    this.#discsDialog = this.querySelector("dialog[name='discs']")
     this.#driveNotice = this.querySelector("output[name='drive']")
     this.#hovering = false
     this.#menu = menu
@@ -116,6 +126,7 @@ class CpcDeskElement extends Element {
     this.#menu.addEventListener("click", this.onViewChosen.bind(this), { signal })
     this.#chooser.addEventListener("change", this.onDiscChosen.bind(this), { signal })
     this.#chooser.addEventListener("cancel", this.onChoiceCancelled.bind(this), { signal })
+    this.#discsDialog.addEventListener("close", this.onDiscPicked.bind(this), { signal })
 
     this.#initialising = this.#load(desk, rig, renderer, signal)
   }
@@ -196,8 +207,112 @@ class CpcDeskElement extends Element {
 
     const bytes = new Uint8Array(contents)
 
-    this.#offered = { name: file.name, bytes }
-    this.#desk.disc.insert(file.name)
+    this.#open(file.name, bytes)
+  }
+
+  // A file holding one disc goes straight in; one holding several is asked
+  // about, because which disc a set of them starts from is the reader's to say.
+  async #open(filename, bytes) {
+    const discs = this.#discsFrom(filename, bytes)
+
+    if (!discs) {
+      return
+    }
+
+    const alone = discs.length == 1,
+      empty = discs.length == 0
+
+    if (empty) {
+      this.#tell(`${filename} was refused: it holds no disc`)
+      return
+    }
+
+    if (alone) {
+      const [only] = discs
+
+      await this.#take(only)
+      return
+    }
+
+    this.#discs = discs
+    this.#listDiscs(discs)
+    this.#discsDialog.returnValue = ""
+    this.#discsDialog.showModal()
+  }
+
+  #discsFrom(filename, bytes) {
+    try {
+      return discsIn(filename, bytes)
+    } catch (problem) {
+      this.#tell(`${filename} was refused: ${problem.message}`)
+      return null
+    }
+  }
+
+  // A name out of an archive is whatever bytes it was written with, so it is
+  // set as text and never as markup.
+  #listDiscs(discs) {
+    const menu = this.#discsDialog.querySelector("menu")
+
+    menu.replaceChildren()
+
+    for (const [place, disc] of discs.entries()) {
+      const item = document.createElement("li"),
+        button = document.createElement("button")
+
+      button.value = String(place)
+      button.textContent = disc.name
+      item.append(button)
+      menu.append(item)
+    }
+  }
+
+  onDiscPicked() {
+    const picked = this.#discsDialog.returnValue,
+      discs = this.#discs
+
+    this.#discs = []
+    this.focus()
+
+    const cancelled = picked == ""
+
+    if (cancelled) {
+      this.#lookBack()
+      return
+    }
+
+    const place = Number(picked),
+      disc = discs[place]
+
+    this.#take(disc)
+  }
+
+  // The image is unpacked only once its disc is chosen, so an archive of
+  // several costs the reader one of them and not all.
+  async #take(disc) {
+    const { signal } = this,
+      roomy = disc.length <= this.#cpc.discCapacity
+
+    // The archive says how large a disc stands before it is unpacked, so one
+    // the machine has no room for is never unpacked at all.
+    if (!roomy) {
+      this.#tell(`${disc.name} was refused: the image is larger than the room a disc is given here`)
+      return
+    }
+
+    try {
+      const bytes = await disc.read(),
+        laidAway = signal.aborted
+
+      if (laidAway) {
+        return
+      }
+
+      this.#offered = { name: disc.name, bytes }
+      this.#desk.disc.insert(disc.name)
+    } catch (problem) {
+      this.#tell(`${disc.name} was refused: ${problem.message}`)
+    }
   }
 
   #insertOffered() {
@@ -448,6 +563,7 @@ class CpcDeskElement extends Element {
     this.#rig.dispose()
     this.#menu.remove()
     this.#chooser.remove()
+    this.#discsDialog.remove()
     this.#driveNotice.remove()
     this.#release(renderer)
     renderer.domElement.remove()

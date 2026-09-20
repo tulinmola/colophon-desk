@@ -66,6 +66,8 @@ Every figure is cited at the line that uses it. This is the other view: what the
 **The disc.**
 
 - [CPC6128 user instructions](https://archive.org/details/amstrad-cpc-6128-user-manual) — Amstrad's own names for the disc and its parts, the write-protect shutter at its corner, and the drive's indicator lamp with what lights it.
+- [APPNOTE.TXT](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) — PKWARE's own specification of the .ZIP format, by which an archive of discs is opened without a library.
+- [Code page 437](https://en.wikipedia.org/wiki/Code_page_437) — the letters a disc was named in before archives carried Unicode, which no browser decodes.
 - [fileformat.info](https://www.fileformat.info/media/compact-floppy/index.htm) — a flatbed scan of an Amsoft blank beside a ruler, on which every opening and the label's second side are measured.
 - Wikimedia Commons, [a museum's discs](https://commons.wikimedia.org/wiki/File:79_DISQUETES.jpg) and [an Amsoft blank](https://commons.wikimedia.org/wiki/File:AMSoft_Compact_Floppy_Disc_20071208.jpg) — the plastic's and the label's colours, the strip round the label end, and the label's first side.
 
