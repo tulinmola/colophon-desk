@@ -163,7 +163,20 @@ const LABEL_SIDE_1_ART = {
 
 // The strip round the label end is bare paper, read on the museum's photograph, ±0.5 [E]. At each side's left, as that side's face reads it, a black triangle 2.6 wide points to that face, its middle 3.1 in from the end, and the side's number follows, its middle 5.85 in, 0.93 and 1.8 wide.
 // The photograph sees the strip too nearly edge-on for any height, and a ±0.5 on those widths is a millimetre and a half on a height taken from them. These are taken: each triangle as tall as it is wide, each number 2.7 tall, which is about what its width gives in Heros's proportions, and both marks on the strip's middle.
-const END_MARKS = { triangle: { middle: 3.1, width: 2.6 }, capHeight: 2.7 }
+const END_MARKS = {
+  triangle: { middle: 3.1, width: 2.6 },
+  number: { middle: 5.85, width: 1.8 },
+  capHeight: 2.7
+}
+
+// How far into the strip those marks reach, taken at the wider of the two numbers so that the reach holds for both ends [E].
+const END_MARKS_REACH = END_MARKS.number.middle + END_MARKS.number.width / 2
+
+// Where a hand writes the disc's name: on the label face's first ruled line, which is what those rules are for, and on the bare strip between the marks, which is the only paper that shows while the disc is in the drive.
+// What margins a hand leaves are not measured. These are guesses: 3 in from each edge of the label's face, 1 clear of the strip's marks, and 0.4 clear of any printed edge the writing runs beside.
+const WRITING_INSET = 3,
+  WRITING_CLEAR_OF_MARKS = 1,
+  WRITING_CLEARANCE = 0.4
 
 // TeX Gyre Heros stands in for the label's grotesque, its capitals 0.729 of its size: https://www.gust.org.pl/projects/e-foundry/tex-gyre/heros. Its bold draws "For Single Head Drive", white out of the black band, glyph for glyph, which the label sets 4 % tighter than Heros. "Compact Floppy Disc" is a medium weight between Heros's regular and bold, and bold is taken. "CF2" is regular, its C and F narrower than Heros's. Each word is fitted to the width measured for it [E].
 const LABEL_WORDS = {
@@ -413,6 +426,35 @@ function unfolded([placedX, placedY, placedZ]) {
   return [across, (PAPER_DEPTH + STRIP_HEIGHT + HAIRLINE + y) / SHEET_DEPTH]
 }
 
+// The bare paper of the sheet a hand may write on, each as a fraction of it, so that a print of any density carries them.
+function writingAreas() {
+  const [firstRule] = LABEL_RULES.at,
+    [, paperTop] = LABEL_BANDS.rule,
+    stripLeft = END_MARKS_REACH + WRITING_CLEAR_OF_MARKS,
+    faceTop = paperTop + WRITING_CLEARANCE,
+    face = {
+      left: WRITING_INSET,
+      top: faceTop,
+      width: LABEL_WIDTH - 2 * WRITING_INSET,
+      height: firstRule - faceTop
+    },
+    strip = {
+      left: stripLeft,
+      top: PAPER_DEPTH + WRITING_CLEARANCE,
+      width: LABEL_WIDTH - 2 * stripLeft,
+      height: STRIP_HEIGHT - 2 * WRITING_CLEARANCE
+    }
+
+  return [face, strip].map(function ({ left, top, width, height }) {
+    return {
+      left: left / LABEL_WIDTH,
+      top: top / SHEET_DEPTH,
+      width: width / LABEL_WIDTH,
+      height: height / SHEET_DEPTH
+    }
+  })
+}
+
 function buildLabel() {
   const sideOne = buildPaper(THICKNESS - PAPER_SUNK - LABEL_THICKNESS),
     sideTwo = buildPaper(PAPER_SUNK),
@@ -424,7 +466,8 @@ function buildLabel() {
     shape: sheet.translate(CENTRING),
     material: PAPER,
     mapping: unfolded,
-    print: LABEL_PRINT
+    print: LABEL_PRINT,
+    writing: writingAreas()
   }
 }
 

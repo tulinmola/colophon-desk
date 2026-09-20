@@ -183,6 +183,34 @@ test("the machine keeps the disc it has until the next one reaches the drive", a
   await expect(notice).toBeHidden()
 })
 
+test("the disc carries the name of the file it came from, where the drive leaves it showing", async function ({
+  page,
+  context
+}) {
+  const allowed = SLOW_WAIT.timeout * 4
+
+  test.setTimeout(allowed)
+
+  const other = await context.newPage(),
+    laidOut = await standListening(page),
+    otherLaidOut = await standListening(other),
+    sorcery = { ...BLANK, name: "sorcery.dsk" },
+    elite = { ...BLANK, name: "elite.dsk" }
+
+  await chooseAtDrive(page, laidOut, sorcery)
+  await chooseAtDrive(other, otherLaidOut, elite)
+  await expect(page.locator("output[name='drive']")).toHaveText("sorcery.dsk is in drive A")
+  await expect(other.locator("output[name='drive']")).toHaveText("elite.dsk is in drive A")
+  await page.getByRole("button", { name: "The disc drive" }).click()
+  await other.getByRole("button", { name: "The disc drive" }).click()
+
+  const one = await settled(page),
+    theOther = await settled(other),
+    written = !one.equals(theOther)
+
+  expect(written).toBe(true)
+})
+
 test("a file that is not a disc is refused, and the notice says why", async function ({ page }) {
   const laidOut = await standListening(page),
     notice = page.locator("output[name='drive']"),
