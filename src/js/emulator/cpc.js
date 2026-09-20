@@ -24,6 +24,10 @@ export default class Cpc {
   // The room a disc is given here, which an image must stand inside.
   discCapacity
 
+  // Whether the machine is switched on. One switched off is not a machine
+  // standing idle: it is gone, and switching on makes another.
+  running = true
+
   #debt = 0
   #discAt
   #last
@@ -140,7 +144,30 @@ export default class Cpc {
     return TEXT.decode(sentence)
   }
 
+  // The machine's own power, which the disc in its drive outlives.
+  switchOff() {
+    this.running = false
+    this.releaseAllKeys()
+    this.#module._desk_blank_picture()
+    this.picture.refresh()
+  }
+
+  switchOn() {
+    this.running = true
+    this.#debt = 0
+    this.#last = performance.now()
+    this.#module._desk_boot_cpc6128()
+    this.#readKeys()
+    this.picture.refresh()
+  }
+
   advance(now) {
+    const off = !this.running
+
+    if (off) {
+      return
+    }
+
     const owed = (now - this.#last) * this.#ticksPerMillisecond,
       maximum = MAXIMUM_DEBT_MILLISECONDS * this.#ticksPerMillisecond
 

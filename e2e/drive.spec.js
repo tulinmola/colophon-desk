@@ -5,6 +5,11 @@ import { deflateRawSync } from "node:zlib"
 // Where the eject button stands on the canvas in the drive's view, as a fraction of its size.
 const EJECT_BUTTON = { x: 0.594, y: 0.506 }
 
+// The badge over the power lamp, in the whole desk's view and then in its own,
+// which the first click carries the eye to.
+const BADGE = { x: 0.613, y: 0.581 },
+  BADGE_CLOSE = { x: 0.5, y: 0.5 }
+
 // A disc offered while one is in comes out before it goes back in, which takes
 // longer than the camera's flight to the drive, so there is a moment with the
 // eye already still and the disc still travelling. The wait lands in it.
@@ -362,6 +367,66 @@ test("an archive whose list of files is damaged is refused", async function ({ p
 
   await chooseAtDrive(page, laidOut, zipped)
   await expect(notice).toHaveText("torn.zip was refused: its list of files is damaged")
+})
+
+test("a disc is still in the drive when the power comes back", async function ({ page, context }) {
+  const allowed = SLOW_WAIT.timeout * 4
+
+  test.setTimeout(allowed)
+
+  const never = await context.newPage(),
+    laidOut = await standListening(page),
+    neverLaidOut = await standListening(never),
+    notice = page.locator("output[name='drive']"),
+    turnOff = page.locator("dialog[name='power'] button[value='off']")
+
+  await chooseAtDrive(page, laidOut, BLANK)
+  await chooseAtDrive(never, neverLaidOut, BLANK)
+  await expect(notice).toHaveText("blank.dsk is in drive A")
+
+  const badge = await pointAt(page, BADGE)
+
+  await page.mouse.click(badge.x, badge.y)
+  await turnOff.click()
+  await expect(notice).toHaveText("blank.dsk is in drive A")
+
+  const close = await pointAt(page, BADGE_CLOSE),
+    whole = page.getByRole("button", { name: "The whole desk" })
+
+  await page.mouse.click(close.x, close.y)
+  await expect(whole).toHaveAttribute("aria-pressed", "true")
+
+  const again = await catalogue(page),
+    straight = await catalogue(never),
+    alike = again.equals(straight)
+
+  expect(alike).toBe(true)
+})
+
+test("a machine left on by the answer is still running", async function ({ page }) {
+  const laidOut = await standListening(page),
+    notice = page.locator("output[name='drive']"),
+    leaveOn = page.locator("dialog[name='power'] button[value='']")
+
+  await chooseAtDrive(page, laidOut, BLANK)
+  await expect(notice).toHaveText("blank.dsk is in drive A")
+
+  const badge = await pointAt(page, BADGE)
+
+  await page.mouse.click(badge.x, badge.y)
+  await leaveOn.click()
+
+  const desk = page.locator("colophon-cpc-desk"),
+    waiting = await settled(page)
+
+  await desk.focus()
+  await page.keyboard.type("PRINT 1")
+  await page.keyboard.press("Enter")
+
+  const answered = await settled(page),
+    ran = !answered.equals(waiting)
+
+  expect(ran).toBe(true)
 })
 
 test("a file that is not a disc is refused, and the notice says why", async function ({ page }) {

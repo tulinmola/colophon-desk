@@ -18,7 +18,8 @@ const FIELD_OF_VIEW = 35,
 const DESK_VIEW = { heading: -32, elevation: 16, margin: 0.25 },
   SET_VIEW = { heading: 0, elevation: 14, margin: 0.03 },
   MONITOR_VIEW = { heading: 0, elevation: 6, margin: 0.12 },
-  DRIVE_VIEW = { heading: -22, elevation: 34, margin: 0.1, closest: 0.45 }
+  DRIVE_VIEW = { heading: -22, elevation: 34, margin: 0.1, closest: 0.45 },
+  POWER_VIEW = { heading: -25, elevation: 55, margin: 0.35, closest: 0.2 }
 
 const WIDEST_HEADING = 75
 
@@ -31,6 +32,12 @@ const FLIGHT_MILLISECONDS = 900
 const GLIDE = 0.92
 
 const DRIVE_PARTS = ["drive", "drive-lamp", "drive-plate", "eject-button"]
+
+// The 6128 has no switch of its own: it takes its 5V and 12V from the monitor,
+// whose own power button this desk draws but does not yet wire. Until it does,
+// the badge that carries ENC. over the power lamp, and the lamp in its window,
+// are what the reader presses. That is a liberty and not the machine.
+const POWER_PARTS = ["badge", "power-lamp"]
 
 function cornersOf({ min, max }) {
   const corners = []
@@ -123,12 +130,26 @@ export default class CameraRig {
       part.traverse(piece => leadsTo.set(piece, "drive"))
     }
 
+    for (const name of POWER_PARTS) {
+      const part = machine.getObjectByName(name)
+
+      part.traverse(piece => leadsTo.set(piece, "power"))
+    }
+
+    // The badge lies in the rear strip's top; only that face is framed, and the
+    // lamp stands inside its footprint.
+    const plate = machine.getObjectByName("badge"),
+      badge = new Box3().setFromObject(plate)
+
+    badge.min.y = badge.max.y
+
     this.#models = [machine, monitor]
     this.#views = new Map([
       ["desk", { subject: whole, ...DESK_VIEW }],
       ["set", { subject: whole, ...SET_VIEW }],
       ["monitor", { subject: screen, ...MONITOR_VIEW }],
-      ["drive", { subject: driveFace, ...DRIVE_VIEW }]
+      ["drive", { subject: driveFace, ...DRIVE_VIEW }],
+      ["power", { subject: badge, ...POWER_VIEW }]
     ])
 
     const pose = this.#pose("desk")
