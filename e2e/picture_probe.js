@@ -5,7 +5,8 @@ import {
   SRGBColorSpace,
   WebGPURenderer
 } from "three/webgpu"
-import CpcPicture from "../src/js/emulator/cpc_picture.js"
+import Picture from "../src/js/emulator/picture.js"
+import cpcSignals from "../src/js/emulator/cpc_signals.js"
 import createModule from "../src/js/emulator/module.js"
 
 // Four texels down the target, so the halves of the raster land in rows of
@@ -22,28 +23,31 @@ function channelsOf(pixels, texel) {
 }
 
 // A raster of two colour codes, the first filling its top half, laid through
-// the conversion the page lays it through and read back off the target.
-export default async function readPicture(topCode, bottomCode) {
+// the conversion the page lays it through, for a monitor reading the pins
+// named, and read back off the target.
+export default async function readPicture(topCode, bottomCode, pins = "RGB") {
   const emulator = await createModule(),
     renderer = new WebGPURenderer({ antialias: false })
 
   await renderer.init()
 
-  const columns = emulator._desk_framebuffer_width(),
-    rows = emulator._desk_framebuffer_height(),
+  const columns = emulator._desk_cpc_framebuffer_width(),
+    rows = emulator._desk_cpc_framebuffer_height(),
     framebuffer = new Uint8Array(columns * rows),
     half = Math.floor(rows / 2) * columns
 
   framebuffer.fill(topCode, 0, half)
   framebuffer.fill(bottomCode, half)
 
-  const rgb = code => emulator._desk_rgb(code),
+  const rgb = code => emulator._desk_cpc_rgb(code),
     anisotropy = renderer.getMaxAnisotropy(),
-    picture = new CpcPicture(framebuffer, { columns, rows, rgb, anisotropy }),
+    { colourCodes, signals } = cpcSignals(rgb),
+    picture = new Picture(framebuffer, { columns, rows, colourCodes, anisotropy, signals }),
     material = new MeshBasicNodeMaterial(),
     quad = new QuadMesh(material),
     target = new RenderTarget(ACROSS, DOWN, { depthBuffer: false })
 
+  picture.connect(pins)
   material.colorNode = picture.node
   material.toneMapped = false
   target.texture.colorSpace = SRGBColorSpace

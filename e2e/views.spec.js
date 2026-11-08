@@ -1,5 +1,8 @@
-import { DRIVE, SLOW_WAIT, pointAt, scene, settled, stand } from "./desk_scene.js"
+import { DRIVE, SLOW_WAIT, blank, pointAt, scene, settled, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
+import { resolve } from "node:path"
+
+const RIG_PROBE = resolve(import.meta.dirname, "rig_probe.js")
 
 const WINDOWS = [
   { width: 200, height: 900 },
@@ -260,4 +263,19 @@ test("motion reduced while the desk stands stops a released turn at once", async
     still = later.equals(released)
 
   expect(still).toBe(true)
+})
+
+test("a machine with a switch of its own is switched there, and its badge leads nowhere", async function ({
+  page
+}) {
+  await blank(page)
+
+  const leads = await page.evaluate(async function (url) {
+    const { default: leadsOf } = await import(url)
+
+    return { switched: leadsOf(true), badged: leadsOf(false) }
+  }, `/@fs${RIG_PROBE}`)
+
+  expect(leads.switched).toEqual({ badge: null, powerSwitch: "power" })
+  expect(leads.badged).toEqual({ badge: "power" })
 })

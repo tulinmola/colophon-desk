@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { stand } from "./desk_scene.js"
 
 test("the options turn the tube and put it back", async function ({ page }) {
   const errors = []
@@ -70,4 +71,33 @@ test("the options turn the tube and put it back", async function ({ page }) {
   await expect(glow).toHaveValue(initialGlow)
 
   expect(errors).toEqual([])
+})
+
+test("a green tube offers no mask to turn, and a colour tube no black level", async function ({
+  page
+}) {
+  const controls = page.locator("colophon-options"),
+    mask = controls.locator('[name="phosphorPitch"], [name="slotPitch"]'),
+    blackLevel = controls.locator('[name="blackLevel"]')
+
+  await stand(page, "/cpc464.html")
+  await expect(mask).toHaveCount(0)
+  await expect(blackLevel).toHaveCount(1)
+
+  await stand(page, "/")
+  await expect(mask).toHaveCount(2)
+  await expect(blackLevel).toHaveCount(0)
+})
+
+test("a television offers its grille to turn, and no slots", async function ({ page }) {
+  const controls = page.locator("colophon-options"),
+    slots = controls.locator('[name="phosphorPitch"], [name="slotPitch"]'),
+    grille = controls.locator('[name="grillePitch"]')
+
+  await stand(page, "/spectrum48.html")
+  await expect(grille).toHaveCount(1)
+  await expect(slots).toHaveCount(0)
+
+  await stand(page, "/")
+  await expect(grille).toHaveCount(0)
 })

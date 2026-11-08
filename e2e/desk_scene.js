@@ -1,9 +1,11 @@
 import { expect } from "@playwright/test"
 
+const DESK = ":is(colophon-cpc-desk, colophon-spectrum-desk)"
+
 const SCENE_ONLY = {
   fullPage: true,
-  style: `colophon-cpc-desk { outline: none !important; }
-    colophon-cpc-desk > :not(canvas) { visibility: hidden; }`
+  style: `${DESK} { outline: none !important; }
+    ${DESK} > :not(canvas) { visibility: hidden; }`
 }
 
 // Where frames are slow the desk takes seconds to stand and a picture seconds
@@ -13,11 +15,11 @@ const SLOW_WAIT = { timeout: 30000 }
 // Where the drive's face stands on the canvas in the whole desk's view, as a fraction of its size.
 const DRIVE = { x: 0.8, y: 0.645 }
 
-async function stand(page) {
+async function stand(page, path = "/") {
   const options = page.locator("colophon-options")
 
   await page.setViewportSize({ width: 480, height: 360 })
-  await page.goto("/")
+  await page.goto(path)
   await expect(options).toBeVisible(SLOW_WAIT)
 }
 
@@ -27,7 +29,7 @@ function scene(page) {
 
 // The machine goes on drawing its prompt after the desk stands, for longer
 // where frames are slow: each runs at most 80 ms of the machine's time.
-async function settled(page) {
+async function settled(page, wait = SLOW_WAIT) {
   let previous = null
 
   await expect
@@ -38,10 +40,46 @@ async function settled(page) {
       previous = current
 
       return still
-    }, SLOW_WAIT)
+    }, wait)
     .toBe(true)
 
   return previous
+}
+
+// Nothing on any machine moves on its own at its prompt, so a picture that
+// changed has been typed on.
+async function expectTyped(page, path) {
+  const desk = page.locator(DESK)
+
+  await stand(page, path)
+  await desk.focus()
+
+  const quiet = await settled(page)
+
+  await page.keyboard.press("KeyA")
+
+  await expect
+    .poll(async function () {
+      const typed = await scene(page)
+
+      return typed.equals(quiet)
+    }, SLOW_WAIT)
+    .toBe(false)
+}
+
+// Whether a CONTROL chord typed on the desk was left for the page's own
+// shortcut: dispatchEvent answers false once a listener has taken the default.
+function chordLeftToThePage(desk, code) {
+  return desk.evaluate(function (element, typed) {
+    const chord = { code: typed, ctrlKey: true, bubbles: true, cancelable: true },
+      down = new KeyboardEvent("keydown", chord),
+      up = new KeyboardEvent("keyup", chord),
+      left = element.dispatchEvent(down)
+
+    element.dispatchEvent(up)
+
+    return left
+  }, code)
 }
 
 // A page with nothing on it: the desk fetches a firmware of its own as it
@@ -55,9 +93,9 @@ async function blank(page) {
 }
 
 async function pointAt(page, { x, y }) {
-  const box = await page.locator("colophon-cpc-desk canvas").boundingBox()
+  const box = await page.locator(`${DESK} canvas`).boundingBox()
 
   return { x: box.x + box.width * x, y: box.y + box.height * y }
 }
 
-export { DRIVE, SLOW_WAIT, blank, pointAt, scene, settled, stand }
+export { DRIVE, SLOW_WAIT, blank, chordLeftToThePage, expectTyped, pointAt, scene, settled, stand }

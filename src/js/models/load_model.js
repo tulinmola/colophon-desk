@@ -16,17 +16,24 @@ async function printOn(mesh, language, anisotropy) {
   return print
 }
 
+// Caps of one plastic share one material, and caps of every plastic one atlas
+// and one travel.
 async function letter(keycaps, language, anisotropy, keys) {
   const [keycap] = keycaps,
     url = printUrl(keycap.userData.legends, language),
     atlas = await loadTexture(url, anisotropy),
-    material = new KeycapMaterial(keycap.material, atlas, keys)
+    settings = KeycapMaterial.settings(),
+    byPlastic = Map.groupBy(keycaps, lettered => lettered.material)
 
-  for (const lettered of keycaps) {
-    lettered.material = material
+  for (const [plastic, caps] of byPlastic) {
+    const material = new KeycapMaterial(plastic, atlas, keys, settings)
+
+    for (const lettered of caps) {
+      lettered.material = material
+    }
   }
 
-  return { atlas, settings: material.settings }
+  return { atlas, settings }
 }
 
 export default async function loadModel(url, language, anisotropy, keys) {

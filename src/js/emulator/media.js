@@ -1,6 +1,7 @@
-// A file the reader offers is a disc image, or an archive holding some. The
-// container is read here and nothing more: whether what comes out of it is a
-// disc is the machine's to say, and it says so when the drive is offered one.
+// A file the reader offers is a disc's or a tape's image, or an archive holding
+// some. The container is read here and nothing more: whether what comes out of
+// it is a disc or a tape is the machine's to say, and it says so when it is
+// offered one.
 // The layout [A], PKWARE's own, and the flag that tells a name's encoding: https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
 const DIRECTORY_ENTRY = 0x02014b50,
   LOCAL_HEADER = 0x04034b50,
@@ -21,8 +22,6 @@ const ENCRYPTED = 1,
 // A field standing at its largest says the true figure is kept in a Zip64 record, which this desk does not read.
 const OVERFLOWED = 0xffffffff,
   OVERFLOWED_COUNT = 0xffff
-
-const DISC = ".dsk"
 
 // A name is Unicode only where the archive says so. Every other one was
 // written on a machine whose own code page nobody recorded, and the one those
@@ -144,7 +143,7 @@ async function unpack(view, bytes, entry) {
     known = entry.method == STORED || entry.method == DEFLATED
 
   if (locked) {
-    throw new Error("the disc in it is locked")
+    throw new Error("the image in it is locked")
   }
 
   if (overflowed) {
@@ -152,7 +151,7 @@ async function unpack(view, bytes, entry) {
   }
 
   if (!known) {
-    throw new Error("the disc in it is packed in a way this desk cannot open")
+    throw new Error("the image in it is packed in a way this desk cannot open")
   }
 
   const packed = packedBytes(view, bytes, entry),
@@ -172,15 +171,10 @@ async function unpack(view, bytes, entry) {
   return new Uint8Array(buffer)
 }
 
-function isDisc({ name }) {
-  const suffix = name.slice(-DISC.length)
-
-  return suffix.toLowerCase() == DISC
-}
-
-// An archive names each disc in it; a disc image is the one disc it is, under
-// the name the reader's own file carries. Neither is read until one is chosen.
-export default function discsIn(filename, bytes) {
+// An archive names each image in it whose name ends as one of the suffixes
+// does; an image is the one image it is, under the name the reader's own file
+// carries. Neither is read until one is chosen.
+export default function mediaIn(filename, bytes, suffixes) {
   const archived = bytes[0] == 0x50 && bytes[1] == 0x4b
 
   if (!archived) {
@@ -189,9 +183,13 @@ export default function discsIn(filename, bytes) {
 
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength),
     entries = entriesOf(view, bytes),
-    discs = entries.filter(isDisc)
+    images = entries.filter(function ({ name }) {
+      const lowered = name.toLowerCase()
 
-  return discs.map(function (entry) {
+      return suffixes.some(suffix => lowered.endsWith(suffix))
+    })
+
+  return images.map(function (entry) {
     return {
       name: entry.name,
       length: entry.length,

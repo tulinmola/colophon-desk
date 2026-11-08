@@ -1,13 +1,17 @@
 import ScreenMaterial from "./screen_material"
 
-export default function showPicture(model, { node, lines }) {
+// A monitor's screen names the pins it reads, and the machine's picture is fed
+// to it on those.
+export default function showPicture(model, picture) {
   let screen = null
 
   model.traverse(function (object) {
-    const lit = Object.hasOwn(object.userData, "screen")
+    const pins = object.userData.screen,
+      lit = Boolean(pins)
 
     if (lit) {
-      screen = new ScreenMaterial(object.geometry, node, lines)
+      picture.connect(pins)
+      screen = new ScreenMaterial(object.geometry, picture.node, picture.lines, pins)
       object.material = screen
     }
   })

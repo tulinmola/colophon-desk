@@ -1,5 +1,5 @@
 import { Box3, Vector3 } from "three/webgpu"
-import DiscLabel from "./disc_label"
+import Label from "./label"
 import REDUCED_MOTION from "./reduced_motion"
 
 // How long the disc takes on each leg of its journey, in milliseconds, is a presentation choice, not a measurement of the machine.
@@ -19,8 +19,12 @@ const SLOT_MIDDLE_BELOW_OPENING = 0.0143
 const THROWN_OUT = 0.03
 
 export default class Disc {
+  // The room the machine gives a disc, which an image must stand inside.
+  capacity
+
   model
   #bound
+  #cpc
   #label
   #from = new Vector3()
   #journey = []
@@ -30,7 +34,7 @@ export default class Disc {
   #seated = new Vector3()
   #started = null
 
-  constructor(model, drive) {
+  constructor(model, drive, cpc) {
     model.updateWorldMatrix(true, false)
     drive.updateWorldMatrix(true, false)
 
@@ -44,8 +48,10 @@ export default class Disc {
 
     const label = model.getObjectByName("label")
 
+    this.capacity = cpc.discCapacity
     this.model = model
-    this.#label = new DiscLabel(label)
+    this.#cpc = cpc
+    this.#label = new Label(label)
     this.#rest.copy(model.position)
     this.#mouth.set(across, slot - middle, face.max.z - headEnd)
     this.#seated.set(across, slot - middle, face.max.z - labelEnd)
@@ -64,14 +70,38 @@ export default class Disc {
     this.#travel(journey)
   }
 
+  // What a click on one of the drive's parts asks of it: EJECT pressed.
+  answers(name) {
+    const ejecting = name == "eject-button"
+
+    return ejecting ? "eject" : null
+  }
+
+  // A disc on its way is turned round by the next one offered, so the drive
+  // takes one at any time.
+  get carrying() {
+    return false
+  }
+
+  put(bytes) {
+    return this.#cpc.insertDisc(bytes)
+  }
+
+  problem() {
+    return this.#cpc.discProblem()
+  }
+
   // A file the machine would not read was never a disc, so the label it was
   // shown under is taken off again.
   erase() {
     this.#label.erase()
   }
 
+  // The machine lets go of the disc at once, whether or not it had it yet.
   eject() {
     const throwing = this.#bound == this.#seated
+
+    this.#cpc.ejectDisc()
 
     if (throwing) {
       this.#travel(this.#outward())

@@ -20,7 +20,7 @@ h1 {
   clip-path: inset(50%);
 }
 
-colophon-cpc-desk {
+:is(colophon-cpc-desk, colophon-spectrum-desk) {
   --inset: 0.75rem;
   --button-size: 2.25rem;
   --spacing: 0.4rem;
@@ -30,8 +30,8 @@ colophon-cpc-desk {
   height: 100dvh;
 
   /* A desk holding the focus is a desk holding the keyboard: arrow keys stop
-     scrolling the page and Escape stops meaning escape, so it says so. Not
-     :focus-visible, because the ordinary way to reach it is a click. */
+     scrolling the page, and on a CPC Escape stops meaning escape, so it says
+     so. Not :focus-visible, because the ordinary way to reach it is a click. */
   &:focus {
     outline: 2px solid color-mix(in srgb, var(--ink) 10%, transparent);
     outline-offset: -2px;
@@ -46,7 +46,7 @@ colophon-cpc-desk {
   }
 }
 
-colophon-cpc-desk > menu button,
+:is(colophon-cpc-desk, colophon-spectrum-desk) > menu button,
 colophon-options > button {
   display: grid;
   place-items: center;
@@ -81,7 +81,7 @@ colophon-options > button {
   }
 }
 
-colophon-cpc-desk > menu {
+:is(colophon-cpc-desk, colophon-spectrum-desk) > menu {
   position: absolute;
   top: var(--inset);
   left: var(--inset);
@@ -96,7 +96,7 @@ colophon-cpc-desk > menu {
   }
 }
 
-colophon-cpc-desk > output {
+:is(colophon-cpc-desk, colophon-spectrum-desk) > output {
   position: absolute;
   box-sizing: border-box;
   top: calc(var(--inset) + var(--button-size) + var(--spacing));
@@ -115,7 +115,7 @@ colophon-cpc-desk > output {
   }
 }
 
-colophon-cpc-desk > dialog {
+:is(colophon-cpc-desk, colophon-spectrum-desk) > dialog {
   margin-block: auto var(--inset);
   color: var(--ink);
   background: var(--ground);
