@@ -1,7 +1,7 @@
 import { CanvasTexture, SRGBColorSpace } from "three/webgpu"
 import { FAMILY } from "./handwriting"
 
-// What a hand did with a label is measured nowhere. Three guesses stand here: that the name was written in capitals, as a title along a ruled line; that it was written in a ballpoint's blue, black being what the label's own prints are in; and that it was written at one size, a name too long for its line running out of room rather than shrinking to fit, as a hand that keeps its own size does.
+// What a hand did with a label, a disc's or a cassette's, is measured nowhere. Three guesses stand here: that the name was written in capitals, as a title along a ruled line; that it was written in a ballpoint's blue, black being what the label's own prints are in; and that it was written at one size, a name too long for its line running out of room rather than shrinking to fit, as a hand that keeps its own size does.
 const INK = "#26306a"
 
 // Large enough that the measurement does not turn on the hinting of a small size.
@@ -21,7 +21,7 @@ function nameOn(filename) {
   return stem.toUpperCase()
 }
 
-export default class DiscLabel {
+export default class Label {
   #areas
   #context
   #paper

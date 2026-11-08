@@ -9,9 +9,8 @@
 // The full record is the emulator's own tools/fetch-roms.sh.
 // https://worldofspectrum.net/app/themes/wosc-classic/static/legacy/amstrad-roms.txt
 //
-// A part is only ever half an image: the Spanish 6128 keeps its operating
-// system and its BASIC in separate files, and the machine wants them joined in
-// that order.
+// An image may come in parts, joined in the order they are listed: the Spanish
+// 6128 keeps its operating system and its BASIC in separate files.
 const IMAGES = {
   // Amstrad part 40038, the Spanish 6128's firmware, joined from the two
   // halves Arnold keeps: https://github.com/rofl0r/arnold
@@ -22,8 +21,26 @@ const IMAGES = {
       "https://raw.githubusercontent.com/rofl0r/arnold/master/roms/cpc6128s/basic.rom"
     ]
   },
-  // The ROM the disc interface brings, from Caprice32's copy of Amstrad's
-  // image: https://github.com/ColinPitrat/caprice32
+  // The Spanish 464's firmware, whole, from zenzx's copy at a pinned commit,
+  // which boots "Amstrad 64K Microcomputer (s1)" as the Spanish 464's manual
+  // shows it, and differs from the UK image only where SOFT 968's Spanish
+  // System section says it does: https://github.com/ha1tch/zenzx. SpecIde's
+  // release carries the same bytes: https://github.com/MartianGirl/SpecIde.
+  // CPCWiki gives the Spanish 464's firmware as Amstrad part 40037, but no
+  // host labels this image so: https://www.cpcwiki.eu/index.php/CPC_472
+  cpc464es: {
+    sha256: "03163aae3e10ff01337757e9b8c0d6f31043db90512f8e26f3ac99850f90c8ed",
+    parts: [
+      "https://raw.githubusercontent.com/ha1tch/zenzx/778e8b3b3999de401d65fbd112814a98ea3b4e02/rom/cpc464-spanish.rom"
+    ]
+  },
+  // The ROM a disc interface brings, a 6128's or a DDI-1's: both carry
+  // Amstrad part 40015, the DDI-1's at IC104 [A], DDI-1/FD-1 Service Manual
+  // p14: https://cpcrulez.fr/hardware-service_manual-dd1_fd1.htm, and MAME's
+  // DDI-1 loads these same bytes [C]:
+  // https://github.com/mamedev/mame/blob/master/src/devices/bus/cpc/ddi1.cpp.
+  // From Caprice32's copy of Amstrad's image:
+  // https://github.com/ColinPitrat/caprice32
   amsdos: {
     sha256: "ea65e0fb44ee93ede4b6c507509b7e5ddf497fb7155023bea91ef229469fa04d",
     parts: ["https://raw.githubusercontent.com/ColinPitrat/caprice32/master/rom/amsdos.rom"]

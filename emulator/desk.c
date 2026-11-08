@@ -1,6 +1,7 @@
 /*
- * desk.c — what the desk asks of a machine: a 6128 that runs, the frame it
- * has just finished drawing, and the disc in its drive.
+ * desk.c — what the desk asks of a machine: a 6128 or a 464 that runs, the
+ * frame it has just finished drawing, the disc in its drive and the tape in a
+ * 464's datacorder.
  */
 #include <stdbool.h>
 #include <stdint.h>
@@ -10,20 +11,35 @@
 #include "dsk.h"
 #include "floppy.h"
 #include "gate_array.h"
+#include "ppi.h"
+#include "tape.h"
+#include "tzx.h"
 
-/* A 6128's 128K, and the 32K image holding its operating system and BASIC
-   beside the 16K AMSDOS that comes with the disc interface. */
+/* A 6128's 128K, of which a 464 has the first 64K, and the 32K image holding
+   either one's operating system and BASIC beside the 16K AMSDOS that comes
+   with a disc interface. */
 #define DESK_RAM_SIZE 0x20000
+#define DESK_CPC464_RAM_SIZE 0x10000
 #define DESK_ROM_SIZE 0x8000
 #define DESK_BASIC_AT 0x4000
 #define DESK_AMSDOS_SIZE 0x4000
 
-/* The 6128's own drive is A, the one the core numbers 0. */
+/* The drive a disc interface calls A, the one the core numbers 0: a 6128's
+   own, or the drive that comes with a DDI-1. */
 #define DESK_DRIVE 0
 
 /* A CPC's own discs are a fifth of this. The rest is for the extended images
    of protected ones, which store every reading of an unstable sector. */
 #define DESK_DISC_SIZE 0x100000
+
+/* The largest of the 3,536 images in archive.org's collection of CPC tapes is
+   747K [E]: https://archive.org/details/amstrad-cpc-cdt-collection */
+#define DESK_TAPE_SIZE 0x100000
+
+/* Port C's bit 4 closes the datacorder's relay [A], SOFT 968, Appendix F,
+   "Bit 4: Datacorder cassette motor on":
+   https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual */
+#define DESK_MOTOR 0x10
 
 static cpc_t cpc;
 static uint8_t ram[DESK_RAM_SIZE];
@@ -48,6 +64,24 @@ static bool disc_in;
    not. */
 static bool drive_worked;
 
+/* The image is borrowed where it lies, as a disc's is, and is written over
+   only on the way into desk_insert_tape, with no tick run in between. */
+static uint8_t tape_image[DESK_TAPE_SIZE];
+static uint32_t tape_length;
+static tzx_t tape_reader;
+static tape_t deck;
+static const char *tape_problem;
+static bool tape_in;
+
+/* PLAY down and nothing holding the tape off the capstan: the head is on the
+   tape and the relay alone turns it. With PLAY up the head is drawn back and
+   reads nothing, which is what the machine makes of an empty deck. */
+static bool tape_engaged;
+
+/* How far the tape has run past the head since its start, in the board's
+   ticks. A tape runs on past the end of what was recorded on it. */
+static uint64_t tape_run;
+
 /* What the drive's own bezel calls its IN USE lamp. The user manual has it show
  * "data being read from, or written to the disc", and says a second drive's
  * "will illuminate constantly. It will extinguish when the main disc drive
@@ -71,6 +105,22 @@ static bool drive_at_work(void) {
   return answering || unit->seeking;
 }
 
+/* The deck stands in the machine only while its head is on a tape. */
+static void seat_tape(void) {
+  const bool reading = tape_in && tape_engaged;
+
+  cpc_insert_tape(&cpc, reading ? &deck : NULL);
+}
+
+/* The relay is held closed by the bit, as cpc.c holds the motor, and only
+   while the upper nibble of port C is an output. */
+static bool motor_on(void) {
+  const bool driven = !cpc.ppi.port_c_upper_input;
+  const bool set = (ppi_output_of(&cpc.ppi, PPI_PORT_C) & DESK_MOTOR) != 0;
+
+  return driven && set;
+}
+
 /* The sync as of the last tick, kept between calls. The monitor holds the flag
    up for the length of the pulse and not an instant, so a frame is its rising
    edge and never its level. */
@@ -86,35 +136,57 @@ uint8_t *desk_amsdos(void) { return amsdos; }
 void desk_blank_picture(void) { memset(framebuffer, GATE_ARRAY_BLACK, sizeof framebuffer); }
 
 /* The operating system is the image's first half and BASIC its second, which
- * goes in as upper ROM 0; the disc interface a 6128 has soldered in brings
- * AMSDOS as upper ROM 7.
+ * goes in as upper ROM 0.
  *
  * With no monitor plugged in the machine runs on and draws into the void, so
  * the framebuffer is never written and no frame ever ends.
  */
-void desk_boot_cpc6128(void) {
+static void boot(uint32_t ram_size) {
   desk_blank_picture();
   /* cpc_init wipes the machine's own chips and not the store the host lends
      it, so a machine made again would wake inside the dead one's memory. Zero
-     is a choice and not a figure: a real 6128 wakes in whatever its memory
+     is a choice and not a figure: a real CPC wakes in whatever its memory
      held, and a machine made here is made new. */
   memset(ram, 0, sizeof ram);
-  cpc_init(&cpc, ram, DESK_RAM_SIZE, rom);
+  cpc_init(&cpc, ram, ram_size, rom);
   cpc_set_upper_rom(&cpc, 0, rom + DESK_BASIC_AT);
+  cpc_connect_monitor(&cpc, framebuffer);
+  retraced = false;
+  drive_worked = false;
+}
+
+/* A disc interface brings AMSDOS as upper ROM 7. The DDI-1's is "normally
+   number #07" [A], SOFT 158A, ch. 5:
+   https://web.archive.org/web/20260121184155/https://cpcrulez.fr/codingBOOK_soft158a-ddi-1_firmware_0500.htm */
+static void fit_disc_interface(void) {
   cpc_fit_disc_interface(&cpc, true);
   cpc_set_upper_rom(&cpc, 7, amsdos);
-  cpc_connect_monitor(&cpc, framebuffer);
 
   /* cpc_init clears the drive as it clears everything else, so the disc goes
      back in behind it. */
   if (disc_in) {
     cpc_insert_disc(&cpc, DESK_DRIVE, &disc);
   }
-
-  retraced = false;
-  drive_worked = false;
 }
 
+/* A 6128 has its disc interface soldered in. */
+void desk_boot_cpc6128(void) {
+  boot(DESK_RAM_SIZE);
+  fit_disc_interface();
+}
+
+/* A 464 has a disc interface only when a DDI-1's stands on its FLOPPY DISC
+   edge connector, and its datacorder's tape outlives the machine as a disc
+   does. */
+void desk_boot_cpc464(bool disc_interface) {
+  boot(DESK_CPC464_RAM_SIZE);
+
+  if (disc_interface) {
+    fit_disc_interface();
+  }
+
+  seat_tape();
+}
 
 uint8_t *desk_framebuffer(void) { return framebuffer; }
 
@@ -139,6 +211,12 @@ uint32_t desk_run_until_retrace(uint32_t limit) {
   for (uint32_t ticks = 0; ticks < limit; ticks++) {
     cpc_tick(&cpc);
     drive_worked = drive_worked || drive_at_work();
+
+    const bool turning = cpc.tape != NULL && motor_on();
+
+    if (turning) {
+      tape_run++;
+    }
 
     const bool syncing = cpc.monitor.frame_retraced;
     const bool ended = syncing && !retraced;
@@ -211,3 +289,100 @@ bool desk_drive_in_use(void) {
 
 /* Why the last disc offered was refused, or NULL when it was not. */
 const char *desk_disc_problem(void) { return disc_problem; }
+
+uint8_t *desk_tape(void) { return tape_image; }
+
+uint32_t desk_tape_capacity(void) { return DESK_TAPE_SIZE; }
+
+/* A tape comes in wound to its start, the old one out first, so a refusal
+   leaves the deck empty. */
+bool desk_insert_tape(uint32_t length) {
+  tape_problem = NULL;
+  tape_in = false;
+  seat_tape();
+
+  if (length > DESK_TAPE_SIZE) {
+    tape_problem = "the image is larger than the room a tape is given here";
+    return false;
+  }
+
+  if (!tzx_open(&tape_reader, tape_image, length, CPC_TICKS_PER_MILLISECOND, TZX_AMSTRAD,
+                &tape_problem)) {
+    return false;
+  }
+
+  tape_length = length;
+  tape_insert(&deck, tzx_next_pulse, &tape_reader);
+  tape_run = 0;
+  tape_in = true;
+  seat_tape();
+  return true;
+}
+
+void desk_eject_tape(void) {
+  tape_in = false;
+  seat_tape();
+}
+
+void desk_engage_tape(bool engaged) {
+  tape_engaged = engaged;
+  seat_tape();
+}
+
+/* Why the last tape offered was refused, or NULL when it was not. */
+const char *desk_tape_problem(void) { return tape_problem; }
+
+double desk_tape_position(void) { return (double)tape_run / CPC_TICKS_PER_MILLISECOND; }
+
+/* How long what is recorded on the tape plays, read through once. */
+double desk_tape_recorded(void) {
+  tzx_t walker;
+  const char *problem = NULL;
+  tape_pulse_t pulse;
+  uint64_t ticks = 0;
+
+  tzx_open(&walker, tape_image, tape_length, CPC_TICKS_PER_MILLISECOND, TZX_AMSTRAD, &problem);
+
+  while (tzx_next_pulse(&walker, &pulse)) {
+    ticks += pulse.ticks;
+  }
+
+  return (double)ticks / CPC_TICKS_PER_MILLISECOND;
+}
+
+/* The reader plays forward only, so a tape wound to a place is read again
+ * from its start, the pulses before the place passed over unplayed, as the
+ * tape passes a head drawn back from it. The one the place falls inside is
+ * held for what is left of it, as the deck would have held it.
+ */
+void desk_wind_tape(double milliseconds) {
+  const uint64_t to = (uint64_t)(milliseconds * CPC_TICKS_PER_MILLISECOND);
+  const char *problem = NULL;
+  tape_pulse_t pulse;
+  uint64_t passed = 0;
+
+  tzx_open(&tape_reader, tape_image, tape_length, CPC_TICKS_PER_MILLISECOND, TZX_AMSTRAD,
+           &problem);
+  tape_insert(&deck, tzx_next_pulse, &tape_reader);
+
+  while (passed < to) {
+    const bool more = tzx_next_pulse(&tape_reader, &pulse);
+
+    if (!more) {
+      break;
+    }
+
+    const uint64_t ends = passed + pulse.ticks;
+    const bool inside = ends > to;
+
+    if (inside) {
+      deck.level = pulse.level;
+      deck.ticks_left = (uint32_t)(ends - to);
+      break;
+    }
+
+    passed = ends;
+  }
+
+  tape_run = to;
+}

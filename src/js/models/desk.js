@@ -1,23 +1,35 @@
 import { Box3, DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
+import Cassette from "./cassette"
+import Datacorder from "./datacorder"
 import Disc from "./disc"
 import { loadHandwriting } from "./handwriting"
 import loadModel from "./load_model"
 import showPicture from "./show_picture"
 
-const CPC6128_URL = new URL("../../assets/models/cpc6128.glb", import.meta.url),
-  CTM644_URL = new URL("../../assets/models/ctm644.glb", import.meta.url),
-  CF2_URL = new URL("../../assets/models/cf2.glb", import.meta.url)
+const MACHINE_URLS = {
+    cpc6128: new URL("../../assets/models/cpc6128.glb", import.meta.url),
+    cpc464: new URL("../../assets/models/cpc464.glb", import.meta.url)
+  },
+  MONITOR_URLS = {
+    ctm644: new URL("../../assets/models/ctm644.glb", import.meta.url),
+    gt64: new URL("../../assets/models/gt64.glb", import.meta.url)
+  },
+  DISC_INTERFACE_URLS = {
+    ddi1: new URL("../../assets/models/ddi1.glb", import.meta.url)
+  },
+  CF2_URL = new URL("../../assets/models/cf2.glb", import.meta.url),
+  CT15_URL = new URL("../../assets/models/ct15.glb", import.meta.url)
 
 const LANGUAGE = "es"
 
-// Depths 170 mm and 365 mm [A], CPC6128 Service Manual technical specifications: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
-const MACHINE_DEPTH = 170,
-  MONITOR_DEPTH = 365
+// One chosen gap stands between the machine and the monitor behind it, between the machine and the disc or cassette before it, and between the machine and a drive beside it where the monitor does not stand it further off, measured from what each model reaches. The gap is an arrangement choice, not a measurement.
+const GAP = 0.03
 
-// One chosen gap of 30 mm stands between the machines and before the disc: half each depth and the gap give 297.5 mm between the machine's middle and the monitor's, and 115 mm from that middle to the disc's rear [E]. The gap is an arrangement choice, not a measurement.
-const GAP = 30,
-  MONITOR_BEHIND = -(MACHINE_DEPTH / 2 + MONITOR_DEPTH / 2 + GAP) / 1000,
-  DISC_REAR = (MACHINE_DEPTH / 2 + GAP) / 1000
+// A DDI-1's drive stands "to the right of the computer" and "at least 20 cm from the monitor" [A], User Instructions F1.4: https://archive.org/download/manualsonline-id-073a0aea-c864-4724-8004-a2dbc04e2798/073a0aea-c864-4724-8004-a2dbc04e2798.pdf. Its front stands level with the computer's, as a photograph of one at home stands it [E]: https://www.classic-computers.org.nz/blog/images/2015-10-06-amstrad-fdd1-with-464-3-800x.jpg. That is an arrangement choice, and the 20 cm is kept across, the drive being as deep as the monitor stands behind.
+const MONITOR_CLEARANCE = 0.2
+
+// The parts of a drive built into the machine, which lead the eye to it; a drive standing on its own leads it from all of itself.
+const BUILT_IN_DRIVE_PARTS = ["drive", "drive-lamp", "drive-plate", "eject-button"]
 
 // No source here gives the colour of a lamp alight, and the lenses were sampled with the machine standing off, so a lamp glowing in its lens's own hue, and how brightly, are both guesses.
 const LAMP_GLOW = 1
@@ -31,7 +43,11 @@ const SKY = 0xffffff,
   SUN_INTENSITY = 1.6
 
 export default class Desk {
+  datacorder = null
   disc = null
+  discInterface = null
+  drive = null
+  driveParts = []
   machine = null
   monitor = null
   scene = new Scene()
@@ -48,31 +64,166 @@ export default class Desk {
     this.scene.add(sky, sun)
   }
 
-  async load(anisotropy, { picture, keys }) {
-    const loading = [
-        loadModel(CPC6128_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CTM644_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CF2_URL, LANGUAGE, anisotropy, keys),
-        loadHandwriting()
+  async load(anisotropy, cpc, names) {
+    const { picture, keys } = cpc,
+      fitted = names.discInterface != null,
+      loading = [
+        loadModel(MACHINE_URLS[names.machine], LANGUAGE, anisotropy, keys),
+        loadModel(MONITOR_URLS[names.monitor], LANGUAGE, anisotropy, keys),
+        fitted
+          ? loadModel(DISC_INTERFACE_URLS[names.discInterface], LANGUAGE, anisotropy, keys)
+          : null
       ],
-      [machine, monitor, disc] = await Promise.all(loading)
+      [machine, monitor, discInterface] = await Promise.all(loading),
+      screen = showPicture(monitor.model, picture),
+      lid = machine.model.getObjectByName("cassette-lid"),
+      machineBounds = this.#boundsOf(machine.model)
 
-    const screen = showPicture(monitor.model, picture),
-      drive = machine.model.getObjectByName("drive"),
-      driveBounds = this.#boundsOf(drive),
-      discBounds = this.#boundsOf(disc.model),
-      driveMiddle = new Vector3()
-
-    driveBounds.getCenter(driveMiddle)
     this.settings = { ...screen.settings, ...machine.keyboard }
-    this.#wireLamps(machine.model)
-    monitor.model.position.z = MONITOR_BEHIND
-    disc.model.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
-    this.disc = new Disc(disc.model, drive)
     this.machine = machine.model
     this.monitor = monitor.model
-    this.#textures = [...machine.textures, ...monitor.textures, ...disc.textures]
-    this.scene.add(machine.model, monitor.model, disc.model)
+    this.#textures = [...machine.textures, ...monitor.textures]
+    this.scene.add(machine.model, monitor.model)
+
+    if (fitted) {
+      this.#fitDiscInterface(discInterface)
+    }
+
+    this.#standMonitor(machineBounds)
+
+    if (fitted) {
+      this.#standDiscDrive(machineBounds)
+    } else {
+      this.#findBuiltInDrive()
+    }
+
+    if (this.drive) {
+      await this.#layDisc(machineBounds, anisotropy, cpc)
+    }
+
+    if (lid) {
+      await this.#layCassette(lid, machineBounds, anisotropy, cpc)
+    }
+
+    this.#powerLens = this.#lightPowerLamp(machine.model)
+  }
+
+  // The interface stands on the edge connector the machine's model names, on
+  // the desk, and the drive it comes with is switched on before the machine,
+  // as its manual says, so its POWER lamp is alight from the start.
+  #fitDiscInterface({ model, textures }) {
+    const connector = this.machine.getObjectByName("floppy-disc"),
+      unit = model.getObjectByName("disc-interface"),
+      at = new Vector3()
+
+    connector.getWorldPosition(at)
+    unit.position.set(at.x, 0, at.z)
+    this.discInterface = model
+    this.#textures.push(...textures)
+    this.#lightPowerLamp(model)
+    this.scene.add(model)
+  }
+
+  // Behind the machine and whatever stands on its rear.
+  #standMonitor(machineBounds) {
+    const behind = machineBounds.clone(),
+      monitorBounds = this.#boundsOf(this.monitor)
+
+    if (this.discInterface) {
+      const unit = this.discInterface.getObjectByName("disc-interface"),
+        unitBounds = this.#boundsOf(unit)
+
+      behind.union(unitBounds)
+    }
+
+    this.monitor.position.z = behind.min.z - GAP - monitorBounds.max.z
+  }
+
+  #standDiscDrive(machineBounds) {
+    const model = this.discInterface,
+      unit = model.getObjectByName("disc-drive"),
+      monitorBounds = this.#boundsOf(this.monitor),
+      beside = machineBounds.max.x + GAP,
+      clear = monitorBounds.max.x + MONITOR_CLEARANCE,
+      left = Math.max(beside, clear)
+
+    unit.position.set(left, 0, machineBounds.max.z)
+    this.drive = model.getObjectByName("drive")
+    this.driveParts = [unit]
+    this.#layRibbon(model)
+  }
+
+  // The ribbon is laid straight across the desk from the interface's end of it
+  // to the drive's, over each of them for half its own width, where it folds.
+  #layRibbon(model) {
+    const ribbon = model.getObjectByName("ribbon"),
+      interfaceEnd = model.getObjectByName("ribbon-from"),
+      driveEnd = model.getObjectByName("ribbon-to"),
+      from = new Vector3(),
+      to = new Vector3(),
+      own = this.#boundsOf(ribbon)
+
+    interfaceEnd.getWorldPosition(from)
+    driveEnd.getWorldPosition(to)
+
+    const across = new Vector3().subVectors(to, from),
+      length = across.length(),
+      half = (own.max.z - own.min.z) / 2,
+      laidLength = own.max.x - own.min.x
+
+    ribbon.position.copy(from).addScaledVector(across, -half / length)
+    ribbon.rotation.y = Math.atan2(-across.z, across.x)
+    ribbon.scale.x = (length + 2 * half) / laidLength
+  }
+
+  #findBuiltInDrive() {
+    const drive = this.machine.getObjectByName("drive"),
+      built = drive != null
+
+    if (built) {
+      this.drive = drive
+      this.driveParts = BUILT_IN_DRIVE_PARTS.map(name => this.machine.getObjectByName(name))
+    }
+  }
+
+  // A desk with a drive has a disc lying before the drive, with a name written
+  // on its label, and a lamp on the drive's bezel.
+  async #layDisc(machineBounds, anisotropy, cpc) {
+    const loading = [loadModel(CF2_URL, LANGUAGE, anisotropy, cpc.keys), loadHandwriting()],
+      [disc] = await Promise.all(loading),
+      holder = this.discInterface ?? this.machine,
+      slot = holder.getObjectByName("drive-slot"),
+      discBounds = this.#boundsOf(disc.model),
+      mouth = new Vector3()
+
+    slot.getWorldPosition(mouth)
+    disc.model.position.set(mouth.x, 0, machineBounds.max.z + GAP - discBounds.min.z)
+    this.#driveLens = this.#unlitDriveLamp(holder)
+    this.disc = new Disc(disc.model, slot, cpc)
+    this.#textures.push(...disc.textures)
+    this.scene.add(disc.model)
+  }
+
+  // A machine with a datacorder has a cassette on the desk before its lid, with a name written on its label.
+  async #layCassette(lid, machineBounds, anisotropy, cpc) {
+    const loading = [loadModel(CT15_URL, LANGUAGE, anisotropy, cpc.keys), loadHandwriting()],
+      [cassette] = await Promise.all(loading),
+      lidBounds = this.#boundsOf(lid),
+      cassetteBounds = this.#boundsOf(cassette.model),
+      lidMiddle = new Vector3()
+
+    lidBounds.getCenter(lidMiddle)
+    cassette.model.position.set(
+      lidMiddle.x,
+      -cassetteBounds.min.y,
+      machineBounds.max.z + GAP - cassetteBounds.min.z
+    )
+    this.scene.add(cassette.model)
+
+    const laid = new Cassette(cassette.model)
+
+    this.datacorder = new Datacorder(this.machine, laid, cpc)
+    this.#textures.push(...cassette.textures)
   }
 
   // A Box3 takes an object's parents' matrices as they last stood, and no frame has been drawn yet.
@@ -85,20 +236,27 @@ export default class Desk {
     return bounds
   }
 
-  // Both lamps are cut from one material in the model, so the drive's takes a
-  // copy of its own before either is lit.
-  #wireLamps(machine) {
-    const power = machine.getObjectByName("power-lamp"),
-      drive = machine.getObjectByName("drive-lamp"),
+  #lightPowerLamp(model) {
+    const power = model.getObjectByName("power-lamp"),
+      lens = power.material
+
+    lens.emissive.copy(lens.color)
+    lens.emissiveIntensity = LAMP_GLOW
+
+    return lens
+  }
+
+  // A machine's two lamps may be cut from one material in its model, so the
+  // drive's takes a copy of its own before either is lit.
+  #unlitDriveLamp(model) {
+    const drive = model.getObjectByName("drive-lamp"),
       lens = drive.material.clone()
 
     drive.material = lens
-    power.material.emissive.copy(power.material.color)
-    power.material.emissiveIntensity = LAMP_GLOW
     lens.emissive.copy(lens.color)
     lens.emissiveIntensity = 0
-    this.#driveLens = lens
-    this.#powerLens = power.material
+
+    return lens
   }
 
   showPower(on) {
@@ -114,16 +272,14 @@ export default class Desk {
       materials = new Set(),
       textures = new Set(this.#textures)
 
-    for (const model of [this.machine, this.monitor, this.disc.model]) {
-      model.traverse(function (object) {
-        const drawn = object.isMesh
+    this.scene.traverse(function (object) {
+      const drawn = object.isMesh
 
-        if (drawn) {
-          geometries.add(object.geometry)
-          materials.add(object.material)
-        }
-      })
-    }
+      if (drawn) {
+        geometries.add(object.geometry)
+        materials.add(object.material)
+      }
+    })
 
     for (const material of materials) {
       const mapped = Boolean(material.map)

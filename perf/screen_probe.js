@@ -17,7 +17,7 @@ import { texture } from "three/tsl"
 const RASTER = { columns: 1024, rows: 312 }
 
 // The plane carries that raster at the shape the beam sweeps, not the CTM644's aperture: the probe exercises the shader's arithmetic, not the tube.
-export default async function createScreen(options = {}) {
+export default async function createScreen(options = {}, pins = "RGB") {
   const renderer = new WebGPURenderer(options),
     data = new Uint8Array(RASTER.columns * RASTER.rows * 4),
     picture = new DataTexture(data, RASTER.columns, RASTER.rows),
@@ -39,7 +39,7 @@ export default async function createScreen(options = {}) {
   camera.up.set(0, 0, -1)
 
   const node = texture(picture),
-    material = new ScreenMaterial(geometry, node, RASTER.rows),
+    material = new ScreenMaterial(geometry, node, RASTER.rows, pins),
     settings = material.settings,
     screen = new Mesh(geometry, material)
 

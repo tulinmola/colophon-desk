@@ -6,10 +6,19 @@ import fetchFirmware from "./firmware"
 // time instead, as one switched off would.
 const MAXIMUM_DEBT_MILLISECONDS = 80
 
-// The machine on the desk is a Spanish 6128, and this is the firmware its
-// keys are lettered for.
-const MACHINE_IMAGE = "cpc6128es",
-  DISC_IMAGE = "amsdos"
+// Each machine boots the Spanish firmware its keys are lettered for, and AMSDOS
+// beside it where it has a disc interface: a 6128 has its own soldered in, and
+// a 464 has one only when it is given one.
+const MACHINES = {
+    cpc6128: { firmware: "cpc6128es", disc: "amsdos", boot: module => module._desk_boot_cpc6128() },
+    cpc464: { firmware: "cpc464es", disc: null, boot: module => module._desk_boot_cpc464(false) }
+  },
+  // The disc interfaces each machine may be given, by the names a desk names
+  // them under: a 464 takes the DDI-1's on its FLOPPY DISC edge connector.
+  DISC_INTERFACES = {
+    cpc6128: {},
+    cpc464: { ddi1: { disc: "amsdos", boot: module => module._desk_boot_cpc464(true) } }
+  }
 
 const BITS_A_LINE = 8
 
@@ -24,38 +33,51 @@ export default class Cpc {
   // The room a disc is given here, which an image must stand inside.
   discCapacity
 
+  // The room a tape is given here, which an image must stand inside.
+  tapeCapacity
+
   // Whether the machine is switched on. One switched off is not a machine
   // standing idle: it is gone, and switching on makes another.
   running = true
 
   #debt = 0
   #discAt
+  #boot
   #last
   #matrix
   #module
   #pendingReleases = new Set()
   #presentCount = 0
   #pressedAt = new Map()
+  #tapeAt
   #ticksPerFrame
   #ticksPerMillisecond
 
-  static async create(signal, anisotropy) {
+  static async create(signal, anisotropy, machine, discInterface) {
     const module = await createModule(),
-      fetching = [fetchFirmware(MACHINE_IMAGE, signal), fetchFirmware(DISC_IMAGE, signal)],
+      { firmware } = MACHINES[machine],
+      fitted = discInterface != null,
+      { disc, boot } = fitted ? DISC_INTERFACES[machine][discInterface] : MACHINES[machine],
+      fetching = [fetchFirmware(firmware, signal), disc ? fetchFirmware(disc, signal) : null],
       // An image answering to its pin is the length that pin was taken over,
       // so the room it lands in is settled before it is fetched.
       [rom, amsdos] = await Promise.all(fetching),
-      romAt = module._desk_rom(),
-      amsdosAt = module._desk_amsdos()
+      romAt = module._desk_rom()
 
     module.HEAPU8.set(rom, romAt)
-    module.HEAPU8.set(amsdos, amsdosAt)
-    module._desk_boot_cpc6128()
 
-    return new Cpc(module, anisotropy)
+    if (amsdos) {
+      const amsdosAt = module._desk_amsdos()
+
+      module.HEAPU8.set(amsdos, amsdosAt)
+    }
+
+    boot(module)
+
+    return new Cpc(module, anisotropy, boot)
   }
 
-  constructor(module, anisotropy) {
+  constructor(module, anisotropy, boot) {
     const framebufferAt = module._desk_framebuffer(),
       columns = module._desk_framebuffer_width(),
       rows = module._desk_framebuffer_height(),
@@ -71,7 +93,10 @@ export default class Cpc {
     this.#matrix = module.HEAPU8.subarray(matrixAt, matrixAt + lines)
     this.#discAt = module._desk_disc()
     this.discCapacity = module._desk_disc_capacity()
+    this.#tapeAt = module._desk_tape()
+    this.tapeCapacity = module._desk_tape_capacity()
     this.#module = module
+    this.#boot = boot
     this.#ticksPerFrame = module._desk_ticks_per_frame()
     this.#ticksPerMillisecond = module._desk_ticks_per_millisecond()
     this.#last = performance.now()
@@ -130,21 +155,55 @@ export default class Cpc {
   }
 
   discProblem() {
-    const heap = this.#module.HEAPU8,
-      at = this.#module._desk_disc_problem(),
-      reported = at != 0
+    const at = this.#module._desk_disc_problem()
 
-    if (!reported) {
-      return null
-    }
-
-    const end = heap.indexOf(0, at),
-      sentence = heap.subarray(at, end)
-
-    return TEXT.decode(sentence)
+    return this.#sentenceAt(at)
   }
 
-  // The machine's own power, which the disc in its drive outlives.
+  // An image with no room for it is never written, as a disc's is not.
+  insertTape(bytes) {
+    const module = this.#module,
+      fits = bytes.length <= this.tapeCapacity
+
+    if (fits) {
+      module.HEAPU8.set(bytes, this.#tapeAt)
+    }
+
+    const inserted = module._desk_insert_tape(bytes.length)
+
+    return inserted != 0
+  }
+
+  ejectTape() {
+    this.#module._desk_eject_tape()
+  }
+
+  engageTape(engaged) {
+    this.#module._desk_engage_tape(engaged)
+  }
+
+  tapeProblem() {
+    const at = this.#module._desk_tape_problem()
+
+    return this.#sentenceAt(at)
+  }
+
+  // How far the tape has run since its start, and how long what is recorded on
+  // it plays, in milliseconds.
+  tapePosition() {
+    return this.#module._desk_tape_position()
+  }
+
+  tapeRecorded() {
+    return this.#module._desk_tape_recorded()
+  }
+
+  windTape(milliseconds) {
+    this.#module._desk_wind_tape(milliseconds)
+  }
+
+  // The machine's own power, which the disc in its drive and the tape in its
+  // datacorder outlive.
   switchOff() {
     this.running = false
     this.releaseAllKeys()
@@ -156,7 +215,7 @@ export default class Cpc {
     this.running = true
     this.#debt = 0
     this.#last = performance.now()
-    this.#module._desk_boot_cpc6128()
+    this.#boot(this.#module)
     this.#readKeys()
     this.picture.refresh()
   }
@@ -192,6 +251,20 @@ export default class Cpc {
 
   dispose() {
     this.picture.dispose()
+  }
+
+  #sentenceAt(at) {
+    const heap = this.#module.HEAPU8,
+      reported = at != 0
+
+    if (!reported) {
+      return null
+    }
+
+    const end = heap.indexOf(0, at),
+      sentence = heap.subarray(at, end)
+
+    return TEXT.decode(sentence)
   }
 
   #present() {

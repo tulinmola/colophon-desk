@@ -680,6 +680,18 @@ function buildDrive() {
     .cut(notch)
 }
 
+// The slot's middle on the bezel's face, where the page carries a disc in.
+function driveSlot() {
+  const middle = (DRIVE_OPENING_LEFT + DRIVE_OPENING_RIGHT) / 2,
+    place = [
+      middle + CENTRING[0],
+      BEZEL_SET_BACK + CENTRING[1],
+      DRIVE_OPENING_BOTTOM + SLOT_MIDDLE_ABOVE_OPENING + CENTRING[2]
+    ]
+
+  return { name: "drive-slot", place, parts: [] }
+}
+
 function buildRibs() {
   const face = BEZEL_SET_BACK - EJECT_BUTTON.standing,
     middle = (EJECT_BUTTON.bottom + EJECT_BUTTON.top) / 2,
@@ -1429,6 +1441,7 @@ export function buildCpc6128() {
       buildFeet(),
       buildInterior(),
       { name: "drive", shape: drive.translate(CENTRING), material: BEZEL },
+      driveSlot(),
       buildEjectButton(),
       buildDriveLamp(),
       ...keycaps,

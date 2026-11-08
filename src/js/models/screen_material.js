@@ -16,6 +16,10 @@ const SLOT_CUTOFF = [0.5, 1],
   SPREAD_CUTOFF = [1, 4],
   LINE_CUTOFF = [0.35, 1]
 
+// The 310GNB31's last three characters name its phosphor, which Toshiba's table pairs with P31 [A]: https://frank.pocnet.net/other/Toshiba/Toshiba_CathodeRayTubes(1974).pdf. Philips gives P31 at x 0.265, y 0.550 [A], Data Handbook T16 (1987), survey of screen phosphors: http://bitsavers.trailing-edge.com/components/philips/_dataBooks/1987_T16_Philips_Monochrome_Tubes_and_Deflection_Units.pdf
+// That point lies outside sRGB, at linear (−0.144, 1.423, 0.178) [E]; its red is cut to nothing and the rest scaled to green's full light, which is a choice.
+const P31 = [0, 1, 0.125]
+
 function surfaceMapping(geometry) {
   const coordinates = geometry.getAttribute("uv"),
     bounds = new Box2(),
@@ -260,40 +264,72 @@ function glowLight(picture, at, radius, source) {
   return convolve()
 }
 
-export default class ScreenMaterial extends MeshBasicNodeMaterial {
-  // CTM644 macro photographs show segmented RGB columns [D]: http://cpc.sylvestre.org/technique/technique_gfx8.html
-  // Ten green columns there across seven Mode 1 pixels is 1.4 raster samples to a triad, and the sweep is laid 308.0 mm across its 800 swept columns, so 0.385 mm a sample gives the 0.54 below [E].
-  // Every other tube figure here is a trial setting tuned by eye, not a measured property.
-  settings = {
-    phosphorPitch: uniform(0.54),
-    slotPitch: uniform(0.65),
-    scanlineWidth: uniform(0.3),
-    excitationWidth: uniform(0.18),
-    glowRadius: uniform(0.2),
-    glow: uniform(0.35),
-    compensation: uniform(1),
-    pictureWidth: uniform(1),
-    pictureHeight: uniform(1),
-    pictureX: uniform(0),
-    pictureY: uniform(0),
-    light: uniform(0.55),
-    enabled: uniform(1)
+// Three phosphors behind a slotted mask, fed R, G and B: the CTM644's.
+// Its macro photographs show segmented RGB columns [D]: http://cpc.sylvestre.org/technique/technique_gfx8.html
+// Ten green columns there across seven Mode 1 pixels is 1.4 raster samples to a triad, and the sweep is laid 308.0 mm across its 800 swept columns, so 0.385 mm a sample gives the 0.54 below [E].
+// Its other figures are trial settings tuned by eye, not measured properties.
+function colourTube(surface) {
+  const settings = {
+      phosphorPitch: uniform(0.54),
+      slotPitch: uniform(0.65),
+      scanlineWidth: uniform(0.3)
+    },
+    pitch = vec2(settings.phosphorPitch, settings.slotPitch),
+    millimetres = vec2(surface.millimetres),
+    origin = vec2(surface.origin),
+    physical = uv().mul(millimetres).add(origin).div(pitch)
+
+  return { settings, mask: phosphors(physical), share: MASK_MEAN, light: shown => shown }
+}
+
+// One continuous phosphor fed LUM, the GT64's, with no mask to darken it and every light in its own green.
+// A Philips 31 cm 90° tube of its class draws its lines 0.18 to 0.37 mm wide by the shrinking-raster method [A], T16 above: where neighbouring lines just merge, which a Gaussian spot does at about twice its standard deviation. On the 0.775 mm between this tube's lines that is 0.12 to 0.24 of a line [E], and 0.22 is taken; how wide the spot runs at any one brightness is not known.
+// The 464's manual shows its start-up screen as "bright green on a duller green background" [A], and that paper stands 0.03 up the LUM scale, which the curve CpcPicture lays levels through takes to nothing; so the brightness thumbwheel stood a little above cut-off. The light the glass then gives with no picture, as a share of the full, is a guess: https://archive.org/details/cpc464.en
+// The thumbwheel sets the black point before the tube's curve; here the floor is added in light after it, so black and the paper's blue stay almost alike at every setting.
+function greenTube() {
+  const settings = { scanlineWidth: uniform(0.22), blackLevel: uniform(0.01) },
+    green = vec3(...P31)
+
+  function light(shown, coverage) {
+    const floor = settings.blackLevel.mul(coverage),
+      lit = shown.add(floor)
+
+    return lit.mul(green)
   }
 
-  constructor(geometry, picture, lines) {
+  return { settings, mask: vec3(1), share: 1, light }
+}
+
+const TUBES = { RGB: colourTube, LUM: greenTube }
+
+export default class ScreenMaterial extends MeshBasicNodeMaterial {
+  settings
+
+  // The figures below are trial settings tuned by eye, not measured properties.
+  constructor(geometry, picture, lines, pins) {
     super()
 
-    const settings = this.settings,
-      surface = surfaceMapping(geometry),
+    const surface = surfaceMapping(geometry),
+      tube = TUBES[pins](surface),
+      settings = {
+        ...tube.settings,
+        excitationWidth: uniform(0.18),
+        glowRadius: uniform(0.2),
+        glow: uniform(0.35),
+        compensation: uniform(1),
+        pictureWidth: uniform(1),
+        pictureHeight: uniform(1),
+        pictureX: uniform(0),
+        pictureY: uniform(0),
+        light: uniform(0.55),
+        enabled: uniform(1)
+      },
       at = uv(),
       centre = vec2(surface.centre),
       scale = vec2(settings.pictureWidth, settings.pictureHeight),
       offset = vec2(settings.pictureX, settings.pictureY),
       pictureAt = at.sub(centre).sub(offset).div(scale).add(centre),
-      pitch = vec2(settings.phosphorPitch, settings.slotPitch),
       millimetres = vec2(surface.millimetres),
-      origin = vec2(surface.origin),
-      physical = at.mul(millimetres).add(origin).div(pitch),
       horizontalWidth = settings.excitationWidth.div(millimetres.x).div(settings.pictureWidth),
       radius = settings.glowRadius.div(millimetres).div(scale),
       pictureLightAt = pictureLight(
@@ -303,8 +339,7 @@ export default class ScreenMaterial extends MeshBasicNodeMaterial {
         settings.scanlineWidth,
         horizontalWidth
       ),
-      mask = phosphors(physical),
-      mean = pictureLightAt.mean.mul(MASK_MEAN),
+      mean = pictureLightAt.mean.mul(tube.share),
       compensation = mean.reciprocal(),
       gain = mix(1, compensation, settings.compensation),
       peak = gain.mul(settings.light),
@@ -313,7 +348,7 @@ export default class ScreenMaterial extends MeshBasicNodeMaterial {
       inside = afterStart.and(beforeEnd),
       coverage = float(inside),
       source = pictureLightAt.source.mul(coverage),
-      direct = pictureLightAt.light.mul(mask).mul(peak),
+      direct = pictureLightAt.light.mul(tube.mask).mul(peak),
       core = direct.mul(coverage),
       combine = Fn(function () {
         const emitted = core.toVar(),
@@ -338,7 +373,10 @@ export default class ScreenMaterial extends MeshBasicNodeMaterial {
       }),
       emitted = combine()
 
-    this.colorNode = mix(source, emitted, settings.enabled)
+    this.settings = settings
+    const shown = mix(source, emitted, settings.enabled)
+
+    this.colorNode = tube.light(shown, coverage)
     this.toneMapped = false
   }
 }

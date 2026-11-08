@@ -21,17 +21,17 @@ class OptionsElement extends Element {
           <label class="switch">
             <input name="enabled" type="checkbox" /> Phosphors and scanlines
           </label>
-          <label>
+          <label data-tube="colour">
             Phosphor pitch (mm)<output aria-hidden="true"></output>
             <input name="phosphorPitch" type="range" min="0.4" max="1.2" step="0.01" />
           </label>
-          <label>
+          <label data-tube="colour">
             Slot row pitch (mm)<output aria-hidden="true"></output>
             <input name="slotPitch" type="range" min="0.4" max="1.2" step="0.01" />
           </label>
           <label>
             Scanline width (of a line)<output aria-hidden="true"></output>
-            <input name="scanlineWidth" type="range" min="0.2" max="0.45" step="0.01" />
+            <input name="scanlineWidth" type="range" min="0.1" max="0.45" step="0.01" />
           </label>
           <label>
             Horizontal spot spread (mm)<output aria-hidden="true"></output>
@@ -46,11 +46,15 @@ class OptionsElement extends Element {
             <input name="glowRadius" type="range" min="0.1" max="1" step="0.01" />
           </label>
           <label class="switch">
-            <input name="compensation" type="checkbox" /> Compensate mask brightness
+            <input name="compensation" type="checkbox" /> Compensate for the dark gaps
           </label>
           <label>
             Light level<output aria-hidden="true"></output>
             <input name="light" type="range" min="0.1" max="1" step="0.05" />
+          </label>
+          <label data-tube="green">
+            Black level (of full light)<output aria-hidden="true"></output>
+            <input name="blackLevel" type="range" min="0" max="0.1" step="0.005" />
           </label>
           <label>
             Picture width<output aria-hidden="true"></output>
@@ -96,8 +100,17 @@ class OptionsElement extends Element {
     this.#settings = settings
     this.#bindings.clear()
 
+    // A knob marked for one kind of tube goes when the tube on the desk lacks
+    // its figure, as a green one has no mask; any other knob must be offered.
     for (const input of this.querySelectorAll("input")) {
-      const node = settings[input.name]
+      const node = settings[input.name],
+        label = input.closest("label"),
+        lacking = node == null && label.hasAttribute("data-tube")
+
+      if (lacking) {
+        label.remove()
+        continue
+      }
 
       this.#bindings.set(input, { node, initial: node.value })
       this.#show(input, node.value)

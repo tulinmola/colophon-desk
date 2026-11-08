@@ -1,5 +1,5 @@
 import { CameraRig, Desk } from "../models"
-import { Cpc, KEY_MATRIX, discsIn } from "../emulator"
+import { Cpc, KEY_MATRIX, mediaIn } from "../emulator"
 import { Vector2, WebGPURenderer } from "three/webgpu"
 import Element from "./element"
 import html from "../html"
@@ -29,6 +29,12 @@ const DESK_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
   DRIVE_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
     <rect x="2" y="6" width="20" height="12" rx="2" />
     <path d="M6 10h12M6 14h.01M15 14h3" />
+  </svg>`,
+  DATACORDER_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <circle cx="8" cy="11" r="2" />
+    <circle cx="16" cy="11" r="2" />
+    <path d="M10 11h4M6 19l2-4h8l2 4" />
   </svg>`
 
 const VIEW_MENU = html`<menu aria-label="Views" hidden>
@@ -52,47 +58,78 @@ const VIEW_MENU = html`<menu aria-label="Views" hidden>
       ${DRIVE_ICON}
     </button>
   </li>
+  <li>
+    <button type="button" data-view="datacorder" title="The datacorder" aria-pressed="false">
+      ${DATACORDER_ICON}
+    </button>
+  </li>
 </menu>`
 
-const DRIVE_A = html`<input type="file" accept=".dsk,.zip" hidden />
-  <output name="drive"></output>
-  <dialog name="discs">
-    <form method="dialog">
-      <p>Which disc?</p>
-      <menu aria-label="The discs in the archive"></menu>
-      <button value="">Cancel</button>
-    </form>
-  </dialog>
-  <dialog name="power">
-    <form method="dialog">
-      <p>Turn the computer off? Everything in its memory goes with it.</p>
-      <button value="off">Turn it off</button>
-      <button value="" autofocus>Leave it on</button>
-    </form>
-  </dialog>`
+// Where a machine takes what it reads: drive A its discs, a 464's datacorder its tapes, each image alone or in an archive.
+const SLOTS = {
+    drive: {
+      view: "drive",
+      noun: "disc",
+      plural: "discs",
+      suffixes: [".dsk"],
+      place: "in drive A"
+    },
+    datacorder: {
+      view: "datacorder",
+      noun: "tape",
+      plural: "tapes",
+      suffixes: [".cdt", ".tzx"],
+      place: "in the datacorder"
+    }
+  },
+  ARCHIVE = ".zip"
+
+function slotMarkup({ view, noun, plural, suffixes }) {
+  const accepted = [...suffixes, ARCHIVE],
+    accept = accepted.join(",")
+
+  return html`<input type="file" name="${plural}" accept="${accept}" hidden />
+    <output name="${view}"></output>
+    <dialog name="${plural}">
+      <form method="dialog">
+        <p>Which ${noun}?</p>
+        <menu aria-label="The ${plural} in the archive"></menu>
+        <button value="">Cancel</button>
+      </form>
+    </dialog>`
+}
+
+const POWER = html`<dialog name="power">
+  <form method="dialog">
+    <p>Turn the computer off? Everything in its memory goes with it.</p>
+    <button value="off">Turn it off</button>
+    <button value="" autofocus>Leave it on</button>
+  </form>
+</dialog>`
 
 const NOTHING_PICKED = { name: null, view: null }
 
+// A desk that names no machine or monitor stands the ones it was first built for, and one that names no disc interface gives its machine none but its own.
+const FIRST_MACHINE = "cpc6128",
+  FIRST_MONITOR = "ctm644"
+
 class CpcDeskElement extends Element {
-  #chooser
   #cpc = null
   #desk
-  #discs = []
-  #discsDialog
   #powerDialog
-  #driveNotice
   #heldByCode = new Map()
+  #offered = new Map()
   #hovering
   #initialising
   #menu
   #observer
-  #offered = null
   #pointer = new Vector2()
   #pressedAt = new Vector2()
   #renderer
   #rig
   #shown
-  #viewBeforeChoosing
+  #slots = new Map()
+  #viewBeforeChoosing = new Map()
   #viewBeforeSwitching
 
   init() {
@@ -105,15 +142,15 @@ class CpcDeskElement extends Element {
     this.prepend(canvas)
     canvas.insertAdjacentHTML("afterend", VIEW_MENU)
 
-    const menu = this.querySelector("menu")
+    const menu = this.querySelector("menu"),
+      machine = this.getAttribute("machine") ?? FIRST_MACHINE,
+      monitor = this.getAttribute("monitor") ?? FIRST_MONITOR,
+      discInterface = this.getAttribute("disc-interface")
 
-    menu.insertAdjacentHTML("afterend", DRIVE_A)
+    menu.insertAdjacentHTML("afterend", POWER)
 
-    this.#chooser = this.querySelector("input[type='file']")
     this.#desk = desk
-    this.#discsDialog = this.querySelector("dialog[name='discs']")
     this.#powerDialog = this.querySelector("dialog[name='power']")
-    this.#driveNotice = this.querySelector("output[name='drive']")
     this.#hovering = false
     this.#menu = menu
     this.#renderer = renderer
@@ -134,12 +171,49 @@ class CpcDeskElement extends Element {
     canvas.addEventListener("pointerleave", this.onPointerLeave.bind(this), { signal })
     canvas.addEventListener("click", this.onSceneClicked.bind(this), { signal })
     this.#menu.addEventListener("click", this.onViewChosen.bind(this), { signal })
-    this.#chooser.addEventListener("change", this.onDiscChosen.bind(this), { signal })
-    this.#chooser.addEventListener("cancel", this.onChoiceCancelled.bind(this), { signal })
-    this.#discsDialog.addEventListener("close", this.onDiscPicked.bind(this), { signal })
     this.#powerDialog.addEventListener("close", this.onPowerAnswered.bind(this), { signal })
 
-    this.#initialising = this.#load(desk, rig, renderer, signal)
+    this.#initialising = this.#load(
+      { desk, rig, renderer, names: { machine, monitor, discInterface } },
+      signal
+    )
+  }
+
+  // Each slot the desk has brings the chooser of what it reads, its notice and
+  // the dialog that picks one out of an archive; the view of a slot it has not
+  // got goes.
+  #fitSlots(desk, signal) {
+    const onDesk = { drive: desk.disc, datacorder: desk.datacorder }
+
+    for (const kind of Object.values(SLOTS)) {
+      const medium = onDesk[kind.view],
+        fitted = medium != null
+
+      if (!fitted) {
+        const item = this.#menu.querySelector(`[data-view='${kind.view}']`).closest("li")
+
+        item.remove()
+        continue
+      }
+
+      const markup = slotMarkup(kind)
+
+      this.#menu.insertAdjacentHTML("afterend", markup)
+
+      const slot = {
+        ...kind,
+        medium,
+        chooser: this.querySelector(`input[name='${kind.plural}']`),
+        dialog: this.querySelector(`dialog[name='${kind.plural}']`),
+        notice: this.querySelector(`output[name='${kind.view}']`),
+        entries: []
+      }
+
+      slot.chooser.addEventListener("change", this.onFileChosen.bind(this, slot), { signal })
+      slot.chooser.addEventListener("cancel", this.onChoiceCancelled.bind(this, slot), { signal })
+      slot.dialog.addEventListener("close", this.onEntryPicked.bind(this, slot), { signal })
+      this.#slots.set(kind.view, slot)
+    }
   }
 
   onPointerDown(event) {
@@ -176,8 +250,14 @@ class CpcDeskElement extends Element {
       case "eject":
         this.#ejectDisc()
         break
+      case "press":
+        this.#pressDatacorderKey(picked.name)
+        break
+      case "reset":
+        this.#desk.datacorder.resetCounter()
+        break
       case "choose":
-        this.#chooseDisc()
+        this.#chooseMedium(picked.view)
         break
       case "power":
         this.#switchPower()
@@ -205,8 +285,8 @@ class CpcDeskElement extends Element {
 
   // The chooser is emptied before the read, or the same file chosen again
   // would count as no choice at all.
-  async onDiscChosen() {
-    const chooser = this.#chooser,
+  async onFileChosen(slot) {
+    const { chooser } = slot,
       [file] = chooser.files,
       { signal } = this
 
@@ -221,136 +301,148 @@ class CpcDeskElement extends Element {
 
     const bytes = new Uint8Array(contents)
 
-    this.#open(file.name, bytes)
+    this.#open(slot, file.name, bytes)
   }
 
-  // A file holding one disc goes straight in; one holding several is asked
-  // about, because which disc a set of them starts from is the reader's to say.
-  async #open(filename, bytes) {
-    const discs = this.#discsFrom(filename, bytes)
+  // A file holding one image goes straight in; one holding several is asked
+  // about, because which disc or tape a set of them starts from is the reader's to say.
+  async #open(slot, filename, bytes) {
+    const entries = this.#entriesIn(slot, filename, bytes)
 
-    if (!discs) {
+    if (!entries) {
       return
     }
 
-    const alone = discs.length == 1,
-      empty = discs.length == 0
+    const alone = entries.length == 1,
+      empty = entries.length == 0
 
     if (empty) {
-      this.#tell(`${filename} was refused: it holds no disc`)
+      this.#tell(slot, `${filename} was refused: it holds no ${slot.noun}`)
       return
     }
 
     if (alone) {
-      const [only] = discs
+      const [only] = entries
 
-      await this.#take(only)
+      await this.#take(slot, only)
       return
     }
 
-    this.#discs = discs
-    this.#listDiscs(discs)
-    this.#discsDialog.returnValue = ""
-    this.#discsDialog.showModal()
+    slot.entries = entries
+    this.#listEntries(slot)
+    slot.dialog.returnValue = ""
+    slot.dialog.showModal()
   }
 
-  #discsFrom(filename, bytes) {
+  #entriesIn(slot, filename, bytes) {
     try {
-      return discsIn(filename, bytes)
+      return mediaIn(filename, bytes, slot.suffixes)
     } catch (problem) {
-      this.#tell(`${filename} was refused: ${problem.message}`)
+      this.#tell(slot, `${filename} was refused: ${problem.message}`)
       return null
     }
   }
 
   // A name out of an archive is whatever bytes it was written with, so it is
   // set as text and never as markup.
-  #listDiscs(discs) {
-    const menu = this.#discsDialog.querySelector("menu")
+  #listEntries({ dialog, entries }) {
+    const menu = dialog.querySelector("menu")
 
     menu.replaceChildren()
 
-    for (const [place, disc] of discs.entries()) {
+    for (const [place, entry] of entries.entries()) {
       const item = document.createElement("li"),
         button = document.createElement("button")
 
       button.value = String(place)
-      button.textContent = disc.name
+      button.textContent = entry.name
       item.append(button)
       menu.append(item)
     }
   }
 
-  onDiscPicked() {
-    const picked = this.#discsDialog.returnValue,
-      discs = this.#discs
+  onEntryPicked(slot) {
+    const picked = slot.dialog.returnValue,
+      { entries } = slot
 
-    this.#discs = []
+    slot.entries = []
     this.focus()
 
     const cancelled = picked == ""
 
     if (cancelled) {
-      this.#lookBack(this.#viewBeforeChoosing)
+      this.#lookBackFrom(slot)
       return
     }
 
     const place = Number(picked),
-      disc = discs[place]
+      entry = entries[place]
 
-    this.#take(disc)
+    this.#take(slot, entry)
   }
 
-  // The image is unpacked only once its disc is chosen, so an archive of
-  // several costs the reader one of them and not all.
-  async #take(disc) {
+  // The image is unpacked only once it is chosen, so an archive of several
+  // costs the reader one of them and not all.
+  async #take(slot, entry) {
     const { signal } = this,
-      roomy = disc.length <= this.#cpc.discCapacity
+      { noun } = slot,
+      roomy = entry.length <= slot.medium.capacity
 
-    // The archive says how large a disc stands before it is unpacked, so one
+    // The archive says how large an image stands before it is unpacked, so one
     // the machine has no room for is never unpacked at all.
     if (!roomy) {
-      this.#tell(`${disc.name} was refused: the image is larger than the room a disc is given here`)
+      this.#tell(
+        slot,
+        `${entry.name} was refused: the image is larger than the room a ${noun} is given here`
+      )
       return
     }
 
     try {
-      const bytes = await disc.read(),
+      const bytes = await entry.read(),
         laidAway = signal.aborted
 
       if (laidAway) {
         return
       }
 
-      this.#offered = { name: disc.name, bytes }
-      this.#desk.disc.insert(disc.name)
+      this.#offered.set(slot.view, { name: entry.name, bytes })
+      slot.medium.insert(entry.name)
     } catch (problem) {
-      this.#tell(`${disc.name} was refused: ${problem.message}`)
+      this.#tell(slot, `${entry.name} was refused: ${problem.message}`)
     }
   }
 
-  #insertOffered() {
-    const { name, bytes } = this.#offered,
-      cpc = this.#cpc,
-      inserted = cpc.insertDisc(bytes)
+  #insertOffered(slot) {
+    const { name, bytes } = this.#offered.get(slot.view),
+      { medium } = slot,
+      inserted = medium.put(bytes)
 
-    this.#offered = null
+    this.#offered.delete(slot.view)
 
     if (inserted) {
-      this.#tell(`${name} is in drive A`)
-      this.#lookBack(this.#viewBeforeChoosing)
+      this.#tell(slot, `${name} is ${slot.place}`)
+      this.#lookBackFrom(slot)
       return
     }
 
-    const problem = cpc.discProblem()
+    const problem = medium.problem()
 
-    this.#tell(`${name} was refused: ${problem}`)
-    this.#desk.disc.erase()
-    this.#desk.disc.eject()
+    this.#tell(slot, `${name} was refused: ${problem}`)
+    medium.erase()
+    medium.eject()
   }
 
-  onChoiceCancelled() {
-    this.#lookBack(this.#viewBeforeChoosing)
+  onChoiceCancelled(slot) {
+    this.#lookBackFrom(slot)
+  }
+
+  // Each slot keeps the view the reader chose it from, as a disc may still be
+  // travelling in when the datacorder's lid is clicked.
+  #lookBackFrom({ view }) {
+    const left = this.#viewBeforeChoosing.get(view)
+
+    this.#lookBack(left)
   }
 
   // Where the reader stood before a part carried the eye away. One turned
@@ -363,9 +455,14 @@ class CpcDeskElement extends Element {
     }
   }
 
+  // A datacorder carrying a cassette takes no other until it is in.
   #intentOf({ name, view }) {
     const ejects = name == "eject-button",
-      takesDisc = view == "drive",
+      { datacorder } = this.#desk,
+      worked = datacorder?.answers(name) ?? null,
+      carrying = datacorder?.carrying ?? false,
+      busy = view == SLOTS.datacorder.view && carrying,
+      takesMedium = this.#slots.has(view) && !busy,
       switches = view == "power",
       leads = view != null && view != this.#rig.view
 
@@ -373,7 +470,11 @@ class CpcDeskElement extends Element {
       return "eject"
     }
 
-    if (takesDisc) {
+    if (worked) {
+      return worked
+    }
+
+    if (takesMedium) {
       return "choose"
     }
 
@@ -386,10 +487,12 @@ class CpcDeskElement extends Element {
 
   // A browser opens the chooser only within the click that asked for it, so
   // nothing may be awaited before it opens.
-  #chooseDisc() {
-    this.#viewBeforeChoosing = this.#rig.view
-    this.#rig.look("drive")
-    this.#chooser.click()
+  #chooseMedium(view) {
+    const slot = this.#slots.get(view)
+
+    this.#viewBeforeChoosing.set(view, this.#rig.view)
+    this.#rig.look(view)
+    slot.chooser.click()
   }
 
   // A machine switched on is made afresh and asks nothing; one switched off is
@@ -398,7 +501,7 @@ class CpcDeskElement extends Element {
     const cpc = this.#cpc,
       off = !cpc.running
 
-    // A machine made again carries the eye back to where the badge took it
+    // A machine made again carries the eye back to where its switch took it
     // from; one about to be destroyed keeps it here to watch.
     if (off) {
       cpc.switchOn()
@@ -419,8 +522,9 @@ class CpcDeskElement extends Element {
 
     this.focus()
 
-    // The notice stands: a disc in the drive is in it whether the machine is
-    // running or not, and it is there again when the power comes back.
+    // The notice stands: a disc in the drive or a tape in the datacorder is in
+    // it whether the machine is running or not, and is there again when the
+    // power comes back.
     if (off) {
       this.#cpc.switchOff()
       this.#desk.showPower(false)
@@ -433,17 +537,27 @@ class CpcDeskElement extends Element {
   // A disc still on its way in is turned around, and the machine is never
   // given it: the reader pressed EJECT before the drive had it.
   #ejectDisc() {
-    this.#rig.look("drive")
-    this.#offered = null
-    this.#cpc.ejectDisc()
-    this.#desk.disc.eject()
-    this.#tell("")
+    const slot = this.#slots.get(SLOTS.drive.view)
+
+    this.#rig.look(slot.view)
+    this.#offered.delete(slot.view)
+    slot.medium.eject()
+    this.#tell(slot, "")
+  }
+
+  #pressDatacorderKey(name) {
+    const slot = this.#slots.get(SLOTS.datacorder.view),
+      ejected = slot.medium.press(name)
+
+    if (ejected) {
+      this.#tell(slot, "")
+    }
   }
 
   // The notice stays in the page, empty or not, so that a screen reader is
   // already listening when it speaks.
-  #tell(news) {
-    this.#driveNotice.value = news
+  #tell({ notice }, news) {
+    notice.value = news
   }
 
   #aim({ offsetX, offsetY, target }) {
@@ -561,14 +675,14 @@ class CpcDeskElement extends Element {
     return keys
   }
 
-  async #load(desk, rig, renderer, signal) {
+  async #load({ desk, rig, renderer, names }, signal) {
     await renderer.init()
 
     const wireframe = this.hasAttribute("wireframe"),
       anisotropy = renderer.getMaxAnisotropy(),
-      cpc = await Cpc.create(signal, anisotropy)
+      cpc = await Cpc.create(signal, anisotropy, names.machine, names.discInterface)
 
-    await desk.load(anisotropy, cpc)
+    await desk.load(anisotropy, cpc, names)
     desk.scene.traverse(function (object) {
       const drawn = object.isMesh
 
@@ -582,9 +696,14 @@ class CpcDeskElement extends Element {
     if (standing) {
       const options = this.querySelector("colophon-options"),
         insertOffered = this.#insertOffered.bind(this),
-        showViews = this.#showViews.bind(this)
+        showViews = this.#showViews.bind(this),
+        { disc } = desk
 
       this.#cpc = cpc
+      this.#fitSlots(desk, signal)
+
+      const slots = Array.from(this.#slots.values())
+
       rig.use(desk)
       options.use(desk.settings)
       this.#menu.hidden = false
@@ -592,16 +711,21 @@ class CpcDeskElement extends Element {
         cpc.advance(now)
         rig.advance(now)
 
-        const seated = desk.disc.advance(now)
+        for (const slot of slots) {
+          const seated = slot.medium.advance(now)
 
-        if (seated) {
-          insertOffered()
+          if (seated) {
+            insertOffered(slot)
+          }
         }
 
-        // Read after the insert: the machine clears the lamp's line as it is asked for it.
-        const inUse = cpc.driveInUse()
+        if (disc) {
+          // Read after the insert: the machine clears the lamp's line as it is asked for it.
+          const inUse = cpc.driveInUse()
 
-        desk.showDriveInUse(inUse)
+          desk.showDriveInUse(inUse)
+        }
+
         showViews()
         renderer.render(desk.scene, rig.camera)
       })
@@ -618,10 +742,14 @@ class CpcDeskElement extends Element {
     this.#observer.disconnect()
     this.#rig.dispose()
     this.#menu.remove()
-    this.#chooser.remove()
-    this.#discsDialog.remove()
+
+    for (const { chooser, dialog, notice } of this.#slots.values()) {
+      chooser.remove()
+      dialog.remove()
+      notice.remove()
+    }
+
     this.#powerDialog.remove()
-    this.#driveNotice.remove()
     this.#release(renderer)
     renderer.domElement.remove()
   }
