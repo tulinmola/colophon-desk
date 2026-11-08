@@ -1,4 +1,5 @@
 import { draw, makeBox, makeCompound, makeCylinder } from "replicad"
+import { drawAmsoft } from "./amsoft.js"
 
 // x runs across face A from its left long edge, y back from the label end toward the head end, which enters the drive first, and z up from face B, in millimetres. Face A is the face whose moulded arrow reads A. Face B is face A turned half round the disc's long middle line, so each face's left is its own, seen from its own side.
 // A figure that belongs to one face — its cutout, its pocket, its recess — is given from that face's own left edge, and face B's openings are face A's turned over. A figure that runs through the disc, or lies on it whichever way up it is read, is given from face A's left edge.
@@ -88,58 +89,8 @@ const LABEL_BANDS = {
   },
   LABEL_RULES = { at: [15.11, 19.14], thickness: 0.2 }
 
-// "Amsoft" is lettering, not type: strokes of the bare paper 0.34 thick across and 0.44 on the slant, sheared 30°, each edged in black that is the stroke grown 0.28 and shifted 0.06 right and 0.09 down. It is drawn here from its strokes' centrelines as measured on side 1, at one width of 0.4 [E].
 // The ® beside it is a black ring 1.6 across and 0.08 thick round a regular R 0.85 tall.
-const LOGOTYPE = {
-    strokes: [
-      [
-        [2.02, 8.88],
-        [4.97, 8.88],
-        [7.89, 3.72],
-        [10.59, 3.71],
-        [7.68, 8.89],
-        [9.09, 8.88],
-        [10.81, 5.86],
-        [10.63, 8.86],
-        [14.13, 5.59],
-        [12.26, 8.88],
-        [15.3, 8.88],
-        [16.22, 7.32],
-        [14.42, 7.32],
-        [15.14, 6.05],
-        [17.16, 6.05]
-      ],
-      [
-        [6.55, 6.06],
-        [9.29, 6.05]
-      ],
-      [
-        [18.22, 6.05],
-        [25.45, 6.04]
-      ],
-      [
-        [19.95, 8.91],
-        [22.88, 3.74],
-        [24.37, 3.75]
-      ],
-      [
-        [25.47, 3.56],
-        [25.35, 3.76],
-        [22.47, 8.92],
-        [27.15, 8.92]
-      ]
-    ],
-    ring: [
-      [16.68, 8.9],
-      [18.55, 8.91],
-      [20.18, 6.05],
-      [18.22, 6.05]
-    ],
-    stroke: 0.4,
-    edge: 0.28,
-    shadow: [0.06, 0.09]
-  },
-  REGISTERED = { diameter: 1.6, ring: 0.08, capHeight: 0.85 }
+const REGISTERED = { diameter: 1.6, ring: 0.08, capHeight: 0.85 }
 
 // Each side's red band as printed on its own disc: the lettering's place against side 1's, the ®'s middle, the side's number, and a black box on the bare paper round a black arrow pointing to the head end.
 // Heros's regular 1 and 2 are 1.04 and 2.06 wide where side 1's photograph has 1.04 and the scan 2.16, so each number is set at Heros's own width, from the pen that centres its ink on theirs [E].
@@ -503,19 +454,6 @@ function drawNumber({ word, pen, baseline, capHeight }) {
   return `<text x="${pen}" y="${baseline}" font-family="${HEROS}" font-size="${size}" fill="${LABEL_BLACK}">${word}</text>`
 }
 
-function drawLettering([across, down]) {
-  const [shadowAcross, shadowDown] = LOGOTYPE.shadow,
-    edged = LOGOTYPE.stroke + 2 * LOGOTYPE.edge,
-    lines = LOGOTYPE.strokes.map(points => `<polyline points="${listPoints(points)}"/>`),
-    ring = `<polygon points="${listPoints(LOGOTYPE.ring)}"/>`,
-    strokes = [...lines, ring].join("")
-
-  return [
-    `<g transform="translate(${across + shadowAcross} ${down + shadowDown})" fill="none" stroke="${LABEL_BLACK}" stroke-width="${edged}" stroke-linejoin="bevel">${strokes}</g>`,
-    `<g transform="translate(${across} ${down})" fill="none" stroke="${LABEL_PAPER}" stroke-width="${LOGOTYPE.stroke}" stroke-linejoin="bevel">${strokes}</g>`
-  ].join("\n")
-}
-
 function drawRegistered([x, y]) {
   const radius = (REGISTERED.diameter - REGISTERED.ring) / 2,
     size = REGISTERED.capHeight / HEROS_CAP_HEIGHT,
@@ -581,7 +519,7 @@ function drawSide(side) {
     ...rules,
     drawBand(LABEL_BANDS.black, LABEL_BLACK, LABEL_WIDTH),
     drawBand(LABEL_BANDS.silver, LABEL_SILVER, LABEL_WIDTH),
-    drawLettering(side.lettering),
+    drawAmsoft(side.lettering, { ink: LABEL_BLACK, paper: LABEL_PAPER }),
     drawRegistered(side.registered),
     drawNumber(side.number),
     drawBoxedArrow(side),

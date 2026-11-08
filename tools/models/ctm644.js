@@ -525,7 +525,7 @@ function buildScreen() {
     },
     place = [APERTURE_MIDDLE[0] + CENTRING[0], CENTRING[1], APERTURE_MIDDLE[1]]
 
-  return { name: "screen", shape: cap, material: PHOSPHOR, face, tilt: 90, place, screen: true }
+  return { name: "screen", shape: cap, material: PHOSPHOR, face, tilt: 90, place, screen: "RGB" }
 }
 
 function buildFeet() {

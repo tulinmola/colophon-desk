@@ -22,8 +22,9 @@ function channelsOf(pixels, texel) {
 }
 
 // A raster of two colour codes, the first filling its top half, laid through
-// the conversion the page lays it through and read back off the target.
-export default async function readPicture(topCode, bottomCode) {
+// the conversion the page lays it through, for a monitor reading the pins
+// named, and read back off the target.
+export default async function readPicture(topCode, bottomCode, pins = "RGB") {
   const emulator = await createModule(),
     renderer = new WebGPURenderer({ antialias: false })
 
@@ -44,6 +45,7 @@ export default async function readPicture(topCode, bottomCode) {
     quad = new QuadMesh(material),
     target = new RenderTarget(ACROSS, DOWN, { depthBuffer: false })
 
+  picture.connect(pins)
   material.colorNode = picture.node
   material.toneMapped = false
   target.texture.colorSpace = SRGBColorSpace

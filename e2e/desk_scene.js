@@ -13,11 +13,11 @@ const SLOW_WAIT = { timeout: 30000 }
 // Where the drive's face stands on the canvas in the whole desk's view, as a fraction of its size.
 const DRIVE = { x: 0.8, y: 0.645 }
 
-async function stand(page) {
+async function stand(page, path = "/") {
   const options = page.locator("colophon-options")
 
   await page.setViewportSize({ width: 480, height: 360 })
-  await page.goto("/")
+  await page.goto(path)
   await expect(options).toBeVisible(SLOW_WAIT)
 }
 

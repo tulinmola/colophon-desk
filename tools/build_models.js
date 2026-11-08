@@ -5,8 +5,12 @@ import { Color } from "three"
 import { EXTMeshGPUInstancing } from "@gltf-transform/extensions"
 import { Resvg } from "@resvg/resvg-js"
 import { buildCf2 } from "./models/cf2.js"
+import { buildCpc464 } from "./models/cpc464.js"
 import { buildCpc6128 } from "./models/cpc6128.js"
+import { buildCt15 } from "./models/ct15.js"
 import { buildCtm644 } from "./models/ctm644.js"
+import { buildDdi1 } from "./models/ddi1.js"
+import { buildGt64 } from "./models/gt64.js"
 import { fileURLToPath } from "node:url"
 import opencascade from "replicad-opencascadejs"
 import { setOC } from "replicad"
@@ -102,8 +106,12 @@ function createAccessor(document, buffer, type, array) {
   return document.createAccessor().setType(type).setArray(array).setBuffer(buffer)
 }
 
+function partsWithin(parts) {
+  return parts.flatMap(part => (Object.hasOwn(part, "parts") ? partsWithin(part.parts) : [part]))
+}
+
 function createInstancing(document, parts) {
-  const standsForKeys = parts.some(part => Object.hasOwn(part, "keys"))
+  const standsForKeys = partsWithin(parts).some(part => Object.hasOwn(part, "keys"))
 
   if (standsForKeys) {
     return document.createExtension(EXTMeshGPUInstancing).setRequired(true)
@@ -113,15 +121,25 @@ function createInstancing(document, parts) {
 }
 
 function createMaterials(document, parts) {
-  const descriptions = parts.map(part => part.material),
+  const descriptions = partsWithin(parts).map(part => part.material),
     materials = new Set(descriptions),
     gltfMaterials = new Map()
 
   for (const material of materials) {
     const { r, g, b } = new Color(material.colour),
-      gltfMaterial = document.createMaterial(material.name).setBaseColorFactor([r, g, b, 1])
+      opacity = material.opacity ?? 1,
+      roughness = material.roughness ?? 1,
+      seenThrough = opacity < 1,
+      gltfMaterial = document
+        .createMaterial(material.name)
+        .setBaseColorFactor([r, g, b, opacity])
+        .setRoughnessFactor(roughness)
+        .setMetallicFactor(0)
 
-    gltfMaterial.setMetallicFactor(0)
+    if (seenThrough) {
+      gltfMaterial.setAlphaMode("BLEND")
+    }
+
     gltfMaterials.set(material, gltfMaterial)
   }
 
@@ -151,87 +169,130 @@ function createKeyInstances(document, buffer, instancing, part) {
     .setAttribute("_LEGEND", legend)
 }
 
+function placeNode(node, place) {
+  const converted = toGltf(place, METRES_PER_MILLIMETRE),
+    translation = Array.from(converted)
+
+  node.setTranslation(translation)
+}
+
+function createPartNode({ document, buffer, instancing, gltfMaterials, tessellation, name }, part) {
+  const meshed = part.shape.mesh(tessellation),
+    positions = toGltf(meshed.vertices, METRES_PER_MILLIMETRE),
+    normals = toGltf(meshed.normals, 1),
+    triangles = new Uint32Array(meshed.triangles),
+    gltfMaterial = gltfMaterials.get(part.material),
+    position = createAccessor(document, buffer, "VEC3", positions),
+    normal = createAccessor(document, buffer, "VEC3", normals),
+    indices = createAccessor(document, buffer, "SCALAR", triangles),
+    primitive = document
+      .createPrimitive()
+      .setAttribute("POSITION", position)
+      .setAttribute("NORMAL", normal)
+      .setIndices(indices)
+      .setMaterial(gltfMaterial),
+    mesh = document.createMesh(part.name).addPrimitive(primitive),
+    node = document.createNode(part.name).setMesh(mesh),
+    standsForKeys = Object.hasOwn(part, "keys"),
+    mapped = Object.hasOwn(part, "mapping"),
+    laidOut = Object.hasOwn(part, "face") || mapped,
+    printed = Object.hasOwn(part, "print"),
+    lettered = Object.hasOwn(part, "legends"),
+    screened = Object.hasOwn(part, "screen"),
+    written = Object.hasOwn(part, "writing"),
+    placed = Object.hasOwn(part, "place"),
+    turned = Object.hasOwn(part, "tilt") && !standsForKeys
+
+  if (standsForKeys) {
+    const keyInstances = createKeyInstances(document, buffer, instancing, part)
+
+    node.setExtension("EXT_mesh_gpu_instancing", keyInstances)
+  }
+
+  if (turned) {
+    const tilt = tiltAboutX(part.tilt)
+
+    node.setRotation(tilt)
+  }
+
+  if (placed) {
+    placeNode(node, part.place)
+  }
+
+  if (laidOut) {
+    const uvs = mapped
+        ? mappedUvs(meshed.vertices, part.mapping)
+        : faceUvs(meshed.vertices, part.face),
+      texcoord = createAccessor(document, buffer, "VEC2", uvs)
+
+    primitive.setAttribute("TEXCOORD_0", texcoord)
+  }
+
+  const extras = {}
+
+  if (printed) {
+    extras.print = `${name}-${part.print}`
+  }
+
+  if (lettered) {
+    extras.legends = `${name}-${part.legends}`
+  }
+
+  if (screened) {
+    extras.screen = part.screen
+  }
+
+  if (written) {
+    extras.writing = part.writing
+  }
+
+  node.setExtras(extras)
+
+  return node
+}
+
+// A group is a node of its own holding its parts, which move with it.
+function createNode(model, part) {
+  const grouped = Object.hasOwn(part, "parts")
+
+  if (!grouped) {
+    return createPartNode(model, part)
+  }
+
+  const node = model.document.createNode(part.name),
+    placed = Object.hasOwn(part, "place"),
+    turned = Object.hasOwn(part, "tilt")
+
+  if (placed) {
+    placeNode(node, part.place)
+  }
+
+  if (turned) {
+    const tilt = tiltAboutX(part.tilt)
+
+    node.setRotation(tilt)
+  }
+
+  for (const child of part.parts) {
+    const childNode = createNode(model, child)
+
+    node.addChild(childNode)
+  }
+
+  return node
+}
+
 async function writeModel(name, { tessellation, parts }) {
   const document = new Document(),
     buffer = document.createBuffer(),
     scene = document.createScene(name),
     instancing = createInstancing(document, parts),
-    gltfMaterials = createMaterials(document, parts)
+    gltfMaterials = createMaterials(document, parts),
+    model = { document, buffer, instancing, gltfMaterials, tessellation, name }
 
   for (const part of parts) {
-    const meshed = part.shape.mesh(tessellation),
-      positions = toGltf(meshed.vertices, METRES_PER_MILLIMETRE),
-      normals = toGltf(meshed.normals, 1),
-      triangles = new Uint32Array(meshed.triangles),
-      gltfMaterial = gltfMaterials.get(part.material),
-      position = createAccessor(document, buffer, "VEC3", positions),
-      normal = createAccessor(document, buffer, "VEC3", normals),
-      indices = createAccessor(document, buffer, "SCALAR", triangles),
-      primitive = document
-        .createPrimitive()
-        .setAttribute("POSITION", position)
-        .setAttribute("NORMAL", normal)
-        .setIndices(indices)
-        .setMaterial(gltfMaterial),
-      mesh = document.createMesh(part.name).addPrimitive(primitive),
-      node = document.createNode(part.name).setMesh(mesh),
-      standsForKeys = Object.hasOwn(part, "keys"),
-      mapped = Object.hasOwn(part, "mapping"),
-      laidOut = Object.hasOwn(part, "face") || mapped,
-      printed = Object.hasOwn(part, "print"),
-      lettered = Object.hasOwn(part, "legends"),
-      screened = Object.hasOwn(part, "screen"),
-      written = Object.hasOwn(part, "writing"),
-      placed = Object.hasOwn(part, "place"),
-      turned = Object.hasOwn(part, "tilt") && !standsForKeys
+    const node = createNode(model, part)
 
-    if (standsForKeys) {
-      const keyInstances = createKeyInstances(document, buffer, instancing, part)
-
-      node.setExtension("EXT_mesh_gpu_instancing", keyInstances)
-    }
-
-    if (turned) {
-      const tilt = tiltAboutX(part.tilt)
-
-      node.setRotation(tilt)
-    }
-
-    if (placed) {
-      const place = toGltf(part.place, METRES_PER_MILLIMETRE),
-        translation = Array.from(place)
-
-      node.setTranslation(translation)
-    }
-
-    if (laidOut) {
-      const uvs = mapped
-          ? mappedUvs(meshed.vertices, part.mapping)
-          : faceUvs(meshed.vertices, part.face),
-        texcoord = createAccessor(document, buffer, "VEC2", uvs)
-
-      primitive.setAttribute("TEXCOORD_0", texcoord)
-    }
-
-    const extras = {}
-
-    if (printed) {
-      extras.print = `${name}-${part.print}`
-    }
-
-    if (lettered) {
-      extras.legends = `${name}-${part.legends}`
-    }
-
-    if (screened) {
-      extras.screen = true
-    }
-
-    if (written) {
-      extras.writing = part.writing
-    }
-
-    node.setExtras(extras)
     scene.addChild(node)
   }
 
@@ -248,8 +309,12 @@ setOC(oc)
 
 const models = [
   { name: "cpc6128", built: buildCpc6128() },
+  { name: "cpc464", built: buildCpc464() },
   { name: "ctm644", built: buildCtm644() },
-  { name: "cf2", built: buildCf2() }
+  { name: "gt64", built: buildGt64() },
+  { name: "cf2", built: buildCf2() },
+  { name: "ct15", built: buildCt15() },
+  { name: "ddi1", built: buildDdi1() }
 ]
 
 for (const model of models) {

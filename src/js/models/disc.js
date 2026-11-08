@@ -1,5 +1,5 @@
 import { Box3, Vector3 } from "three/webgpu"
-import DiscLabel from "./disc_label"
+import Label from "./label"
 import REDUCED_MOTION from "./reduced_motion"
 
 // How long the disc takes on each leg of its journey, in milliseconds, is a presentation choice, not a measurement of the machine.
@@ -8,19 +8,18 @@ const LIFT = 360,
   POP = 200,
   LOWER = 420
 
-// The drive's opening is 36 high, from the parts printed to plug it [D]: https://www.thingiverse.com/thing:2876318
-// Its slot's middle stands 21.7 above that opening's lower edge, rectified from two photographs of the front, the EME-150 drawing's 21 agreeing [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html and https://www.cpcwiki.eu/index.php/File:Panasonic-3_inch_Floppy_Drive_EME-150.pdf
-// The remaining 14.3 is read down from the opening's upper edge because that is the edge the drive's solid keeps: its lower edge is held a hairline clear of the cabinet, and a disc laid from there would stand its own upper face in the plane of the slot's.
-const SLOT_MIDDLE_BELOW_OPENING = 0.0143
-
 // Neither how far in a seated disc stands, nor how far an eject throws it back
 // out, is measured anywhere: its label end is taken flush with the drive's face
 // and the throw at 30 mm, enough of the disc to take hold of.
 const THROWN_OUT = 0.03
 
 export default class Disc {
+  // The room the machine gives a disc, which an image must stand inside.
+  capacity
+
   model
   #bound
+  #cpc
   #label
   #from = new Vector3()
   #journey = []
@@ -30,25 +29,27 @@ export default class Disc {
   #seated = new Vector3()
   #started = null
 
-  constructor(model, drive) {
+  // The drive's model places its slot's middle on the face of its bezel, where
+  // the disc goes in.
+  constructor(model, slot, cpc) {
     model.updateWorldMatrix(true, false)
-    drive.updateWorldMatrix(true, false)
 
-    const face = new Box3().setFromObject(drive),
+    const mouth = new Vector3(),
       lying = new Box3().setFromObject(model),
-      across = (face.min.x + face.max.x) / 2,
-      slot = face.max.y - SLOT_MIDDLE_BELOW_OPENING,
       middle = (lying.min.y + lying.max.y) / 2 - model.position.y,
       headEnd = lying.min.z - model.position.z,
-      labelEnd = lying.max.z - model.position.z
+      labelEnd = lying.max.z - model.position.z,
+      label = model.getObjectByName("label")
 
-    const label = model.getObjectByName("label")
+    slot.getWorldPosition(mouth)
 
+    this.capacity = cpc.discCapacity
     this.model = model
-    this.#label = new DiscLabel(label)
+    this.#cpc = cpc
+    this.#label = new Label(label)
     this.#rest.copy(model.position)
-    this.#mouth.set(across, slot - middle, face.max.z - headEnd)
-    this.#seated.set(across, slot - middle, face.max.z - labelEnd)
+    this.#mouth.set(mouth.x, mouth.y - middle, mouth.z - headEnd)
+    this.#seated.set(mouth.x, mouth.y - middle, mouth.z - labelEnd)
     this.#proud.copy(this.#seated).setZ(this.#seated.z + THROWN_OUT)
     this.#bound = this.#rest
     model.visible = false
@@ -64,14 +65,25 @@ export default class Disc {
     this.#travel(journey)
   }
 
+  put(bytes) {
+    return this.#cpc.insertDisc(bytes)
+  }
+
+  problem() {
+    return this.#cpc.discProblem()
+  }
+
   // A file the machine would not read was never a disc, so the label it was
   // shown under is taken off again.
   erase() {
     this.#label.erase()
   }
 
+  // The machine lets go of the disc at once, whether or not it had it yet.
   eject() {
     const throwing = this.#bound == this.#seated
+
+    this.#cpc.ejectDisc()
 
     if (throwing) {
       this.#travel(this.#outward())
