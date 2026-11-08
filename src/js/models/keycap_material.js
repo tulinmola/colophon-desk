@@ -15,14 +15,16 @@ import { MeshStandardNodeMaterial } from "three/webgpu"
 const MILLIMETRES = 0.001
 
 // How far a cap sinks when its key is held. No source here gives the travel of
-// a 6128's keys and no unit has been measured, so this is a guess, and the
-// knob on the page is the whole of what stands behind it.
+// a CPC's keys or a Spectrum's and no unit has been measured, so this is a
+// guess, and the knob on the page is the whole of what stands behind it.
 const KEY_TRAVEL = 3
 
 export default class KeycapMaterial extends MeshStandardNodeMaterial {
-  settings = { keyTravel: uniform(KEY_TRAVEL) }
+  static settings() {
+    return { keyTravel: uniform(KEY_TRAVEL) }
+  }
 
-  constructor(keycap, atlas, keys) {
+  constructor(keycap, atlas, keys, settings) {
     const { color, roughness, metalness } = keycap
 
     super({ color, roughness, metalness })
@@ -40,7 +42,7 @@ export default class KeycapMaterial extends MeshStandardNodeMaterial {
 
     const key = attribute("_KEY", "float"),
       held = uniformArray(keys, "float").element(key.toInt()),
-      sunk = this.settings.keyTravel.mul(held).mul(MILLIMETRES)
+      sunk = settings.keyTravel.mul(held).mul(MILLIMETRES)
 
     this.colorNode = mix(materialColor, printed.rgb, ink)
     this.positionNode = positionLocal.sub(vec3(0, sunk, 0))

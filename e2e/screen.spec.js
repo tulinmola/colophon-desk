@@ -3,99 +3,108 @@ import { resolve } from "node:path"
 
 const PROBE = resolve(import.meta.dirname, "../perf/screen_probe.js")
 
-async function prepare(page) {
+async function prepare(page, pins = "RGB") {
   const fixture = `/@fs${PROBE}`
 
   await page.route("**/screen-test", function (route) {
     return route.fulfill({ contentType: "text/html", body: "<!doctype html><html></html>" })
   })
   await page.goto("/screen-test")
-  await page.evaluate(async function (url) {
-    const { default: createScreen } = await import(url)
+  await page.evaluate(
+    async function ([url, read]) {
+      const { default: createScreen } = await import(url)
 
-    window.screenTest = await createScreen()
-  }, fixture)
+      window.screenTest = await createScreen({}, read)
+    },
+    [fixture, pins]
+  )
 }
 
-test("a full-screen colour draws once and lights only its own channel", async function ({ page }) {
-  await prepare(page)
+const MASKS = { RGB: "the slot mask", RF: "the aperture grille" }
 
-  const frames = await page.evaluate(async function () {
-    const screen = window.screenTest,
-      results = []
+for (const [pins, mask] of Object.entries(MASKS)) {
+  test(`a full-screen colour draws once and lights only its own channel through ${mask}`, async function ({
+    page
+  }) {
+    await prepare(page, pins)
 
-    for (const colour of [
-      [255, 0, 0],
-      [0, 255, 0],
-      [0, 0, 255]
-    ]) {
-      screen.frame(...colour)
+    const frames = await page.evaluate(async function () {
+      const screen = window.screenTest,
+        results = []
 
-      const result = await screen.render(0.5)
+      for (const colour of [
+        [255, 0, 0],
+        [0, 255, 0],
+        [0, 0, 255]
+      ]) {
+        screen.frame(...colour)
 
-      results.push(result)
-    }
+        const result = await screen.render(0.5)
 
-    screen.dispose()
+        results.push(result)
+      }
 
-    return results
-  })
+      screen.dispose()
 
-  for (let lit = 0; lit < frames.length; lit++) {
-    const result = frames[lit]
+      return results
+    })
 
-    expect(result.draws).toBe(1)
-    expect(result.means[lit]).toBeGreaterThan(0.1)
+    for (let lit = 0; lit < frames.length; lit++) {
+      const result = frames[lit]
 
-    for (let channel = 0; channel < 3; channel++) {
-      const unlit = channel != lit
+      expect(result.draws).toBe(1)
+      expect(result.means[lit]).toBeGreaterThan(0.1)
 
-      if (unlit) {
-        expect(result.means[channel]).toBeLessThan(0.005)
+      for (let channel = 0; channel < 3; channel++) {
+        const unlit = channel != lit
+
+        if (unlit) {
+          expect(result.means[channel]).toBeLessThan(0.005)
+        }
       }
     }
-  }
-})
-
-test("the mask keeps its mean light through zoom, angle and movement", async function ({ page }) {
-  await prepare(page)
-
-  const views = await page.evaluate(async function () {
-    const screen = window.screenTest,
-      results = []
-
-    for (const view of [
-      [0.1, 0, 0],
-      [0.3, 0, 0],
-      [0.6, 0, 0],
-      [0.3, 0.8, 0],
-      [0.3, 0.8, 0.0003]
-    ]) {
-      const result = await screen.render(...view)
-
-      results.push(result.means)
-    }
-
-    screen.settings.pictureWidth.value = 0.8
-    screen.settings.pictureX.value = 0.01
-
-    const movedPicture = await screen.render(0.3, 0.8, 0.0003)
-
-    results.push(movedPicture.means)
-    screen.dispose()
-
-    return results
   })
 
-  for (const view of views) {
-    for (let channel = 0; channel < 3; channel++) {
-      const difference = Math.abs(view[channel] - views[0][channel])
+  test(`${mask} keeps its mean light through zoom, angle and movement`, async function ({ page }) {
+    await prepare(page, pins)
 
-      expect(view[channel]).toBeGreaterThan(0.1)
-      expect(difference).toBeLessThan(0.008)
+    const views = await page.evaluate(async function () {
+      const screen = window.screenTest,
+        results = []
+
+      for (const view of [
+        [0.1, 0, 0],
+        [0.3, 0, 0],
+        [0.6, 0, 0],
+        [0.3, 0.8, 0],
+        [0.3, 0.8, 0.0003]
+      ]) {
+        const result = await screen.render(...view)
+
+        results.push(result.means)
+      }
+
+      screen.settings.pictureWidth.value = 0.8
+      screen.settings.pictureX.value = 0.01
+
+      const movedPicture = await screen.render(0.3, 0.8, 0.0003)
+
+      results.push(movedPicture.means)
+      screen.dispose()
+
+      return results
+    })
+
+    for (const view of views) {
+      for (let channel = 0; channel < 3; channel++) {
+        const difference = Math.abs(view[channel] - views[0][channel])
+
+        expect(view[channel]).toBeGreaterThan(0.1)
+        expect(difference).toBeLessThan(0.008)
+      }
     }
-  }
-})
+  })
+}
 
 test("picture adjustments leave resolved phosphors fixed to the glass", async function ({ page }) {
   await prepare(page)
@@ -282,4 +291,55 @@ test("picture glow crosses a source edge while distant black stays black", async
   expect(result.sums.far).toBe(0)
   expect(result.means[0]).toBe(0)
   expect(result.means[2]).toBe(0)
+})
+
+test("a green tube lights a level in its phosphor's green, and no red", async function ({ page }) {
+  await prepare(page, "LUM")
+
+  const result = await page.evaluate(async function () {
+      const screen = window.screenTest
+
+      screen.frame(255, 255, 255)
+
+      const lit = await screen.render(0.5)
+
+      screen.dispose()
+
+      return lit
+    }),
+    [red, green, blue] = result.means
+
+  expect(green).toBeGreaterThan(0.1)
+  expect(red).toBeLessThan(0.005)
+  expect(blue).toBeGreaterThan(0.005)
+  expect(blue).toBeLessThan(green)
+})
+
+test("a green tube's black level lights a black picture, in its green alone", async function ({
+  page
+}) {
+  await prepare(page, "LUM")
+
+  const [unlit, raised] = await page.evaluate(async function () {
+    const screen = window.screenTest,
+      results = []
+
+    screen.frame(0, 0, 0)
+
+    for (const level of [0, 0.05]) {
+      screen.settings.blackLevel.value = level
+
+      const result = await screen.render(0.5)
+
+      results.push(result.means)
+    }
+
+    screen.dispose()
+
+    return results
+  })
+
+  expect(unlit[1]).toBeLessThan(0.005)
+  expect(raised[1]).toBeGreaterThan(unlit[1] + 0.02)
+  expect(raised[0]).toBeLessThan(0.005)
 })

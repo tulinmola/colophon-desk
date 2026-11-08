@@ -1,23 +1,43 @@
 import { Box3, DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
+import Cassette from "./cassette"
+import Datacorder from "./datacorder"
 import Disc from "./disc"
+import Recorder from "./recorder"
 import { loadHandwriting } from "./handwriting"
 import loadModel from "./load_model"
 import showPicture from "./show_picture"
 
-const CPC6128_URL = new URL("../../assets/models/cpc6128.glb", import.meta.url),
-  CTM644_URL = new URL("../../assets/models/ctm644.glb", import.meta.url),
-  CF2_URL = new URL("../../assets/models/cf2.glb", import.meta.url)
+// Each model's prints are in the language of the units it was drawn from: the
+// Spanish CPCs with their monitors and media, the English Spectrum with the
+// English television Sinclair stood it before and an English-lettered
+// recorder, and the Spanish blank the recorder takes.
+const MODELS = {
+  cpc6128: { url: new URL("../../assets/models/cpc6128.glb", import.meta.url), language: "es" },
+  cpc464: { url: new URL("../../assets/models/cpc464.glb", import.meta.url), language: "es" },
+  spectrum48: {
+    url: new URL("../../assets/models/spectrum48.glb", import.meta.url),
+    language: "en"
+  },
+  ctm644: { url: new URL("../../assets/models/ctm644.glb", import.meta.url), language: "es" },
+  gt64: { url: new URL("../../assets/models/gt64.glb", import.meta.url), language: "es" },
+  kv1400: { url: new URL("../../assets/models/kv1400.glb", import.meta.url), language: "en" },
+  crc1001: { url: new URL("../../assets/models/crc1001.glb", import.meta.url), language: "en" },
+  cf2: { url: new URL("../../assets/models/cf2.glb", import.meta.url), language: "es" },
+  ct15: { url: new URL("../../assets/models/ct15.glb", import.meta.url), language: "es" },
+  soundOnSoundC15: {
+    url: new URL("../../assets/models/sound_on_sound_c15.glb", import.meta.url),
+    language: "es"
+  }
+}
 
-const LANGUAGE = "es"
+function loadNamed(name, anisotropy, keys) {
+  const { url, language } = MODELS[name]
 
-// Depths 170 mm and 365 mm [A], CPC6128 Service Manual technical specifications: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
-const MACHINE_DEPTH = 170,
-  MONITOR_DEPTH = 365
+  return loadModel(url, language, anisotropy, keys)
+}
 
-// One chosen gap of 30 mm stands between the machines and before the disc: half each depth and the gap give 297.5 mm between the machine's middle and the monitor's, and 115 mm from that middle to the disc's rear [E]. The gap is an arrangement choice, not a measurement.
-const GAP = 30,
-  MONITOR_BEHIND = -(MACHINE_DEPTH / 2 + MONITOR_DEPTH / 2 + GAP) / 1000,
-  DISC_REAR = (MACHINE_DEPTH / 2 + GAP) / 1000
+// One chosen gap stands between the machine and the monitor behind it, between the machine and the recorder at its right, and between the machine or the recorder and the disc or cassette before it, measured from what each model reaches. The gap is an arrangement choice, not a measurement.
+const GAP = 0.03
 
 // No source here gives the colour of a lamp alight, and the lenses were sampled with the machine standing off, so a lamp glowing in its lens's own hue, and how brightly, are both guesses.
 const LAMP_GLOW = 1
@@ -30,10 +50,15 @@ const SKY = 0xffffff,
   SKY_INTENSITY = 0.5,
   SUN_INTENSITY = 1.6
 
+// The blank a cassette offered to the recorder is written on: tools/models/sound_on_sound_c15.js says why it is the one.
+const RECORDER_CASSETTE = "soundOnSoundC15"
+
 export default class Desk {
+  datacorder = null
   disc = null
   machine = null
   monitor = null
+  recorder = null
   scene = new Scene()
   settings
   #driveLens
@@ -48,31 +73,115 @@ export default class Desk {
     this.scene.add(sky, sun)
   }
 
-  async load(anisotropy, { picture, keys }) {
-    const loading = [
-        loadModel(CPC6128_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CTM644_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CF2_URL, LANGUAGE, anisotropy, keys),
-        loadHandwriting()
+  async load(anisotropy, computer, names) {
+    const { picture, keys } = computer,
+      loading = [
+        loadNamed(names.machine, anisotropy, keys),
+        loadNamed(names.monitor, anisotropy, keys)
       ],
-      [machine, monitor, disc] = await Promise.all(loading)
-
-    const screen = showPicture(monitor.model, picture),
+      [machine, monitor] = await Promise.all(loading),
+      screen = showPicture(monitor.model, picture),
       drive = machine.model.getObjectByName("drive"),
+      lid = machine.model.getObjectByName("cassette-lid"),
+      powerLamp = machine.model.getObjectByName("power-lamp"),
+      machineBounds = this.#boundsOf(machine.model),
+      monitorBounds = this.#boundsOf(monitor.model)
+
+    this.settings = { ...screen.settings, ...machine.keyboard }
+    monitor.model.position.z = machineBounds.min.z - GAP - monitorBounds.max.z
+    this.machine = machine.model
+    this.monitor = monitor.model
+    this.#textures = [...machine.textures, ...monitor.textures]
+    this.scene.add(machine.model, monitor.model)
+
+    if (drive) {
+      await this.#layDisc(drive, machineBounds, anisotropy, computer)
+    }
+
+    if (lid) {
+      await this.#layCassette(lid, machineBounds, anisotropy, computer)
+    }
+
+    if (names.recorder) {
+      await this.#layRecorder(names.recorder, machineBounds, anisotropy, computer)
+    }
+
+    if (powerLamp) {
+      this.#powerLens = this.#lightPowerLamp(powerLamp)
+    }
+  }
+
+  // A machine with a drive has a disc on the desk before it, with a name
+  // written on its label, and a lamp on its drive's bezel.
+  async #layDisc(drive, machineBounds, anisotropy, cpc) {
+    const loading = [loadNamed("cf2", anisotropy, cpc.keys), loadHandwriting()],
+      [disc] = await Promise.all(loading),
       driveBounds = this.#boundsOf(drive),
       discBounds = this.#boundsOf(disc.model),
       driveMiddle = new Vector3()
 
     driveBounds.getCenter(driveMiddle)
-    this.settings = { ...screen.settings, ...machine.keyboard }
-    this.#wireLamps(machine.model)
-    monitor.model.position.z = MONITOR_BEHIND
-    disc.model.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
-    this.disc = new Disc(disc.model, drive)
-    this.machine = machine.model
-    this.monitor = monitor.model
-    this.#textures = [...machine.textures, ...monitor.textures, ...disc.textures]
-    this.scene.add(machine.model, monitor.model, disc.model)
+    disc.model.position.set(driveMiddle.x, 0, machineBounds.max.z + GAP - discBounds.min.z)
+    this.#driveLens = this.#unlitDriveLamp(this.machine)
+    this.disc = new Disc(disc.model, drive, cpc)
+    this.#textures.push(...disc.textures)
+    this.scene.add(disc.model)
+  }
+
+  // A machine with a datacorder has a cassette on the desk before its lid, with a name written on its label.
+  async #layCassette(lid, machineBounds, anisotropy, cpc) {
+    const loading = [loadNamed("ct15", anisotropy, cpc.keys), loadHandwriting()],
+      [cassette] = await Promise.all(loading),
+      lidBounds = this.#boundsOf(lid),
+      cassetteBounds = this.#boundsOf(cassette.model),
+      lidMiddle = new Vector3()
+
+    lidBounds.getCenter(lidMiddle)
+    cassette.model.position.set(
+      lidMiddle.x,
+      -cassetteBounds.min.y,
+      machineBounds.max.z + GAP - cassetteBounds.min.z
+    )
+    this.scene.add(cassette.model)
+
+    const laid = new Cassette(cassette.model)
+
+    this.datacorder = new Datacorder(this.machine, laid, cpc)
+    this.#textures.push(...cassette.textures)
+  }
+
+  // A machine with no deck of its own has a recorder standing at its right, its front in line with the machine's and its keys toward the reader, and a cassette on the desk before it, with a name written on its label.
+  async #layRecorder(name, machineBounds, anisotropy, spectrum) {
+    const loading = [
+        loadNamed(name, anisotropy, spectrum.keys),
+        loadNamed(RECORDER_CASSETTE, anisotropy, spectrum.keys),
+        loadHandwriting()
+      ],
+      [recorder, cassette] = await Promise.all(loading),
+      recorderBounds = this.#boundsOf(recorder.model)
+
+    recorder.model.position.set(
+      machineBounds.max.x + GAP - recorderBounds.min.x,
+      0,
+      machineBounds.max.z - recorderBounds.max.z
+    )
+
+    const standing = this.#boundsOf(recorder.model),
+      cassetteBounds = this.#boundsOf(cassette.model),
+      recorderMiddle = new Vector3()
+
+    standing.getCenter(recorderMiddle)
+    cassette.model.position.set(
+      recorderMiddle.x,
+      -cassetteBounds.min.y,
+      standing.max.z + GAP - cassetteBounds.min.z
+    )
+    this.scene.add(recorder.model, cassette.model)
+
+    const laid = new Cassette(cassette.model)
+
+    this.recorder = new Recorder(recorder.model, laid, spectrum)
+    this.#textures.push(...recorder.textures, ...cassette.textures)
   }
 
   // A Box3 takes an object's parents' matrices as they last stood, and no frame has been drawn yet.
@@ -85,20 +194,26 @@ export default class Desk {
     return bounds
   }
 
+  #lightPowerLamp(lamp) {
+    const lens = lamp.material
+
+    lens.emissive.copy(lens.color)
+    lens.emissiveIntensity = LAMP_GLOW
+
+    return lens
+  }
+
   // Both lamps are cut from one material in the model, so the drive's takes a
   // copy of its own before either is lit.
-  #wireLamps(machine) {
-    const power = machine.getObjectByName("power-lamp"),
-      drive = machine.getObjectByName("drive-lamp"),
+  #unlitDriveLamp(machine) {
+    const drive = machine.getObjectByName("drive-lamp"),
       lens = drive.material.clone()
 
     drive.material = lens
-    power.material.emissive.copy(power.material.color)
-    power.material.emissiveIntensity = LAMP_GLOW
     lens.emissive.copy(lens.color)
     lens.emissiveIntensity = 0
-    this.#driveLens = lens
-    this.#powerLens = power.material
+
+    return lens
   }
 
   showPower(on) {
@@ -114,16 +229,14 @@ export default class Desk {
       materials = new Set(),
       textures = new Set(this.#textures)
 
-    for (const model of [this.machine, this.monitor, this.disc.model]) {
-      model.traverse(function (object) {
-        const drawn = object.isMesh
+    this.scene.traverse(function (object) {
+      const drawn = object.isMesh
 
-        if (drawn) {
-          geometries.add(object.geometry)
-          materials.add(object.material)
-        }
-      })
-    }
+      if (drawn) {
+        geometries.add(object.geometry)
+        materials.add(object.material)
+      }
+    })
 
     for (const material of materials) {
       const mapped = Boolean(material.map)

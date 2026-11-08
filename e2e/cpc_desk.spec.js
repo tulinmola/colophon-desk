@@ -1,4 +1,4 @@
-import { SLOW_WAIT, scene, settled, stand } from "./desk_scene.js"
+import { chordLeftToThePage, expectTyped, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
 
 test("the desk lays a canvas the size of itself", async function ({ page }) {
@@ -24,25 +24,8 @@ test("the desk stands once its machine has booted", async function ({ page }) {
   await expect(options).toBeVisible({ timeout: 30000 })
 })
 
-// Nothing on this machine moves on its own at the prompt, so a picture that
-// changed has been typed on.
 test("a keystroke let go of within the frame still reaches the machine", async function ({ page }) {
-  const desk = page.locator("colophon-cpc-desk")
-
-  await stand(page)
-  await desk.focus()
-
-  const quiet = await settled(page)
-
-  await page.keyboard.press("KeyA")
-
-  await expect
-    .poll(async function () {
-      const typed = await scene(page)
-
-      return typed.equals(quiet)
-    }, SLOW_WAIT)
-    .toBe(false)
+  await expectTyped(page, "/")
 })
 
 test("the options keep their own arrow keys, which the machine also reads", async function ({
@@ -78,4 +61,51 @@ test("a desk laid again lays one canvas, not two", async function ({ page }) {
   })
 
   await expect(canvas).toHaveCount(1)
+})
+
+test("a desk that names no machine stands the 6128, with its drive to put a disc in and no datacorder", async function ({
+  page
+}) {
+  await stand(page)
+
+  const desk = page.locator("colophon-cpc-desk"),
+    drive = desk.getByRole("button", { name: "The disc drive" }),
+    datacorder = desk.getByRole("button", { name: "The datacorder" }),
+    chooser = desk.locator("input[type='file']"),
+    tapeNotice = desk.locator("output[name='datacorder']")
+
+  await expect(drive).toBeVisible()
+  await expect(chooser).toHaveAttribute("accept", ".dsk,.zip")
+  await expect(datacorder).toHaveCount(0)
+  await expect(tapeNotice).toHaveCount(0)
+})
+
+test("a desk that names the 464 stands it, with a datacorder to put a tape in and no drive", async function ({
+  page
+}) {
+  await stand(page, "/cpc464.html")
+
+  const desk = page.locator("colophon-cpc-desk"),
+    drive = desk.getByRole("button", { name: "The disc drive" }),
+    datacorder = desk.getByRole("button", { name: "The datacorder" }),
+    chooser = desk.locator("input[type='file']"),
+    driveNotice = desk.locator("output[name='drive']")
+
+  await expect(datacorder).toBeVisible()
+  await expect(chooser).toHaveAttribute("accept", ".cdt,.tzx,.zip")
+  await expect(drive).toHaveCount(0)
+  await expect(driveNotice).toHaveCount(0)
+})
+
+test("the 464 runs, and takes its keys", async function ({ page }) {
+  await expectTyped(page, "/cpc464.html")
+})
+
+test("a CONTROL chord on a CPC still reaches the page's own shortcut", async function ({ page }) {
+  await stand(page)
+
+  const desk = page.locator("colophon-cpc-desk"),
+    left = await chordLeftToThePage(desk, "KeyP")
+
+  expect(left).toBe(true)
 })

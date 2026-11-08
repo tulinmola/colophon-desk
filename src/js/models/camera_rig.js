@@ -7,8 +7,10 @@ import {
   Spherical,
   Vector3
 } from "three/webgpu"
+import Datacorder from "./datacorder"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
 import REDUCED_MOTION from "./reduced_motion"
+import Recorder from "./recorder"
 
 // Where the camera stands, how far it may turn and how it travels are presentation choices, not measurements of the machine.
 const FIELD_OF_VIEW = 35,
@@ -19,7 +21,10 @@ const DESK_VIEW = { heading: -32, elevation: 16, margin: 0.25 },
   SET_VIEW = { heading: 0, elevation: 14, margin: 0.03 },
   MONITOR_VIEW = { heading: 0, elevation: 6, margin: 0.12 },
   DRIVE_VIEW = { heading: -22, elevation: 34, margin: 0.1, closest: 0.45 },
-  POWER_VIEW = { heading: -25, elevation: 55, margin: 0.35, closest: 0.2 }
+  DATACORDER_VIEW = { heading: -12, elevation: 48, margin: 0.12, closest: 0.3 },
+  RECORDER_VIEW = { heading: -12, elevation: 52, margin: 0.12, closest: 0.3 },
+  POWER_VIEW = { heading: -25, elevation: 55, margin: 0.35, closest: 0.2 },
+  SWITCH_VIEW = { heading: 65, elevation: 15, margin: 0.35, closest: 0.2 }
 
 const WIDEST_HEADING = 75
 
@@ -33,10 +38,14 @@ const GLIDE = 0.92
 
 const DRIVE_PARTS = ["drive", "drive-lamp", "drive-plate", "eject-button"]
 
+// The datacorder's view frames the parts a reader works and the counter they read.
+const DATACORDER_FRAMED = [...Datacorder.PARTS, "counter"]
+
 // The 6128 has no switch of its own: it takes its 5V and 12V from the monitor,
 // whose own power button this desk draws but does not yet wire. Until it does,
 // the badge that carries ENC. over the power lamp, and the lamp in its window,
-// are what the reader presses. That is a liberty and not the machine.
+// are what the reader presses. That is a liberty and not the machine. A
+// machine that has a switch of its own is switched there.
 const POWER_PARTS = ["badge", "power-lamp"]
 
 function cornersOf({ min, max }) {
@@ -105,58 +114,143 @@ export default class CameraRig {
     this.#controls = controls
   }
 
-  use({ machine, monitor }) {
+  use({ machine, monitor, recorder }) {
     const glass = monitor.getObjectByName("screen"),
       drive = machine.getObjectByName("drive"),
-      leadsTo = this.#leadsTo
+      lid = machine.getObjectByName("cassette-lid"),
+      powerSwitch = machine.getObjectByName("power-switch"),
+      powerLamp = machine.getObjectByName("power-lamp")
 
     // A box takes its object's ancestors as they last stood, and nothing has
     // been drawn yet to carry the monitor to its place behind the machine.
     machine.updateWorldMatrix(true, true)
     monitor.updateWorldMatrix(true, true)
 
-    const whole = new Box3().setFromObject(machine).expandByObject(monitor),
-      screen = new Box3().setFromObject(glass),
-      driveFace = new Box3().setFromObject(drive)
+    const set = new Box3().setFromObject(machine).expandByObject(monitor),
+      whole = set.clone(),
+      screen = new Box3().setFromObject(glass)
 
-    // The drive runs deep into the machine; only its face, at the front, is framed.
-    driveFace.min.z = driveFace.max.z
-
-    monitor.traverse(part => leadsTo.set(part, "monitor"))
-
-    for (const name of DRIVE_PARTS) {
-      const part = machine.getObjectByName(name)
-
-      part.traverse(piece => leadsTo.set(piece, "drive"))
-    }
-
-    for (const name of POWER_PARTS) {
-      const part = machine.getObjectByName(name)
-
-      part.traverse(piece => leadsTo.set(piece, "power"))
-    }
-
-    // The badge lies in the rear strip's top; only that face is framed, and the
-    // lamp stands inside its footprint.
-    const plate = machine.getObjectByName("badge"),
-      badge = new Box3().setFromObject(plate)
-
-    badge.min.y = badge.max.y
+    monitor.traverse(part => this.#leadsTo.set(part, "monitor"))
 
     this.#models = [machine, monitor]
     this.#views = new Map([
       ["desk", { subject: whole, ...DESK_VIEW }],
-      ["set", { subject: whole, ...SET_VIEW }],
-      ["monitor", { subject: screen, ...MONITOR_VIEW }],
-      ["drive", { subject: driveFace, ...DRIVE_VIEW }],
-      ["power", { subject: badge, ...POWER_VIEW }]
+      ["set", { subject: set, ...SET_VIEW }],
+      ["monitor", { subject: screen, ...MONITOR_VIEW }]
     ])
+
+    // A recorder standing beside the machine is on the desk and not in the set.
+    if (recorder) {
+      const { model } = recorder,
+        recorderView = this.#recorderView(model)
+
+      whole.expandByObject(model)
+      this.#models.push(model)
+      this.#views.set("recorder", recorderView)
+    }
+
+    // A machine switched at a switch of its own is framed there, and one with
+    // only a lamp at the badge over it.
+    if (powerSwitch) {
+      const switchView = this.#switchView(powerSwitch)
+
+      this.#views.set("power", switchView)
+    } else if (powerLamp) {
+      const badgeView = this.#badgeView(machine)
+
+      this.#views.set("power", badgeView)
+    }
+
+    if (drive) {
+      const driveView = this.#driveView(machine, drive)
+
+      this.#views.set("drive", driveView)
+    }
+
+    if (lid) {
+      const datacorderView = this.#datacorderView(machine)
+
+      this.#views.set("datacorder", datacorderView)
+    }
 
     const pose = this.#pose("desk")
 
     this.view = "desk"
     this.#boundRetreat()
     this.#stand(pose)
+  }
+
+  // The drive runs deep into the machine; only its face, at the front, is framed.
+  #driveView(machine, drive) {
+    const driveFace = new Box3().setFromObject(drive)
+
+    driveFace.min.z = driveFace.max.z
+
+    for (const name of DRIVE_PARTS) {
+      const part = machine.getObjectByName(name)
+
+      part.traverse(piece => this.#leadsTo.set(piece, "drive"))
+    }
+
+    return { subject: driveFace, ...DRIVE_VIEW }
+  }
+
+  #datacorderView(machine) {
+    const framed = new Box3()
+
+    for (const name of DATACORDER_FRAMED) {
+      const part = machine.getObjectByName(name)
+
+      framed.expandByObject(part)
+    }
+
+    for (const name of Datacorder.PARTS) {
+      const part = machine.getObjectByName(name)
+
+      part.traverse(piece => this.#leadsTo.set(piece, "datacorder"))
+    }
+
+    return { subject: framed, ...DATACORDER_VIEW }
+  }
+
+  // The recorder's view frames it whole, and the parts a reader works lead there.
+  #recorderView(model) {
+    model.updateWorldMatrix(true, true)
+
+    for (const name of Recorder.PARTS) {
+      const part = model.getObjectByName(name)
+
+      part.traverse(piece => this.#leadsTo.set(piece, "recorder"))
+    }
+
+    const framed = new Box3().setFromObject(model)
+
+    return { subject: framed, ...RECORDER_VIEW }
+  }
+
+  // The badge lies in the rear strip's top; only that face is framed, and the
+  // lamp stands inside its footprint.
+  #badgeView(machine) {
+    const plate = machine.getObjectByName("badge"),
+      badge = new Box3().setFromObject(plate)
+
+    badge.min.y = badge.max.y
+
+    for (const name of POWER_PARTS) {
+      const part = machine.getObjectByName(name)
+
+      part.traverse(piece => this.#leadsTo.set(piece, "power"))
+    }
+
+    return { subject: badge, ...POWER_VIEW }
+  }
+
+  #switchView(powerSwitch) {
+    const knob = new Box3().setFromObject(powerSwitch)
+
+    powerSwitch.traverse(piece => this.#leadsTo.set(piece, "power"))
+
+    return { subject: knob, ...SWITCH_VIEW }
   }
 
   look(view) {

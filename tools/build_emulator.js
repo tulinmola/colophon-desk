@@ -10,8 +10,7 @@ const HERE = fileURLToPath(import.meta.url),
   MACHINE_DIR = resolve(EMULATOR_DIR, "src"),
   HOST_DIR = resolve(ROOT, "emulator"),
   VENDOR_DIR = resolve(ROOT, "src/js/vendor"),
-  EXPORTS = resolve(HOST_DIR, "exports.json"),
-  HOST = resolve(HOST_DIR, "desk.c")
+  EXPORTS = resolve(HOST_DIR, "exports.json")
 
 function git(...args) {
   const output = execFileSync("git", ["-C", EMULATOR_DIR, ...args], { encoding: "utf8" })
@@ -19,15 +18,29 @@ function git(...args) {
   return output.trim()
 }
 
+// Sorted, so the same files are compiled in the same order.
+function sourcesIn(directory) {
+  const names = readdirSync(directory),
+    sources = names.filter(name => name.endsWith(".c"))
+
+  return sources.sort().map(name => resolve(directory, name))
+}
+
 // The host is this repository's and the machine is the emulator's, so a
 // commit alone cannot tell two builds apart: a name that outlives an edit to
-// desk.c is a page unable to say which module it is running.
+// the host is a page unable to say which module it is running. Every file in
+// the host is read, its headers and its list of exports among them, each under
+// its name and length, so that text moved from one file to another is a change.
 function hostDigest() {
-  const digest = createHash("sha256")
+  const digest = createHash("sha256"),
+    names = readdirSync(HOST_DIR).sort()
 
-  for (const path of [EXPORTS, HOST]) {
-    const bytes = readFileSync(path)
+  for (const name of names) {
+    const path = resolve(HOST_DIR, name),
+      bytes = readFileSync(path),
+      heading = `${name}\0${bytes.length}\0`
 
+    digest.update(heading)
     digest.update(bytes)
   }
 
@@ -43,13 +56,6 @@ function machineVersion() {
     clean = changes.length == 0
 
   return clean ? commit : `${commit}-dirty`
-}
-
-function machineSources() {
-  const names = readdirSync(MACHINE_DIR),
-    sources = names.filter(name => name.endsWith(".c"))
-
-  return sources.map(name => resolve(MACHINE_DIR, name))
 }
 
 const stood = existsSync(MACHINE_DIR)
@@ -70,8 +76,8 @@ mkdirSync(VENDOR_DIR, { recursive: true })
 execFileSync(
   "emcc",
   [
-    ...machineSources(),
-    HOST,
+    ...sourcesIn(MACHINE_DIR),
+    ...sourcesIn(HOST_DIR),
     "-I",
     MACHINE_DIR,
     "-std=c99",

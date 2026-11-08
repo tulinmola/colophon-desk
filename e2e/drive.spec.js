@@ -1,6 +1,6 @@
 import { DRIVE, SLOW_WAIT, blank, pointAt, settled, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
-import { deflateRawSync } from "node:zlib"
+import archive from "./archive.js"
 
 // Where the eject button stands on the canvas in the drive's view, as a fraction of its size.
 const EJECT_BUTTON = { x: 0.594, y: 0.506 }
@@ -88,67 +88,6 @@ function discHolding(name, type) {
 const OCTETS = "application/octet-stream",
   BLANK = { name: "blank.dsk", mimeType: OCTETS, buffer: blankDisc() },
   HOLDING = { name: "holding.dsk", mimeType: OCTETS, buffer: discHolding("COLOPHON", "TXT") }
-
-// An archive as a reader's own would be: each file behind a header of its own,
-// then a directory of them, then the record that ends it [C]:
-// https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
-// Deflate is what a zip tool reaches for and what the desk unpacks; the
-// checksums are left at zero, which nothing in the desk reads.
-const LOCAL_HEADER = 0x04034b50,
-  DIRECTORY_ENTRY = 0x02014b50,
-  END_OF_DIRECTORY = 0x06054b50,
-  DEFLATED = 8,
-  UNICODE_NAMES = 1 << 11
-
-function archiveOf(files) {
-  const headers = [],
-    directory = []
-
-  let at = 0
-
-  for (const { name, contents, unicode = true } of files) {
-    const named = Buffer.from(name, unicode ? "utf8" : "latin1"),
-      packed = deflateRawSync(contents),
-      flags = unicode ? UNICODE_NAMES : 0,
-      header = Buffer.alloc(30)
-
-    header.writeUInt32LE(LOCAL_HEADER, 0)
-    header.writeUInt16LE(flags, 6)
-    header.writeUInt16LE(DEFLATED, 8)
-    header.writeUInt32LE(packed.length, 18)
-    header.writeUInt32LE(contents.length, 22)
-    header.writeUInt16LE(named.length, 26)
-
-    const entry = Buffer.alloc(46)
-
-    entry.writeUInt32LE(DIRECTORY_ENTRY, 0)
-    entry.writeUInt16LE(flags, 8)
-    entry.writeUInt16LE(DEFLATED, 10)
-    entry.writeUInt32LE(packed.length, 20)
-    entry.writeUInt32LE(contents.length, 24)
-    entry.writeUInt16LE(named.length, 28)
-    entry.writeUInt32LE(at, 42)
-
-    headers.push(header, named, packed)
-    directory.push(entry, named)
-    at += header.length + named.length + packed.length
-  }
-
-  const listed = Buffer.concat(directory),
-    end = Buffer.alloc(22)
-
-  end.writeUInt32LE(END_OF_DIRECTORY, 0)
-  end.writeUInt16LE(files.length, 8)
-  end.writeUInt16LE(files.length, 10)
-  end.writeUInt32LE(listed.length, 12)
-  end.writeUInt32LE(at, 16)
-
-  return Buffer.concat([...headers, listed, end])
-}
-
-function archive(name, files) {
-  return { name, mimeType: "application/zip", buffer: archiveOf(files) }
-}
 
 // Playwright asks the browser to hand it the chooser without waiting for the
 // answer, so a click sent straight after listening can reach the browser first,
@@ -504,9 +443,9 @@ test("a choice cancelled takes the camera back to the view it left", async funct
 // with nothing drawn.
 function catalogueOnMachine(page, disc) {
   return page.evaluate(async function (encoded) {
-    const { Cpc, KEY_MATRIX } = await import("/js/emulator/index.js"),
+    const { Cpc, CPC_KEY_MATRIX } = await import("/js/emulator/index.js"),
       machine = new AbortController(),
-      cpc = await Cpc.create(machine.signal, 1)
+      cpc = await Cpc.create(machine.signal, 1, "cpc6128")
 
     let clock = 0
 
@@ -529,7 +468,7 @@ function catalogueOnMachine(page, disc) {
     const atPrompt = cpc.driveInUse()
 
     for (const code of ["KeyC", "KeyA", "KeyT", "Enter"]) {
-      const [key] = KEY_MATRIX[code]
+      const [key] = CPC_KEY_MATRIX[code]
 
       cpc.pressKey(key)
       run(80)

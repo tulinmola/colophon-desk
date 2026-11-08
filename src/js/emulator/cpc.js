@@ -1,107 +1,80 @@
-import CpcPicture from "./cpc_picture"
+import Machine from "./machine"
+import Picture from "./picture"
+import cpcSignals from "./cpc_signals"
 import createModule from "./module"
 import fetchFirmware from "./firmware"
+import sentenceAt from "./sentence_at"
 
-// A tab hidden for an hour owes an hour of emulation. The machine loses the
-// time instead, as one switched off would.
-const MAXIMUM_DEBT_MILLISECONDS = 80
+// Each machine boots the Spanish firmware its keys are lettered for, and a
+// 6128 the disc interface's AMSDOS beside it.
+const MACHINES = {
+  cpc6128: { firmware: "cpc6128es", disc: "amsdos", boot: module => module._desk_boot_cpc6128() },
+  cpc464: { firmware: "cpc464es", disc: null, boot: module => module._desk_boot_cpc464() }
+}
 
-// The machine on the desk is a Spanish 6128, and this is the firmware its
-// keys are lettered for.
-const MACHINE_IMAGE = "cpc6128es",
-  DISC_IMAGE = "amsdos"
-
-const BITS_A_LINE = 8
-
-const TEXT = new TextDecoder()
-
-export default class Cpc {
-  picture
-
-  // One entry a matrix position, 1 where the machine holds a key down.
-  keys
-
+export default class Cpc extends Machine {
   // The room a disc is given here, which an image must stand inside.
   discCapacity
 
-  // Whether the machine is switched on. One switched off is not a machine
-  // standing idle: it is gone, and switching on makes another.
-  running = true
+  // The room a tape is given here, which an image must stand inside.
+  tapeCapacity
 
-  #debt = 0
   #discAt
-  #last
-  #matrix
+  #boot
   #module
-  #pendingReleases = new Set()
-  #presentCount = 0
-  #pressedAt = new Map()
-  #ticksPerFrame
-  #ticksPerMillisecond
+  #tapeAt
 
-  static async create(signal, anisotropy) {
+  static async create(signal, anisotropy, machine) {
     const module = await createModule(),
-      fetching = [fetchFirmware(MACHINE_IMAGE, signal), fetchFirmware(DISC_IMAGE, signal)],
+      { firmware, disc, boot } = MACHINES[machine],
+      fetching = [fetchFirmware(firmware, signal), disc ? fetchFirmware(disc, signal) : null],
       // An image answering to its pin is the length that pin was taken over,
       // so the room it lands in is settled before it is fetched.
       [rom, amsdos] = await Promise.all(fetching),
-      romAt = module._desk_rom(),
-      amsdosAt = module._desk_amsdos()
+      romAt = module._desk_cpc_rom()
 
     module.HEAPU8.set(rom, romAt)
-    module.HEAPU8.set(amsdos, amsdosAt)
-    module._desk_boot_cpc6128()
 
-    return new Cpc(module, anisotropy)
-  }
+    if (amsdos) {
+      const amsdosAt = module._desk_cpc_amsdos()
 
-  constructor(module, anisotropy) {
-    const framebufferAt = module._desk_framebuffer(),
-      columns = module._desk_framebuffer_width(),
-      rows = module._desk_framebuffer_height(),
-      // The module's memory never grows — desk.c holds all of it in fixed
-      // storage — so the view taken here stays good for the machine's life.
-      framebuffer = module.HEAPU8.subarray(framebufferAt, framebufferAt + columns * rows),
-      rgb = code => module._desk_rgb(code),
-      matrixAt = module._desk_keyboard(),
-      lines = module._desk_keyboard_lines()
-
-    this.picture = new CpcPicture(framebuffer, { columns, rows, rgb, anisotropy })
-    this.keys = new Array(lines * BITS_A_LINE)
-    this.#matrix = module.HEAPU8.subarray(matrixAt, matrixAt + lines)
-    this.#discAt = module._desk_disc()
-    this.discCapacity = module._desk_disc_capacity()
-    this.#module = module
-    this.#ticksPerFrame = module._desk_ticks_per_frame()
-    this.#ticksPerMillisecond = module._desk_ticks_per_millisecond()
-    this.#last = performance.now()
-    this.#readKeys()
-  }
-
-  pressKey(key) {
-    this.#pendingReleases.delete(key)
-    this.#pressedAt.set(key, this.#presentCount)
-    this.#module._desk_press(key)
-  }
-
-  // The firmware reads the matrix once a frame, so a key pressed and let go
-  // between two reads was never pressed at all.
-  releaseKey(key) {
-    const seen = this.#presentCount > this.#pressedAt.get(key)
-
-    if (seen) {
-      this.#pressedAt.delete(key)
-      this.#module._desk_release(key)
-    } else {
-      this.#pendingReleases.add(key)
+      module.HEAPU8.set(amsdos, amsdosAt)
     }
+
+    boot(module)
+
+    return new Cpc(module, anisotropy, boot)
   }
 
-  releaseAllKeys() {
-    this.#pressedAt.clear()
-    this.#pendingReleases.clear()
-    this.#module._desk_release_all()
-    this.#readKeys()
+  constructor(module, anisotropy, boot) {
+    const framebufferAt = module._desk_cpc_framebuffer(),
+      columns = module._desk_cpc_framebuffer_width(),
+      rows = module._desk_cpc_framebuffer_height(),
+      // The module's memory never grows — the host holds all of it in fixed
+      // storage — so the views taken here stay good for the machine's life.
+      framebuffer = module.HEAPU8.subarray(framebufferAt, framebufferAt + columns * rows),
+      rgb = code => module._desk_cpc_rgb(code),
+      { colourCodes, signals } = cpcSignals(rgb),
+      picture = new Picture(framebuffer, { columns, rows, colourCodes, anisotropy, signals }),
+      matrixAt = module._desk_cpc_keyboard(),
+      lines = module._desk_cpc_keyboard_lines(),
+      board = {
+        matrix: module.HEAPU8.subarray(matrixAt, matrixAt + lines),
+        ticksPerFrame: module._desk_cpc_ticks_per_frame(),
+        ticksPerMillisecond: module._desk_cpc_ticks_per_millisecond(),
+        runUntilRetrace: limit => module._desk_cpc_run_until_retrace(limit),
+        press: key => module._desk_cpc_press(key),
+        release: key => module._desk_cpc_release(key),
+        releaseAll: () => module._desk_cpc_release_all()
+      }
+
+    super(board, picture)
+    this.#discAt = module._desk_cpc_disc()
+    this.discCapacity = module._desk_cpc_disc_capacity()
+    this.#tapeAt = module._desk_cpc_tape()
+    this.tapeCapacity = module._desk_cpc_tape_capacity()
+    this.#module = module
+    this.#boot = boot
   }
 
   // An image with no room for it is never written: it would run past the
@@ -114,111 +87,81 @@ export default class Cpc {
       module.HEAPU8.set(bytes, this.#discAt)
     }
 
-    const inserted = module._desk_insert_disc(bytes.length)
+    const inserted = module._desk_cpc_insert_disc(bytes.length)
 
     return inserted != 0
   }
 
   ejectDisc() {
-    this.#module._desk_eject_disc()
+    this.#module._desk_cpc_eject_disc()
   }
 
   driveInUse() {
-    const working = this.#module._desk_drive_in_use()
+    const working = this.#module._desk_cpc_drive_in_use()
 
     return working != 0
   }
 
   discProblem() {
-    const heap = this.#module.HEAPU8,
-      at = this.#module._desk_disc_problem(),
-      reported = at != 0
+    const at = this.#module._desk_cpc_disc_problem()
 
-    if (!reported) {
-      return null
-    }
-
-    const end = heap.indexOf(0, at),
-      sentence = heap.subarray(at, end)
-
-    return TEXT.decode(sentence)
+    return sentenceAt(this.#module.HEAPU8, at)
   }
 
-  // The machine's own power, which the disc in its drive outlives.
+  // An image with no room for it is never written, as a disc's is not.
+  insertTape(bytes) {
+    const module = this.#module,
+      fits = bytes.length <= this.tapeCapacity
+
+    if (fits) {
+      module.HEAPU8.set(bytes, this.#tapeAt)
+    }
+
+    const inserted = module._desk_cpc_insert_tape(bytes.length)
+
+    return inserted != 0
+  }
+
+  ejectTape() {
+    this.#module._desk_cpc_eject_tape()
+  }
+
+  engageTape(engaged) {
+    this.#module._desk_cpc_engage_tape(engaged)
+  }
+
+  tapeProblem() {
+    const at = this.#module._desk_cpc_tape_problem()
+
+    return sentenceAt(this.#module.HEAPU8, at)
+  }
+
+  // How far the tape has run since its start, and how long what is recorded on
+  // it plays, in milliseconds.
+  tapePosition() {
+    return this.#module._desk_cpc_tape_position()
+  }
+
+  tapeRecorded() {
+    return this.#module._desk_cpc_tape_recorded()
+  }
+
+  windTape(milliseconds) {
+    this.#module._desk_cpc_wind_tape(milliseconds)
+  }
+
+  // The machine's own power, which the disc in its drive and the tape in its
+  // datacorder outlive.
   switchOff() {
     this.running = false
     this.releaseAllKeys()
-    this.#module._desk_blank_picture()
+    this.#module._desk_cpc_blank_picture()
     this.picture.refresh()
   }
 
   switchOn() {
     this.running = true
-    this.#debt = 0
-    this.#last = performance.now()
-    this.#module._desk_boot_cpc6128()
-    this.#readKeys()
+    this.#boot(this.#module)
     this.picture.refresh()
-  }
-
-  advance(now) {
-    const off = !this.running
-
-    if (off) {
-      return
-    }
-
-    const owed = (now - this.#last) * this.#ticksPerMillisecond,
-      maximum = MAXIMUM_DEBT_MILLISECONDS * this.#ticksPerMillisecond
-
-    this.#debt = Math.min(this.#debt + owed, maximum)
-    this.#last = now
-
-    let drew = false
-    while (this.#debt > 0) {
-      // A frame's worth of slack past the debt lets the frame standing finish,
-      // and is what tells a retrace from a limit that simply ran out.
-      const limit = Math.ceil(this.#debt) + this.#ticksPerFrame,
-        ticks = this.#module._desk_run_until_retrace(limit)
-
-      this.#debt -= ticks
-      drew = true
-    }
-
-    if (drew) {
-      this.#present()
-    }
-  }
-
-  dispose() {
-    this.picture.dispose()
-  }
-
-  #present() {
-    this.#presentCount++
-    // Read before the waiting releases are let go, so the caps stand on what
-    // the machine held through the frame now reaching the glass: a key tapped
-    // inside one frame is down for exactly that frame.
-    this.#readKeys()
-
-    for (const key of this.#pendingReleases) {
-      this.#pressedAt.delete(key)
-      this.#module._desk_release(key)
-    }
-
-    this.#pendingReleases.clear()
-    this.picture.refresh()
-  }
-
-  #readKeys() {
-    for (let line = 0; line < this.#matrix.length; line++) {
-      const byte = this.#matrix[line]
-
-      for (let bit = 0; bit < BITS_A_LINE; bit++) {
-        const down = (byte & (1 << bit)) == 0
-
-        this.keys[line * BITS_A_LINE + bit] = down ? 1 : 0
-      }
-    }
   }
 }
