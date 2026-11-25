@@ -15,7 +15,7 @@ test("the options turn the tube and put it back", async function ({ page }) {
   })
 
   await page.setViewportSize({ width: 480, height: 360 })
-  await page.goto("/")
+  await page.goto("/desk.html")
 
   const controls = page.locator("colophon-options"),
     capture = { style: "colophon-options { visibility: hidden; }" }

@@ -17,7 +17,7 @@ async function stand(page) {
   const options = page.locator("colophon-options")
 
   await page.setViewportSize({ width: 480, height: 360 })
-  await page.goto("/")
+  await page.goto("/desk.html")
   await expect(options).toBeVisible(SLOW_WAIT)
 }
 

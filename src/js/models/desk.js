@@ -1,14 +1,10 @@
-import { Box3, DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
+import { DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
 import Disc from "./disc"
+import boundsOf from "./bounds_of"
+import disposeModels from "./dispose_models"
 import { loadHandwriting } from "./handwriting"
 import loadModel from "./load_model"
 import showPicture from "./show_picture"
-
-const CPC6128_URL = new URL("../../assets/models/cpc6128.glb", import.meta.url),
-  CTM644_URL = new URL("../../assets/models/ctm644.glb", import.meta.url),
-  CF2_URL = new URL("../../assets/models/cf2.glb", import.meta.url)
-
-const LANGUAGE = "es"
 
 // Depths 170 mm and 365 mm [A], CPC6128 Service Manual technical specifications: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
 const MACHINE_DEPTH = 170,
@@ -50,17 +46,17 @@ export default class Desk {
 
   async load(anisotropy, { picture, keys }) {
     const loading = [
-        loadModel(CPC6128_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CTM644_URL, LANGUAGE, anisotropy, keys),
-        loadModel(CF2_URL, LANGUAGE, anisotropy, keys),
+        loadModel("cpc6128", anisotropy, keys),
+        loadModel("ctm644", anisotropy, keys),
+        loadModel("cf2", anisotropy, keys),
         loadHandwriting()
       ],
       [machine, monitor, disc] = await Promise.all(loading)
 
     const screen = showPicture(monitor.model, picture),
       drive = machine.model.getObjectByName("drive"),
-      driveBounds = this.#boundsOf(drive),
-      discBounds = this.#boundsOf(disc.model),
+      driveBounds = boundsOf(drive),
+      discBounds = boundsOf(disc.model),
       driveMiddle = new Vector3()
 
     driveBounds.getCenter(driveMiddle)
@@ -73,16 +69,6 @@ export default class Desk {
     this.monitor = monitor.model
     this.#textures = [...machine.textures, ...monitor.textures, ...disc.textures]
     this.scene.add(machine.model, monitor.model, disc.model)
-  }
-
-  // A Box3 takes an object's parents' matrices as they last stood, and no frame has been drawn yet.
-  #boundsOf(object) {
-    const bounds = new Box3()
-
-    object.updateWorldMatrix(true, false)
-    bounds.setFromObject(object)
-
-    return bounds
   }
 
   // Both lamps are cut from one material in the model, so the drive's takes a
@@ -110,39 +96,8 @@ export default class Desk {
   }
 
   dispose() {
-    const geometries = new Set(),
-      materials = new Set(),
-      textures = new Set(this.#textures)
+    const models = [this.machine, this.monitor, this.disc.model]
 
-    for (const model of [this.machine, this.monitor, this.disc.model]) {
-      model.traverse(function (object) {
-        const drawn = object.isMesh
-
-        if (drawn) {
-          geometries.add(object.geometry)
-          materials.add(object.material)
-        }
-      })
-    }
-
-    for (const material of materials) {
-      const mapped = Boolean(material.map)
-
-      if (mapped) {
-        textures.add(material.map)
-      }
-    }
-
-    for (const geometry of geometries) {
-      geometry.dispose()
-    }
-
-    for (const texture of textures) {
-      texture.dispose()
-    }
-
-    for (const material of materials) {
-      material.dispose()
-    }
+    disposeModels(models, this.#textures)
   }
 }

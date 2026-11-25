@@ -2,7 +2,7 @@ import { SLOW_WAIT, scene, settled, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
 
 test("the desk lays a canvas the size of itself", async function ({ page }) {
-  await page.goto("/")
+  await page.goto("/desk.html")
 
   const desk = page.locator("colophon-cpc-desk"),
     canvas = desk.locator("canvas")
@@ -17,7 +17,7 @@ test("the desk lays a canvas the size of itself", async function ({ page }) {
 })
 
 test("the desk stands once its machine has booted", async function ({ page }) {
-  await page.goto("/")
+  await page.goto("/desk.html")
 
   const options = page.locator("colophon-options")
 
@@ -48,7 +48,7 @@ test("a keystroke let go of within the frame still reaches the machine", async f
 test("the options keep their own arrow keys, which the machine also reads", async function ({
   page
 }) {
-  await page.goto("/")
+  await page.goto("/desk.html")
 
   const options = page.locator("colophon-options"),
     travel = options.locator("input[name='keyTravel']")
@@ -65,7 +65,7 @@ test("the options keep their own arrow keys, which the machine also reads", asyn
 })
 
 test("a desk laid again lays one canvas, not two", async function ({ page }) {
-  await page.goto("/")
+  await page.goto("/desk.html")
 
   const desk = page.locator("colophon-cpc-desk"),
     canvas = desk.locator("canvas")

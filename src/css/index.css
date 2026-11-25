@@ -220,3 +220,114 @@ colophon-options {
     gap: 0.4rem;
   }
 }
+
+colophon-line-up {
+  --ink: #ecedeb;
+  --muted: color-mix(in srgb, var(--ink) 62%, transparent);
+
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100dvh;
+  overflow: hidden;
+  color: var(--ink);
+  background: #000;
+
+  canvas {
+    position: absolute;
+    inset: 0;
+  }
+
+  ol {
+    position: relative;
+    display: flex;
+    align-items: start;
+    gap: 3rem;
+    width: min(100% - 4rem, 80rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  ol > li {
+    flex: var(--span) 1 0;
+    min-width: 0;
+  }
+
+  /* One under another, the widest across the column and the rest at its scale. */
+  @media (width < 40rem) {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+
+    ol {
+      flex-direction: column;
+      align-items: center;
+      width: min(100% - 3rem, 28rem);
+      padding-block: 3rem;
+    }
+
+    ol > li {
+      flex: none;
+      width: calc(100% * var(--span) / var(--widest));
+    }
+  }
+
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    width: 100%;
+    padding: 0 0 0.5rem;
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    border-radius: 0.75rem;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--ink);
+    }
+
+    &[aria-pressed="true"] .name {
+      text-decoration: underline 2px;
+      text-underline-offset: 0.3em;
+    }
+  }
+
+  .frame {
+    display: block;
+    width: 100%;
+    aspect-ratio: var(--aspect);
+  }
+
+  .name {
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+
+  .made {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  ul {
+    display: grid;
+    gap: 0.25rem;
+    width: fit-content;
+    margin: 0.6rem auto 0;
+    padding: 0.7rem 0 0;
+    list-style: none;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--muted);
+    border-top: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  }
+}
