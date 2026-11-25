@@ -9,8 +9,22 @@
   </head>
   <body>
     <h1>Colophon Desk</h1>
-    <colophon-line-up></colophon-line-up>
+    <main class="showroom" aria-busy="true">
+      <section class="line-up" aria-labelledby="line-up-title" hidden>
+        <h2 id="line-up-title">Choose a computer</h2>
+        <ol aria-label="Computers, in the order they came out"></ol>
+      </section>
+      <section class="set-up" aria-labelledby="set-up-title" hidden>
+        <div class="stage"></div>
+        <div class="panel">
+          <a href="./"><span aria-hidden="true">‹</span> All computers</a>
+          <h2 id="set-up-title" tabindex="-1"></h2>
+          <p></p>
+          <form action="desk.html"></form>
+        </div>
+      </section>
+    </main>
 
-    <script src="./js/index.js" type="module"></script>
+    <script src="./js/showroom.js" type="module"></script>
   </body>
 </html>

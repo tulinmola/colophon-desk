@@ -12,7 +12,7 @@ Node and npm build the site and check it. Compiling the machine it runs wants Em
 
 ```sh
 npm install
-npm start              # serve the line-up, and the desk at /desk.html
+npm start              # serve the line-up and the set-up, and the desk at /desk.html
 npm run build          # write the site to dist/
 npm run models:build   # write the models and their prints to src/assets/
 npm run emulator:build # compile the machine and this host into src/js/vendor/
@@ -50,9 +50,9 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - [CPC6128 Service Manual](https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a) — Amstrad's own dimensions and technical specifications, and the mouldings by part number.
 - [CPC464 Service Manual](https://archive.org/details/Amstrad_CPC464_Service_Manual_1985_Amstrad_Consumer_Electronics) — the 464's overall size, the datacorder's keys by name and part number, the cassette compartment's floor and the lid's pivot hooks.
 - [CPC464, CTM640 and GT64 Service Manual](https://archive.org/details/amstrad-cpc-464-micro-computer-ctm-640-color-monitor-gt-64-green-monitor-service-manual) — the GT64's mouldings and fittings by part number, its overall size, its tube, and the board whose pots set its thumbwheels' pitch.
-- [CPC6128, CTM644 and GT65 Service Manual](https://archive.org/details/amstrad-cpc-6128-micro-computer-ctm-644-color-monitor-gt-65-green-monitor-service-manual) — the GT65's front moulding, and the rear it shares with the GT64.
+- [CPC6128, CTM644 and GT65 Service Manual](https://archive.org/details/amstrad-cpc-6128-micro-computer-ctm-644-color-monitor-gt-65-green-monitor-service-manual) — the GT65's front moulding, and the rear it shares with the GT64, and the CTM644's 12 V socket.
 - [SOFT 968](https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual) — the firmware manual, each key's number in the matrix, and the DATA format a blank disc is laid out in.
-- [CPC464 user instructions](https://archive.org/details/cpc464.en) — how a cassette goes into the datacorder's lid and is carried down onto its spindles.
+- [CPC464 user instructions](https://archive.org/details/cpc464.en) — how a cassette goes into the datacorder's lid and is carried down onto its spindles, and the two monitors the 464 is set up with.
 - [Reading the keyboard and Joysticks](https://cpctech.cpcwiki.de/docs/keyboard.html) — which line and bit each key sits on, and so where a browser's own keys reach the machine.
 - [Disk image file format](https://cpctech.cpcwiki.de/docs/dsk.html) — the layout of a disc image, which the tests write to give the drive discs of their own.
 - [CP/M 2.2 disc formats](https://www.seasip.info/Cpm/format22.html) — a directory entry, and the &E5 that marks one holding no file.
@@ -69,6 +69,7 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - Museum records of the 464, [the Science Museum's](https://collection.sciencemuseumgroup.org.uk/objects/co8413235/amstrad-cpc-464-computer-with-cassette-drive), the BnF's [no. 1016](https://archivesetmanuscrits.bnf.fr/ark:/12148/cc97705f/ca19918160) and [no. 1183](https://archivesetmanuscrits.bnf.fr/ark:/12148/cc97705f/ca19919170), [the Computer History Museum's](https://www.computerhistory.org/collections/catalog/102673165) and [the UPM's](https://blogs.upm.es/museotelecomunicaciones/ordenador-domestico-amstrad-cpc-464/) — real units measured, the width they agree on, against which Amstrad's own reads wide; and [the UPV's](http://ceres.mcu.es/pages/Main?idt=121782&inventary=CE2017/009/009&table=FMUS&museum=MUPV) and [the Technisches Museum Wien's](https://data.tmw.at/object/190299), to the half centimetre, a little wider.
 - [The V&A's 464](https://collections.vam.ac.uk/item/O1172044/) — a museum's measure of a real unit, narrower than the others.
 - CPCWiki on the [CPC 464](https://www.cpcwiki.eu/index.php/CPC_464) and the [CPC 472](https://www.cpcwiki.eu/index.php/CPC_472) — a plainer Spanish badge, and the Spanish words on the datacorder's inlay.
+- CPCWiki on the [GT64 and GT65](https://www.cpcwiki.eu/index.php/GT64/GT65) and the [CTM640 and CTM644](https://www.cpcwiki.eu/index.php/CTM640/CTM644) — which monitors carry the 12 V a 6128's drive takes, and which were sold with which computer.
 - [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Amstrad_CPC6128), [one machine](https://commons.wikimedia.org/wiki/File:AMSTRAD_CPC_6128.jpg) and [another](https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg) — the drive bezel rectified, and the plastic's hue on aged cabinets.
 - [sasfepu78](http://sasfepu78.fr/articles/Amstrad/) — a 600 dpi scan of a French 6128's keys, lying face down.
 - [Retroleum](https://retroleum.co.uk/cpc-kb) — keycap heights for the later 464, which bound the 6128's.
@@ -77,12 +78,13 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - Parts printed to fit: a [monitor stand](https://www.printables.com/model/527817), a [key cover](https://www.printables.com/model/1334008) and two drive plugs ([one](https://www.thingiverse.com/thing:2876318), [two](https://www.printables.com/model/284516)) — they measure the openings they fill.
 - Parts made to fit the 464: a [replacement keyboard](https://github.com/Bread80/CPC_Keyboards) on its 19.05 grid, a [keycap](https://www.thingiverse.com/thing:4596135), a [cassette lid's window](https://www.thingiverse.com/thing:4599630) and a [datacorder key](https://www.printables.com/model/284139) — the keys' places, a cap's shape, the lid's and the piano keys' sizes, and the rod a piano key's lever turns on.
 - [Andrew Dorey's restoration of a 464](https://andrewdorey.com/post/amstrad-cpc-464-repair) — the piano keys' levers on their one rod, and the bare mechanism where the rod is seen.
-- [DDI-1 user instructions](https://archive.org/download/manualsonline-id-073a0aea-c864-4724-8004-a2dbc04e2798/073a0aea-c864-4724-8004-a2dbc04e2798.pdf) — what comes in the DDI-1's box, the edge connector its interface plugs into, its ribbon's two sockets, and the drive switched on first.
+- [DDI-1 user instructions](https://archive.org/download/manualsonline-id-073a0aea-c864-4724-8004-a2dbc04e2798/073a0aea-c864-4724-8004-a2dbc04e2798.pdf) — what comes in the DDI-1's box, the edge connector its interface plugs into, its ribbon's two sockets, the drive switched on first, and where the drive stands.
 - [DDI-1/FD-1 Service Manual](https://cpcrulez.fr/hardware-service_manual-dd1_fd1.htm) — the drive's and the interface's sizes, the mechanism by part number, and the ribbon's header.
 - [Amstrad France's DDI-1 brochure](https://archive.org/details/depliants_amstrad) — the same sizes again, and the badge as Amstrad photographed it.
 - [SOFT 158A](https://web.archive.org/web/20260121184155/https://cpcrulez.fr/codingBOOK_soft158a-ddi-1_firmware_0500.htm) — the DDI-1's firmware manual: the longest its interface's ribbon may be.
 - [CPC664 Service Manual](https://archive.org/details/amstrad-cpc-664-service-manual) — the 664's drive mechanism, the DDI-1's by part number.
 - CPCWiki's photographs of [a DDI-1's front and top](https://oldwiki.cpcwiki.eu/imgs/3/31/DDI-1.jpg) and [its interface's socket face](https://oldwiki.cpcwiki.eu/imgs/9/91/DDI-1_Tomdalby.jpg) — rectified here: the front's fittings, the top's vents, and the interface's socket, ribs and ribbon.
+- [A DDI-1 at home](https://www.classic-computers.org.nz/blog/images/2015-10-06-amstrad-fdd1-with-464-3-800x.jpg) at classic-computers.org.nz — a drive standing with its front level with its 464's, as the set-up stands one.
 - [The Science Museum's DDI-1](https://coimages.sciencemuseumgroup.org.uk/461/243/large_smg00279271.jpg) — the drive's colours on a near-neutral ground, and its badge.
 - [The Erlangen collection's Schneider drive](https://iser.wisski.data.fau.de/sites/default/files/2024-02/CPC-FD-Ext.pdf) — a museum's measure of a real drive, and the one photograph of its rear: the mains lead, the ribbon's header and the POWER slide.
 - [Planet Sinclair](https://rk.nvg.ntnu.no/sinclair/computers/zxspectrum/spec_technical.htm) — Sinclair's 1982 leaflet transcribed: the Spectrum's 233 × 144 × 30.
@@ -130,7 +132,7 @@ Every figure is cited at the line that uses it. This is the other view: what the
 
 **The disc.**
 
-- [CPC6128 user instructions](https://archive.org/details/amstrad-cpc-6128-user-manual) — Amstrad's own names for the disc and its parts, the write-protect shutter at its corner, the drive's indicator lamp with what lights it, and a separate drive's green lamp beside its red one.
+- [CPC6128 user instructions](https://archive.org/details/amstrad-cpc-6128-user-manual) — Amstrad's own names for the disc and its parts, the write-protect shutter at its corner, the drive's indicator lamp with what lights it, and a separate drive's green lamp beside its red one, the 12 V its drive takes from the monitor, and the lead that joins a cassette unit.
 - [APPNOTE.TXT](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) — PKWARE's own specification of the .ZIP format, by which an archive of discs is opened without a library.
 - [Code page 437](https://en.wikipedia.org/wiki/Code_page_437) — the letters a disc was named in before archives carried Unicode, which no browser decodes.
 - [fileformat.info](https://www.fileformat.info/media/compact-floppy/index.htm) — a flatbed scan of an Amsoft blank beside a ruler, on which every opening and the label's second side are measured.

@@ -4,8 +4,20 @@ import KeycapMaterial from "./keycap_material"
 import ScreenMaterial from "./screen_material"
 
 // Each model's prints are in the language of the units it was drawn from: the
-// Spanish CPCs with their monitor and disc, and the English Spectrum.
-const LANGUAGES = { cpc6128: "es", cpc464: "es", spectrum48: "en", ctm644: "es", cf2: "es" }
+// Spanish CPCs with their monitors, drive and disc, and the English Spectrum
+// with the English television Sinclair stood it before and an English-lettered
+// recorder.
+const LANGUAGES = {
+  cpc6128: "es",
+  cpc464: "es",
+  ctm644: "es",
+  gt64: "es",
+  ddi1: "es",
+  cf2: "es",
+  spectrum48: "en",
+  kv1400: "en",
+  crc1001: "en"
+}
 
 function printUrl(name, { language, small }) {
   if (small) {

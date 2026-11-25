@@ -41,7 +41,7 @@ Where no figure exists the part is drawn anyway and says so: a dead flat screen 
 ## Simplicity and ownership
 
 - Structure follows need: build nothing for a consumer that does not exist, and bring in a tool with the first thing that uses it.
-- Elements handle the page and its events. Loading, fetching, the WASM module and the geometry belong to modules of their own.
+- Elements handle the page and its events. The site's own page, which no other page carries, is the one exception, handled by a plain script. Loading, fetching, the WASM module and the geometry belong to modules of their own.
 - APIs are the desk's own, in the machine's terms; no generic abstractions for app-specific work.
 - What measures the desk lives in the tree that runs it, never in the page: a harness, a timing rig, a compiler report. A figure the desk admits it guessed is one the reader may turn, and the knob belongs on the glass beside it.
 - Of two options that work, the one with fewer concepts and fewer lines. Change what the task needs and no more; a rewrite that was asked for is a clean one rather than a patch. Finish with a pass that removes redundant checks, temporary indirections and duplicated logic.
@@ -64,4 +64,4 @@ Where no figure exists the part is drawn anyway and says so: a dead flat screen 
 
 ## Unsettled
 
-Whether the desk is ever carried by another page, as the player is. How the textures are made for each country. What the glass shows beyond the picture, and what evidence could ever settle a tube's own figures.
+How the textures are made for each country. What the glass shows beyond the picture, and what evidence could ever settle a tube's own figures.
