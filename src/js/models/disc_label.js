@@ -69,6 +69,10 @@ export default class DiscLabel {
     this.#texture.needsUpdate = true
   }
 
+  dispose() {
+    this.#texture.dispose()
+  }
+
   #print() {
     const context = this.#context,
       { width, height } = this.#texture.image

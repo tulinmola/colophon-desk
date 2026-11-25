@@ -7,11 +7,10 @@ import {
   Scene,
   Vector3
 } from "three/webgpu"
+import Model from "./model"
 import REDUCED_MOTION from "./reduced_motion"
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
 import boundsOf from "./bounds_of"
-import disposeModels from "./dispose_models"
-import loadModel from "./load_model"
 
 // Each computer is seen alone in a frame of its own, every frame at one scale: as high, in metres, seen through the same field, in degrees, with the same margin either side, room enough for a computer come nearer to turn in. All are presentation choices.
 const FRAME_HEIGHT = 0.34,
@@ -63,24 +62,23 @@ export default class LineUp {
   #lastFrameAt = null
   #reflections
   #shown = null
-  #textures = []
 
   async load(names, renderer) {
     const anisotropy = renderer.getMaxAnisotropy(),
-      loading = names.map(name => loadModel(name, anisotropy)),
-      loaded = await Promise.all(loading),
+      loading = names.map(name => Model.load(name, { anisotropy, small: true })),
+      models = await Promise.all(loading),
       halfField = MathUtils.degToRad(FIELD_OF_VIEW / 2)
 
     this.#distance = FRAME_HEIGHT / (2 * Math.tan(halfField))
     this.#reflections = lightStudio(this.scene, renderer)
 
-    for (const [index, { model, textures }] of loaded.entries()) {
+    for (const [index, model] of models.entries()) {
       const bounds = boundsOf(model),
         middle = new Vector3(),
         pivot = new Group(),
         camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, this.#distance / 10, this.#distance * 10),
         span = bounds.max.x - bounds.min.x + 2 * MARGIN,
-        computer = { pivot, camera, middle, span, approach: 0, turn: 0, shownAt: null }
+        computer = { model, pivot, camera, middle, span, approach: 0, turn: 0, shownAt: null }
 
       bounds.getCenter(middle)
       pivot.position.copy(middle)
@@ -88,7 +86,6 @@ export default class LineUp {
       pivot.add(model)
       this.#aim(computer)
       this.#computers.set(names[index], computer)
-      this.#textures.push(...textures)
       this.scene.add(pivot)
     }
   }
@@ -204,10 +201,10 @@ export default class LineUp {
   }
 
   dispose() {
-    const computers = this.#computers.values(),
-      pivots = Array.from(computers, computer => computer.pivot)
+    for (const { model } of this.#computers.values()) {
+      model.dispose()
+    }
 
-    disposeModels(pivots, this.#textures)
     this.#reflections.dispose()
   }
 }

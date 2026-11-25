@@ -92,7 +92,7 @@ function tiltAboutX(degrees) {
 const FONT_NAMES = readdirSync(FONTS_DIR).filter(fontName => fontName.endsWith(".otf")),
   FONT_FILES = FONT_NAMES.map(fontName => resolve(FONTS_DIR, fontName))
 
-// How finely a print is rendered for a model shown and not played, in pixels to the millimetre. A presentation choice.
+// How finely a print is rendered for a model seen small, in pixels to the millimetre. A presentation choice.
 const SMALL_PIXELS = 3
 
 function writePrint(svg, pixels, path) {

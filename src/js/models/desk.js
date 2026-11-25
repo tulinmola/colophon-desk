@@ -1,10 +1,8 @@
 import { DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
 import Disc from "./disc"
+import Model from "./model"
 import boundsOf from "./bounds_of"
-import disposeModels from "./dispose_models"
 import { loadHandwriting } from "./handwriting"
-import loadModel from "./load_model"
-import showPicture from "./show_picture"
 
 // Depths 170 mm and 365 mm [A], CPC6128 Service Manual technical specifications: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
 const MACHINE_DEPTH = 170,
@@ -34,7 +32,6 @@ export default class Desk {
   settings
   #driveLens
   #powerLens
-  #textures = []
 
   constructor() {
     const sky = new HemisphereLight(SKY, GROUND, SKY_INTENSITY),
@@ -46,29 +43,28 @@ export default class Desk {
 
   async load(anisotropy, { picture, keys }) {
     const loading = [
-        loadModel("cpc6128", anisotropy, keys),
-        loadModel("ctm644", anisotropy, keys),
-        loadModel("cf2", anisotropy, keys),
+        Model.load("cpc6128", { anisotropy, keys }),
+        Model.load("ctm644", { anisotropy }),
+        Model.load("cf2", { anisotropy }),
         loadHandwriting()
       ],
       [machine, monitor, disc] = await Promise.all(loading)
 
-    const screen = showPicture(monitor.model, picture),
-      drive = machine.model.getObjectByName("drive"),
+    const screen = monitor.showPicture(picture),
+      drive = machine.getObjectByName("drive"),
       driveBounds = boundsOf(drive),
-      discBounds = boundsOf(disc.model),
+      discBounds = boundsOf(disc),
       driveMiddle = new Vector3()
 
     driveBounds.getCenter(driveMiddle)
     this.settings = { ...screen.settings, ...machine.keyboard }
-    this.#wireLamps(machine.model)
-    monitor.model.position.z = MONITOR_BEHIND
-    disc.model.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
-    this.disc = new Disc(disc.model, drive)
-    this.machine = machine.model
-    this.monitor = monitor.model
-    this.#textures = [...machine.textures, ...monitor.textures, ...disc.textures]
-    this.scene.add(machine.model, monitor.model, disc.model)
+    this.#wireLamps(machine)
+    monitor.position.z = MONITOR_BEHIND
+    disc.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
+    this.disc = new Disc(disc, drive)
+    this.machine = machine
+    this.monitor = monitor
+    this.scene.add(machine, monitor, disc)
   }
 
   // Both lamps are cut from one material in the model, so the drive's takes a
@@ -96,8 +92,8 @@ export default class Desk {
   }
 
   dispose() {
-    const models = [this.machine, this.monitor, this.disc.model]
-
-    disposeModels(models, this.#textures)
+    this.machine.dispose()
+    this.monitor.dispose()
+    this.disc.dispose()
   }
 }

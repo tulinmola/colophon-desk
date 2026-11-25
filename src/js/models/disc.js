@@ -1,6 +1,7 @@
-import { Box3, Vector3 } from "three/webgpu"
 import DiscLabel from "./disc_label"
 import REDUCED_MOTION from "./reduced_motion"
+import { Vector3 } from "three/webgpu"
+import boundsOf from "./bounds_of"
 
 // How long the disc takes on each leg of its journey, in milliseconds, is a presentation choice, not a measurement of the machine.
 const LIFT = 360,
@@ -31,11 +32,8 @@ export default class Disc {
   #started = null
 
   constructor(model, drive) {
-    model.updateWorldMatrix(true, false)
-    drive.updateWorldMatrix(true, false)
-
-    const face = new Box3().setFromObject(drive),
-      lying = new Box3().setFromObject(model),
+    const face = boundsOf(drive),
+      lying = boundsOf(model),
       across = (face.min.x + face.max.x) / 2,
       slot = face.max.y - SLOT_MIDDLE_BELOW_OPENING,
       middle = (lying.min.y + lying.max.y) / 2 - model.position.y,
@@ -76,6 +74,11 @@ export default class Disc {
     if (throwing) {
       this.#travel(this.#outward())
     }
+  }
+
+  dispose() {
+    this.#label.dispose()
+    this.model.dispose()
   }
 
   advance(now) {
