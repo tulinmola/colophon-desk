@@ -3,6 +3,7 @@
 const PIECES = {
   ctm644: { title: "CTM644", maker: "Amstrad", kind: "monitor", description: "colour monitor" },
   gt64: { title: "GT64", maker: "Amstrad", kind: "monitor", description: "green monitor" },
+  gt65: { title: "GT65", maker: "Amstrad", kind: "monitor", description: "green monitor" },
   kv1400: {
     title: "KV-1400",
     maker: "Sony",

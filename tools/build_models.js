@@ -7,11 +7,13 @@ import { Resvg } from "@resvg/resvg-js"
 import { buildCf2 } from "./models/cf2.js"
 import { buildCpc464 } from "./models/cpc464.js"
 import { buildCpc6128 } from "./models/cpc6128.js"
+import { buildCpc664 } from "./models/cpc664.js"
 import { buildCrc1001 } from "./models/crc1001.js"
 import { buildCt15 } from "./models/ct15.js"
 import { buildCtm644 } from "./models/ctm644.js"
 import { buildDdi1 } from "./models/ddi1.js"
 import { buildGt64 } from "./models/gt64.js"
+import { buildGt65 } from "./models/gt65.js"
 import { buildKv1400 } from "./models/kv1400.js"
 import { buildSoundOnSoundC15 } from "./models/sound_on_sound_c15.js"
 import { buildSpectrum48 } from "./models/spectrum48.js"
@@ -337,8 +339,10 @@ setOC(oc)
 const models = [
   { name: "cpc6128", built: buildCpc6128() },
   { name: "cpc464", built: buildCpc464() },
+  { name: "cpc664", built: buildCpc664() },
   { name: "ctm644", built: buildCtm644() },
   { name: "gt64", built: buildGt64() },
+  { name: "gt65", built: buildGt65() },
   { name: "kv1400", built: buildKv1400() },
   { name: "spectrum48", built: buildSpectrum48() },
   { name: "cf2", built: buildCf2() },
