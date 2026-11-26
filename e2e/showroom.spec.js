@@ -403,3 +403,38 @@ test("on a narrow screen a computer chosen far down the line-up is set up from t
   await arrived(page)
   await expect(link).toBeInViewport()
 })
+
+test("on a narrow screen a computer drawn keeps to its frame while the page scrolls, and is drawn there anew", async function ({
+  page
+}) {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto("/")
+  await arrived(page)
+
+  const canvas = page.locator(".showroom > canvas"),
+    frame = page.locator(".line-up li:last-child .frame"),
+    canvasHandle = await canvas.elementHandle(),
+    frameHandle = await frame.elementHandle(),
+    [canvasMoved, frameMoved] = await page.evaluate(
+      function ([canvasElement, frameElement]) {
+        const canvasBefore = canvasElement.getBoundingClientRect().top,
+          frameBefore = frameElement.getBoundingClientRect().top
+
+        frameElement.scrollIntoView()
+
+        const canvasAfter = canvasElement.getBoundingClientRect().top,
+          frameAfter = frameElement.getBoundingClientRect().top
+
+        return [canvasAfter - canvasBefore, frameAfter - frameBefore]
+      },
+      [canvasHandle, frameHandle]
+    )
+
+  expect(frameMoved).toBeLessThan(0)
+  expect(canvasMoved).toBe(frameMoved)
+  await expect.poll(async () => (await canvas.boundingBox()).y, SLOW_WAIT).toBe(0)
+
+  const drawn = await drawnWithin(page, frame)
+
+  expect(drawn).toBe(true)
+})

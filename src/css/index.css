@@ -234,14 +234,21 @@ body:has(> .showroom) {
   --muted: color-mix(in srgb, var(--ink) 62%, transparent);
   --hairline: color-mix(in srgb, var(--ink) 18%, transparent);
 
+  position: relative;
+  /* The canvas moves with the scroll; clipped, it never lengthens the page. */
+  overflow: clip;
   color: var(--ink);
 
+  /* Scrolled with the page and put back as it draws, never fixed: a phone
+     scrolls the page ahead of the drawing. As tall as the window at its
+     largest, so a phone's toolbar never resizes it. */
   > canvas {
-    position: fixed;
-    inset: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
     display: block;
     width: 100%;
-    height: 100%;
+    height: 100lvh;
   }
 
   section {

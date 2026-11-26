@@ -743,6 +743,7 @@ class Showroom {
         return flown ? flight.over(view) : view
       })
 
+    this.#canvas.style.transform = `translateY(${scrollY}px)`
     drawViews(this.#renderer, this.#camera, views, canvas)
   }
 }
