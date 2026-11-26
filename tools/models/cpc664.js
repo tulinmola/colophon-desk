@@ -309,9 +309,9 @@ const AMSTRAD_PLATE = {
     lampWord: false
   }
 
-// Schneider's nameplate in the same frame, measured on a rectified photograph of a Schneider unit, ±0.6 [D, E], https://oldwiki.cpcwiki.eu/imgs/6/69/Schneider_cpc_664.jpg: the mark of two hooks, drawn by eye; Schneider 7.2 tall and bold over COMPUTER DIVISION in leaning capitals; the line 6.4 tall; three stripes leaning right; and IN FUNCTION under the lamp, joined to it by a rule. The capitals' lean and the stripes' width and lean are by eye, 15°, 3.4 and 30°. Its print reads cream, #f6ecd1, and its stripes #f55d4a, #73b064 and #c4c9cb, uncalibrated.
+// Schneider's nameplate in the same frame, measured on a rectified photograph of a Schneider unit, ±0.6 [D, E], https://oldwiki.cpcwiki.eu/imgs/6/69/Schneider_cpc_664.jpg: Schneider's mark; Schneider 7.2 tall and bold over COMPUTER DIVISION in leaning capitals; the line 6.4 tall; three stripes leaning right; and IN FUNCTION under the lamp, joined to it by a rule. The capitals' lean and the stripes' width and lean are by eye, 15°, 3.4 and 30°. Its print reads cream, #f6ecd1, and its stripes #f55d4a, #73b064 and #c4c9cb, uncalibrated.
 const SCHNEIDER_PLATE = {
-  mark: { left: 4.5, right: 21.5, top: 8.6, bottom: 20, stroke: 2 },
+  mark: { left: 4.5, right: 21.5, top: 8.6, bottom: 20 },
   name: { words: "Schneider", left: 21.7, right: 59.5, baseline: 15.5, capHeight: 7.2 },
   division: {
     words: "COMPUTER DIVISION",
@@ -575,10 +575,9 @@ const PLATE_KEYS = [
   ...plateRow([15, 7, 6], 74.52, 4)
 ]
 
-// Schneider's mark and name in the key map's bar, by eye: the mark as tall as the bar less 1 above and below, its stroke a sixth of the bar, the name 0.6 after it, half the bar tall and 4.2 bars long, its baseline 1.2 above the bar's foot.
+// Schneider's mark and name in the key map's bar, by eye: the mark as tall as the bar less 1 above and below, the name 0.6 after it, half the bar tall and 4.2 bars long, its baseline 1.2 above the bar's foot.
 const SCHNEIDER_NAME_BAR = {
   margin: 1,
-  stroke: 1 / 6,
   gap: 0.6,
   capHeight: 0.5,
   length: 4.2,
@@ -2100,14 +2099,13 @@ function drawAmstradDrivePlate(plate) {
 
 function drawSchneiderDrivePlate(plate) {
   const { ink } = plate,
-    { margin, stroke, gap, capHeight, length, lift } = SCHNEIDER_NAME_BAR,
+    { margin, gap, capHeight, length, lift } = SCHNEIDER_NAME_BAR,
     barHeight = NAME_BAR.bottom - NAME_BAR.top,
     mark = {
       left: NAME_BAR.left + margin,
       right: NAME_BAR.left + margin + barHeight,
       top: NAME_BAR.top + margin,
-      bottom: NAME_BAR.bottom - margin,
-      stroke: barHeight * stroke
+      bottom: NAME_BAR.bottom - margin
     },
     name = {
       left: mark.right + gap,

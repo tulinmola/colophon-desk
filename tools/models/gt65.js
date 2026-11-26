@@ -73,7 +73,7 @@ const DC_WORD = { word: "12V DC", left: 27.6, width: 13.4, capHeight: 2.5, basel
   DC_FACE = { name: "dc-legend", colour: CABINET.colour }
 
 // The badge band, in the face's frame, ±0.5 to ±0.7 [E]. The English unit's, on the Living Computer Museum's, is the GT64's AMSTRAD wordmark beside "GT 65 Monitor", and the French unit's, on the Cité's, the same wordmark beside "GT 65 MONITEUR" in smaller capitals; both set GT and 65 closer than a word space. The wordmark's stroke is not resolved on either: the CTM644's 0.7 on capitals 12.5 tall, brought to these as on the GT64, gives the 0.45 and 0.41 taken.
-// The Schneider unit's, on its front, is Schneider's mark, "Schneider" in bold over COMPUTER DIVISION in leaning capitals, and at the band's right "Green Monitor »GT65«" in upright capitals. Its mark's stroke, in proportion with the 664 nameplate's, and its capitals' lean, that nameplate's 15°, are by eye.
+// The Schneider unit's, on its front, is Schneider's mark, "Schneider" in bold over COMPUTER DIVISION in leaning capitals, and at the band's right "Green Monitor »GT65«" in upright capitals. Its capitals' lean, the 664 nameplate's 15°, is by eye.
 // The lettering is taken in the panel words' ink, as on the GT64; the Schneider's reads near-white, under a warm light, uncalibrated.
 const ENGLISH_BADGE = {
     amstrad: {
@@ -114,7 +114,7 @@ const ENGLISH_BADGE = {
     }
   },
   SCHNEIDER_BADGE = {
-    mark: { left: 16.8, right: 28.8, top: 235, bottom: 243.1, stroke: 1.4 },
+    mark: { left: 16.8, right: 28.8, top: 235, bottom: 243.1 },
     name: { word: "Schneider", left: 29.6, width: 27.1, capHeight: 4.6, baseline: 239.7 },
     division: {
       word: "COMPUTER DIVISION",

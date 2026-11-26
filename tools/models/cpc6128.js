@@ -6,6 +6,7 @@ import {
   makeCompound,
   makeCylinder
 } from "replicad"
+import drawSchneiderMark from "./schneider.js"
 
 // x runs from the left end, y back from the front and z up from the cabinet top's lower edge, where it meets the cabinet bottom, in millimetres. The cabinet bottom and the feet stand below it, under a negative z.
 
@@ -357,7 +358,7 @@ const ARTWORK_WIDTH = 92.5,
   HEROS_CAP_HEIGHT = 0.729,
   HEROS_CONDENSED_CAP_HEIGHT = 0.718
 
-// What each country's plate prints on that one template: its words, each set to its measured width, and its colour chart, whose columns move with the names they hold.
+// What each of Amstrad's plates prints on that one template: its words, each set to its measured width, and its colour chart, whose columns move with the names they hold.
 // The Spanish words as printed on both Spanish units, the colours numbered 0 to 26 down three columns [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html and https://commons.wikimedia.org/wiki/File:AMSTRAD_CPC_6128.jpg. The title is set in the condensed cut 48.5 across against the measured 48.7. The names are bold capitals 1.6 high narrowed to 0.94, the plate's MAGENTA BRILLANTE against Heros Bold's at that height, each number 0.4 inside its column and its name 3.25 after it.
 // The UK and French plates are read on their photographs, each rectified to this frame, ±0.4 [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. They read the chart's box 6.5 to 85.95 and 6.7 to 86.25 across, and what stands inside it is carried across from their box to the Spanish one; its rows stand as each reads them. Both read every word the plates share 0.25 to 0.4 taller than the Spanish photograph does, CPC6128's 5.05 as 5.4, and the 2.0 their names read is taken for the same blur; and both read that mark 0.75 and 1.1 right of the Spanish, so their titles, ending at 85.5 and 85.0, are taken to end where the Spanish one does. The UK's headings are bold and tightly set, the French regular and letterspaced as the Spanish are. The UK's names fit the Spanish setting within 0.31 rms over 23 of them, and are set as the Spanish are. The French are regular and in mixed case, and fit Heros at capitals 1.8 with its word spaces a millimetre wider within 0.32 rms over 25; on the plate some spaces are as narrow as Heros's own, and one width is taken for all.
 const DRIVE_PLATES = {
@@ -546,9 +547,9 @@ const NAMEPLATE_BOX_ART = {
     width: 3.5,
     offsets: [0, 4.85, 10.15]
   },
-  BADGE_INKS = [PLATE_RED, PLATE_GREEN, PLATE_BLUE]
+  AMSTRAD_INKS = [PLATE_RED, PLATE_GREEN, PLATE_BLUE]
 
-// What each country's nameplate and badge print. The Spanish words' capitals stand 5.38 on a baseline at 10.7, and ENC. upright above the lamp's window, its capitals 2.06 and its stems 0.16 of that, between Heros's Regular and Bold. The UK's and the French are read on their photographs, each plate rectified on its edges, ±0.4 within a plate and ±2 for where the whole stands [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// What each of Amstrad's nameplates and badges prints. The Spanish words' capitals stand 5.38 on a baseline at 10.7, and ENC. upright above the lamp's window, its capitals 2.06 and its stems 0.16 of that, between Heros's Regular and Bold. The UK's and the French are read on their photographs, each plate rectified on its edges, ±0.4 within a plate and ±2 for where the whole stands [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 // The UK unit, an early one, carries a plain AMSTRAD, upright, extra-condensed and heavy, and a dark badge under a white ON. The 1988 French unit carries the Spanish box, its middle 2.7 further left, and the light badge under marche, which reads three times the plate's light and is taken white. Both set their words in mixed case, leaning as the Spanish do, their capitals 5.25 on a baseline at 10.6; Computer's left is read by eye, ±1. Their stripes stand where the Spanish badge's do, within what their photographs can tell.
 // ON is as heavy as ENC.; marche is light, and set in Heros's regular by its ascenders, 2.65, where Heros's x-height then stands 1.9 against the measured 1.6, which the photograph's 6 pixels to the millimetre cannot tell apart.
 const NAMEPLATES = {
@@ -593,22 +594,135 @@ const NAMEPLATES = {
       backing: BADGE_BACKING.colour,
       ink: BADGE_INK,
       weight: 700,
+      inks: AMSTRAD_INKS,
       word: { word: "ENC.", left: 27.5, width: 5.7, capHeight: 2.06, baseline: 5.85 }
     },
     en: {
       backing: UK_BADGE_BACKING,
       ink: NAMEPLATE_INK,
       weight: 700,
+      inks: AMSTRAD_INKS,
       word: { word: "ON", left: 28.6, width: 4.95, capHeight: 2.4, baseline: 6.5 }
     },
     fr: {
       backing: BADGE_BACKING.colour,
       ink: NAMEPLATE_INK,
       weight: 400,
+      inks: AMSTRAD_INKS,
       word: { word: "marche", left: 25.1, width: 9.6, capHeight: 2.65, baseline: 6.4 }
     }
+  }
+
+// Germany's were Schneider's, in Schneider's own artwork, read on a photograph of a Schneider unit from above at about 5 pixels to the millimetre, each plate rectified to its frame, ±0.5 [D, E]: https://commons.wikimedia.org/wiki/File:Schneider_CPC_664_und_CPC_6128_(54853121982).jpg. Schneider's flyer shows the nameplate's 6128 solid [A], https://archive.org/details/schneider-cpc-6128-flyer-1985; the units photographed outline it, and the outline is drawn.
+// The photograph reads the nameplate 118 by 12.1 and the badge 34.2 by 12.5 against their recesses' 118 by 13.2 and 35.2 by 13.6, and both are stretched to the recesses, which stands the badge's stripes where Amstrad's do. Unstretched, the mark would stand about 1.5 times as wide as it is tall, as it does on the flyer and as it reads on a Schneider 664's nameplate and a Schneider GT65's badge [E], https://oldwiki.cpcwiki.eu/imgs/6/69/Schneider_cpc_664.jpg and https://oldcrap.org/2018/11/04/amstrad-schneider-gt-65-monitor/, and Schneider would fit Heros Bold's own width; stretched, they stand 1.38 and 0.93.
+// The nameplate carries the mark, Schneider upright and bold, and CPC6128 in a heavy oblique, its 6128 drawn in a line about 0.3 wide. Heros Bold and Heros Cn Bold stand in, each word set to its measured width, the oblique leaning 16.5° as CPC's stems read. Squeezed to their widths, Heros Cn Bold's stems stand 1.25 against CPC's 2.0 to 2.1 and about 0.7 against the drive plate's oblique 0.9 to 1.0, and those words are drawn with a stroke of their own ink 0.8 and 0.25 wide to make up the difference; 6128 is taken as heavy as CPC under its line. EIN over the lamp is bold.
+// The badge reads the case's own tone, 0.97 to 1.04 of its light beside it, and is taken in the case's colour; the nameplate and the drive plate read 1.22 to 1.29 of it and are taken at 1.25. The third stripe is light blue, #9ac4d6, where Amstrad's is dark blue; the other two inks and the words' white are taken to be Amstrad's. Uncalibrated, good for the hue and no more.
+// The drive plate's three rules read as thin as its hairlines, about 0.5 on the photograph against Amstrad's 1.1, and are drawn as hairlines. Its table has no sides, and its column rules start under its heading. The table's words are regular and fit Heros at capitals 2.0 within 4% over 21 of them, which the photograph reads 2.1 to 2.2 tall; its figures stand to the right, each name starts where its column's Farbe does, a name's second line stands 2.5 under its first and the rows 3.07 apart, and its one space, in helles Blaugrün, stands 0.4 where Heros's stands 1.0. Disc Drive and the words at the foot lean 16° as Amstrad's title does, and are set in Heros Cn Bold to their widths; Tasten–Nummern and the table's heading are bold, 0.87 to 0.92 of Heros Bold's width, and set to theirs. The wave and the key map are drawn as on Amstrad's plate, the map where the photograph puts its lines, its rows 4.08 apart.
+const SCHNEIDER_PLATE_GROUND = "#5c5e63",
+  SCHNEIDER_INKS = [PLATE_RED, PLATE_GREEN, "#9ac4d6"],
+  SCHNEIDER_NAMEPLATE_LEAN = 16.5,
+  OUTLINE_THICKNESS = 0.3,
+  SCHNEIDER_NAMEPLATE = {
+    mark: { left: 1.9, right: 17.9, top: 0.95, bottom: 12.5 },
+    name: { word: "Schneider", left: 18.6, width: 56.3, capHeight: 9.2, baseline: 12.25 },
+    solid: { word: "CPC", left: 75.7, width: 20.1, capHeight: 9.5, baseline: 12.2 },
+    outlined: { word: "6128", left: 95.95, width: 20.7, capHeight: 9, baseline: 12.2 },
+    thickening: 0.8
   },
-  PLATE_LANGUAGES = Object.keys(DRIVE_PLATES)
+  SCHNEIDER_BADGE = {
+    backing: CABINET_TOP.colour,
+    ink: NAMEPLATE_INK,
+    weight: 700,
+    inks: SCHNEIDER_INKS,
+    word: { word: "EIN", left: 28.8, width: 4.8, capHeight: 2.5, baseline: 6.65 }
+  },
+  SCHNEIDER_DRIVE_PLATE = {
+    title: {
+      capHeight: 5,
+      baseline: 12.8,
+      words: [
+        { word: "Disc", left: 56.3, width: 11.4 },
+        { word: "Drive", left: 70.1, width: 14.1 }
+      ]
+    },
+    redRule: { left: 3.1, right: 89.1, y: 17.95 },
+    keyNumbers: {
+      word: "Tasten–Nummern",
+      left: 30.1,
+      width: 33.8,
+      capHeight: 3.4,
+      baseline: 27.55
+    },
+    wave: { ...PLATE_LAYOUT.wave, left: 3.3, right: 89.2, y: 30.9 },
+    upperHairline: { left: 3.1, right: 89.8, y: 35.3 },
+    keyMap: { ...PLATE_LAYOUT.keyMap, left: 10.1, top: 38.75, keyDepth: 4.08 },
+    lowerHairline: { left: 3.4, right: 90, y: 62.3 },
+    greenRule: { left: 3, right: 89, y: 66.25 },
+    chart: {
+      left: 7.2,
+      right: 86,
+      rules: { top: 72.7, heading: 78, columns: 84.6, bottom: 116 },
+      columnRules: [29.5, 56.15],
+      heading: {
+        word: "»CPC« Farbtabelle",
+        left: 30.95,
+        width: 31.3,
+        capHeight: 2.9,
+        baseline: 76.65
+      },
+      capHeight: 2,
+      headLefts: [7.35, 32.45, 59.65],
+      headBaselines: [80.95, 83.5],
+      numberRights: [9, 35.1, 62.85],
+      nameLefts: [14.45, 40.55, 67.4],
+      firstRow: 87.9,
+      rowPitch: 3.07,
+      linePitch: 2.5,
+      wordSpacing: -0.6,
+      rowsPerColumn: 9
+    },
+    colourNames: [
+      ["Schwarz"],
+      ["Blau"],
+      ["Hellblau"],
+      ["Rot"],
+      ["Magenta"],
+      ["Hellviolett"],
+      ["Hellrot"],
+      ["Purpur"],
+      ["helles", "Magenta"],
+      ["Grün"],
+      ["Blaugrün"],
+      ["Himmelblau"],
+      ["Gelb"],
+      ["Weiß"],
+      ["Pastellblau"],
+      ["Orange"],
+      ["Rosa"],
+      ["Pastell-", "magenta"],
+      ["Hellgrün"],
+      ["Seegrün"],
+      ["helles Blaugrün"],
+      ["Limonengrün"],
+      ["Pastellgrün"],
+      ["Pastell-", "blaugrün"],
+      ["Hellgelb"],
+      ["Pastellgelb"],
+      ["Leuchtendweiß"]
+    ],
+    blueRule: { left: 3.3, right: 89.7, y: 120.65 },
+    model: {
+      capHeight: 5.1,
+      baseline: 130.75,
+      words: [
+        { word: "128K", left: 4.4, width: 12.5 },
+        { word: "Colour", left: 18.8, width: 16.9 },
+        { word: "Personal", left: 37.4, width: 23.1 },
+        { word: "Computer", left: 62.4, width: 25.6 }
+      ]
+    },
+    thickening: 0.25
+  }
 
 const HEAVY_ARROW = { length: 7, shaft: 1.16, headWidth: 2.45, headLength: 2.4 },
   THIN_ARROW = { length: 3.9, shaft: 0.4, headWidth: 1.2, headLength: 1.2 },
@@ -1089,7 +1203,7 @@ function drawKeyShape(map, left, width, row, rows) {
     x = map.left + left * map.keyWidth + inset,
     y = map.top + row * map.keyDepth + inset
 
-  return `<rect x="${x}" y="${y}" width="${width * map.keyWidth - LINE_THICKNESS}" height="${rows * map.keyDepth - LINE_THICKNESS}" rx="${map.radius}" fill="${PLATE.colour}"/>`
+  return `<rect x="${x}" y="${y}" width="${width * map.keyWidth - LINE_THICKNESS}" height="${rows * map.keyDepth - LINE_THICKNESS}" rx="${map.radius}" fill="${map.ground}"/>`
 }
 
 function drawKeyNumber(map, number, left, width, row) {
@@ -1180,7 +1294,7 @@ function drawDrivePlate(plate) {
     ),
     wave = drawWave(PLATE_LAYOUT.wave),
     upperHairline = drawRule(PLATE_LAYOUT.upperHairline, HAIRLINE_THICKNESS, PLATE_INK),
-    keyMap = drawKeyMap(PLATE_LAYOUT.keyMap),
+    keyMap = drawKeyMap({ ...PLATE_LAYOUT.keyMap, ground: PLATE.colour }),
     lowerHairline = drawRule(PLATE_LAYOUT.lowerHairline, HAIRLINE_THICKNESS, PLATE_INK),
     greenRule = drawRule(PLATE_LAYOUT.greenRule, RULE_THICKNESS, PLATE_GREEN),
     colourChart = drawColourChart(PLATE_LAYOUT.chart, plate.chart, plate.colourNames),
@@ -1528,12 +1642,13 @@ function drawFittedWord(fitted, { family, capHeightPerEm, weight, ink }) {
   return `<text x="${fitted.left}" y="${fitted.baseline}" font-family="${family}" font-size="${size}" font-weight="${weight}" fill="${ink}" textLength="${fitted.width}" lengthAdjust="spacingAndGlyphs">${fitted.word}</text>`
 }
 
-function drawNameplateWord({ word, left, width }, { capHeight, baseline }) {
+// Its width is the ink measured from its foot's left to its top's right, which Heros's side bearings and round letters fall 0.7 to 2.8 short of. It takes the paint around it.
+function drawLeaningWord({ word, left, width }, { capHeight, baseline, lean }) {
   const size = fontSize(capHeight, HEROS_CONDENSED_CAP_HEIGHT),
-    slant = capHeight * tangent(NAMEPLATE_LEAN),
+    slant = capHeight * tangent(lean),
     length = width - slant
 
-  return `<text transform="translate(${left} ${baseline}) skewX(${-NAMEPLATE_LEAN})" font-family="${HEROS_CONDENSED}" font-size="${size}" font-weight="700" fill="${NAMEPLATE_INK}" textLength="${length}" lengthAdjust="spacingAndGlyphs">${word}</text>`
+  return `<text transform="translate(${left} ${baseline}) skewX(${-lean})" font-family="${HEROS_CONDENSED}" font-size="${size}" font-weight="700" textLength="${length}" lengthAdjust="spacingAndGlyphs">${word}</text>`
 }
 
 function drawLogo(logo) {
@@ -1557,22 +1672,60 @@ function drawBoxedLogo(shift, backing) {
   ].join("\n")
 }
 
-function drawNameplate(nameplate) {
-  const width = NAMEPLATE.right - NAMEPLATE.left,
-    boxed = Object.hasOwn(nameplate, "box"),
-    logo = boxed ? drawBoxedLogo(nameplate.box.shift, nameplate.backing) : drawLogo(nameplate.logo),
-    words = nameplate.words.map(word => drawNameplateWord(word, nameplate))
+function drawStripPlate(plate, backing, drawn) {
+  const width = plate.right - plate.left
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${NAMEPLATE.depth}" viewBox="0 0 ${width} ${NAMEPLATE.depth}">`,
-    `<rect width="${width}" height="${NAMEPLATE.depth}" fill="${nameplate.backing}"/>`,
-    logo,
-    ...words,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${plate.depth}" viewBox="0 0 ${width} ${plate.depth}">`,
+    `<rect width="${width}" height="${plate.depth}" fill="${backing}"/>`,
+    ...drawn,
     "</svg>"
   ].join("\n")
 }
 
-function drawStripes(stripes) {
+function drawNameplate(nameplate) {
+  const boxed = Object.hasOwn(nameplate, "box"),
+    logo = boxed ? drawBoxedLogo(nameplate.box.shift, nameplate.backing) : drawLogo(nameplate.logo),
+    leaning = { ...nameplate, lean: NAMEPLATE_LEAN },
+    words = nameplate.words.map(word => drawLeaningWord(word, leaning))
+
+  return drawStripPlate(NAMEPLATE, nameplate.backing, [
+    logo,
+    `<g fill="${NAMEPLATE_INK}">`,
+    ...words,
+    "</g>"
+  ])
+}
+
+function drawSchneiderNameplate({ mark, name, solid, outlined, thickening }) {
+  const leaning = { lean: SCHNEIDER_NAMEPLATE_LEAN },
+    ringed = thickening + 2 * OUTLINE_THICKNESS,
+    drawnMark = drawSchneiderMark(mark, NAMEPLATE_INK),
+    drawnName = drawFittedWord(name, {
+      family: HEROS,
+      capHeightPerEm: HEROS_CAP_HEIGHT,
+      weight: 700,
+      ink: NAMEPLATE_INK
+    }),
+    drawnSolid = drawLeaningWord(solid, { ...solid, ...leaning }),
+    drawnOutline = drawLeaningWord(outlined, { ...outlined, ...leaning })
+
+  return drawStripPlate(NAMEPLATE, SCHNEIDER_PLATE_GROUND, [
+    drawnMark,
+    drawnName,
+    `<g fill="${NAMEPLATE_INK}" stroke="${NAMEPLATE_INK}" stroke-width="${thickening}" stroke-linejoin="round">`,
+    drawnSolid,
+    "</g>",
+    `<g fill="${NAMEPLATE_INK}" stroke="${NAMEPLATE_INK}" stroke-width="${ringed}" stroke-linejoin="round">`,
+    drawnOutline,
+    "</g>",
+    `<g fill="${SCHNEIDER_PLATE_GROUND}" stroke="${SCHNEIDER_PLATE_GROUND}" stroke-width="${thickening}" stroke-linejoin="round">`,
+    drawnOutline,
+    "</g>"
+  ])
+}
+
+function drawStripes(stripes, inks) {
   const drawn = []
 
   for (const [index, offset] of stripes.offsets.entries()) {
@@ -1582,7 +1735,7 @@ function drawStripes(stripes) {
         [stripes.bottomLeft + offset + stripes.width, stripes.bottom],
         [stripes.bottomLeft + offset, stripes.bottom]
       ],
-      ink = BADGE_INKS[index],
+      ink = inks[index],
       stripe = drawPolygon(corners, ink)
 
     drawn.push(stripe)
@@ -1592,8 +1745,7 @@ function drawStripes(stripes) {
 }
 
 function drawBadge(badge) {
-  const width = BADGE.right - BADGE.left,
-    stripes = drawStripes(BADGE_STRIPES),
+  const stripes = drawStripes(BADGE_STRIPES, badge.inks),
     word = drawFittedWord(badge.word, {
       family: HEROS,
       capHeightPerEm: HEROS_CAP_HEIGHT,
@@ -1601,13 +1753,117 @@ function drawBadge(badge) {
       ink: badge.ink
     })
 
+  return drawStripPlate(BADGE, badge.backing, [stripes, word])
+}
+
+function drawSchneiderChart(chart, colourNames) {
+  const size = fontSize(chart.capHeight),
+    [firstHead, secondHead] = chart.headBaselines,
+    across = Object.values(chart.rules),
+    rules = across.map(y => drawLine([chart.left, y], [chart.right, y], LINE_THICKNESS, PLATE_INK)),
+    heading = drawFittedWord(chart.heading, {
+      family: HEROS,
+      capHeightPerEm: HEROS_CAP_HEIGHT,
+      weight: 700,
+      ink: PLATE_INK
+    }),
+    drawn = [...rules, heading]
+
+  for (const x of chart.columnRules) {
+    const columnRule = drawLine(
+      [x, chart.rules.heading],
+      [x, chart.rules.bottom],
+      LINE_THICKNESS,
+      PLATE_INK
+    )
+
+    drawn.push(columnRule)
+  }
+
+  for (const [column, headLeft] of chart.headLefts.entries()) {
+    const nameLeft = chart.nameLefts[column],
+      numberRight = chart.numberRights[column]
+
+    drawn.push(
+      `<text x="${headLeft}" y="${firstHead}" font-size="${size}">Tinte</text>`,
+      `<text x="${nameLeft}" y="${firstHead}" font-size="${size}">Farbe</text>`,
+      `<text x="${headLeft}" y="${secondHead}" font-size="${size}">(INK)</text>`
+    )
+
+    let baseline = chart.firstRow
+    for (let row = 0; row < chart.rowsPerColumn; row++) {
+      const number = column * chart.rowsPerColumn + row,
+        lines = colourNames[number]
+
+      drawn.push(
+        `<text x="${numberRight}" y="${baseline}" font-size="${size}" text-anchor="end">${number}</text>`
+      )
+
+      for (const [index, line] of lines.entries()) {
+        const lineBaseline = baseline + index * chart.linePitch
+
+        drawn.push(
+          `<text x="${nameLeft}" y="${lineBaseline}" font-size="${size}" word-spacing="${chart.wordSpacing}">${line}</text>`
+        )
+      }
+
+      baseline += chart.rowPitch + (lines.length - 1) * chart.linePitch
+    }
+  }
+
+  return drawn.join("\n")
+}
+
+function drawSchneiderDrivePlate(plate) {
+  const [red, green, blue] = SCHNEIDER_INKS,
+    titleSetting = { ...plate.title, lean: TITLE_LEAN },
+    modelSetting = { ...plate.model, lean: TITLE_LEAN },
+    title = plate.title.words.map(word => drawLeaningWord(word, titleSetting)),
+    model = plate.model.words.map(word => drawLeaningWord(word, modelSetting)),
+    keyNumbers = drawFittedWord(plate.keyNumbers, {
+      family: HEROS,
+      capHeightPerEm: HEROS_CAP_HEIGHT,
+      weight: 700,
+      ink: PLATE_INK
+    }),
+    thickened = `<g stroke="${PLATE_INK}" stroke-width="${plate.thickening}" stroke-linejoin="round">`
+
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${BADGE.depth}" viewBox="0 0 ${width} ${BADGE.depth}">`,
-    `<rect width="${width}" height="${BADGE.depth}" fill="${badge.backing}"/>`,
-    stripes,
-    word,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${ARTWORK_WIDTH}" height="${ARTWORK_DEPTH}" viewBox="0 0 ${ARTWORK_WIDTH} ${ARTWORK_DEPTH}" font-family="${HEROS}" fill="${PLATE_INK}">`,
+    `<rect width="${ARTWORK_WIDTH}" height="${ARTWORK_DEPTH}" fill="${SCHNEIDER_PLATE_GROUND}"/>`,
+    thickened,
+    ...title,
+    "</g>",
+    drawRule(plate.redRule, HAIRLINE_THICKNESS, red),
+    keyNumbers,
+    drawWave(plate.wave),
+    drawRule(plate.upperHairline, HAIRLINE_THICKNESS, PLATE_INK),
+    drawKeyMap({ ...plate.keyMap, ground: SCHNEIDER_PLATE_GROUND }),
+    drawRule(plate.lowerHairline, HAIRLINE_THICKNESS, PLATE_INK),
+    drawRule(plate.greenRule, HAIRLINE_THICKNESS, green),
+    drawSchneiderChart(plate.chart, plate.colourNames),
+    drawRule(plate.blueRule, HAIRLINE_THICKNESS, blue),
+    thickened,
+    ...model,
+    "</g>",
     "</svg>"
   ].join("\n")
+}
+
+function drawAmstradPlates(language) {
+  return {
+    drivePlate: drawDrivePlate(DRIVE_PLATES[language]),
+    nameplate: drawNameplate(NAMEPLATES[language]),
+    badge: drawBadge(BADGES[language])
+  }
+}
+
+function drawSchneiderPlates() {
+  return {
+    drivePlate: drawSchneiderDrivePlate(SCHNEIDER_DRIVE_PLATE),
+    nameplate: drawSchneiderNameplate(SCHNEIDER_NAMEPLATE),
+    badge: drawBadge(SCHNEIDER_BADGE)
+  }
 }
 
 function buildDrivePlate() {
@@ -1644,6 +1900,15 @@ function buildBadge() {
   return { ...badge, shape: pierced }
 }
 
+// The plates in each language they were printed in, the model's own first.
+const PLATES = {
+    es: () => drawAmstradPlates("es"),
+    en: () => drawAmstradPlates("en"),
+    fr: () => drawAmstradPlates("fr"),
+    de: drawSchneiderPlates
+  },
+  PLATE_LANGUAGES = Object.keys(PLATES)
+
 export function buildCpc6128() {
   const keys = layKeys(),
     returnKey = layKey(RETURN_NUMBER, [RETURN_LEFT, RETURN_ROW], [RETURN_WIDTH, RETURN_ROWS]),
@@ -1661,21 +1926,15 @@ export function buildCpc6128() {
       svg: drawLegends(lettered, LEGENDS[language]),
       pixels: LEGEND_PIXELS
     })),
-    platePrints = PLATE_LANGUAGES.flatMap(language => [
-      {
-        name: DRIVE_PLATE_PRINT,
-        language,
-        svg: drawDrivePlate(DRIVE_PLATES[language]),
-        pixels: PLATE_PIXELS
-      },
-      {
-        name: NAMEPLATE_PRINT,
-        language,
-        svg: drawNameplate(NAMEPLATES[language]),
-        pixels: PLATE_PIXELS
-      },
-      { name: BADGE_PRINT, language, svg: drawBadge(BADGES[language]), pixels: PLATE_PIXELS }
-    ])
+    platePrints = PLATE_LANGUAGES.flatMap(function (language) {
+      const artwork = PLATES[language]()
+
+      return [
+        { name: DRIVE_PLATE_PRINT, language, svg: artwork.drivePlate, pixels: PLATE_PIXELS },
+        { name: NAMEPLATE_PRINT, language, svg: artwork.nameplate, pixels: PLATE_PIXELS },
+        { name: BADGE_PRINT, language, svg: artwork.badge, pixels: PLATE_PIXELS }
+      ]
+    })
 
   return {
     tessellation: TESSELLATION,
