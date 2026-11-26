@@ -1,5 +1,6 @@
 import {
   draw,
+  drawCircle,
   drawRectangle,
   drawRoundedRectangle,
   makeBox,
@@ -260,17 +261,125 @@ const DRIVE_LAMP_OPENING = { left: 418.5, right: 425, bottom: 2, top: 6, depth: 
   LENS_SET_BACK = 1.1,
   LENS_THICKNESS = 0.6
 
-// The rear strip is slotted for the air: 91 slots 2.55 wide at a 4.98 pitch, the first's left edge 24.4 from the left end, each running 6.7 in from the rear edge on top and 7.7 down the rear face, measured on the Spanish photograph from above and a French one of the rear, ±0.2 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. The 1985 French unit gives 23 to 479 at 5.1 [E].
+// The rear strip is slotted for the air: 91 slots 2.55 wide at a 5.09 pitch, the first's left edge 23.2 from the left end and the last's right edge 26.15 from the right, each running 6.7 in from the rear edge on top and 7.7 down the rear face [E]; the 2.55, the 6.7 and the 7.7 are as the Spanish photograph from above and a French one of the rear first read them, ±0.2, on a scale across since found 2.2 % short. The 1985 French photograph from above, rectified on its keys and scaled to the case's 510 at the strip, reads the row 23.1 to 483.9; the 1989 Spanish one, its left end at the photograph's edge, reads its last slot 25.8 from the right end and its first at most 23.6 from the left: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. The board drawing's connectors, read through the slots on the French rear, fall within 0.5 % of their spacing [A, E], below.
 // The case's wall is not measured and 2.5 is taken; through the slots the inside of the case shows.
 const VENTS = {
-    left: 24.4,
+    left: 23.2,
     count: 91,
-    pitch: 4.98,
+    pitch: 5.09,
     width: 2.55,
     reach: 6.7,
     bottom: REAR_STRIP_HEIGHT - 7.7
   },
   CASE_WALL = 2.5
+
+// The rear below the vents is read on the straight rears of the 1989 Spanish unit, https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html, and the 1985 French one, https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html, each mapped onto the face by its own vent slots, placed as above, and by the seam, and straightened for its camera's lean. They put the left end 0.2 and 1.8 beyond 0, where the 1985 French unit's photograph from above puts its first slot 23.1 from the end against its rear's 25.0, and the disagreement stands; across, they agree within 1 but at the tabs' ends and EXPANSION's opening's right end, 1.0 to 1.3 apart, and at the VOLUME window's left edge and EXPANSION's opening's left end, 2.1 and 2.9 apart [E].
+// Their cameras stand about 34° and 20° above the face, so that what stands behind it reads higher on it by its depth times those tangents: where the two rears differ, the difference sets the depth [E].
+
+// Seven of the slots, the 73rd to the 79th, run on down the face to 7.5 over the speaker, their feet leaning toward the left end, 5.3° on the French rear and 7.05° on the Spanish; 6° is taken [E]. How far the dark behind them reaches is a choice of drawing.
+const SPEAKER_SLOTS = { first: 73, count: 7, bottom: 7.5, lean: 6 },
+  SPEAKER_ROOM = 8
+
+// Under the vents the face steps back into a band from 5.16 to 381.39 and up to 27.7, its upper corners rounded about 1, the windows cut in it reading 0.55 and 0.7 higher on the Spanish rear, which sets it 2 back [E]. Along its foot it is cut away up to 11.2, and windows rise from the cut, the VOLUME wheel's from 353.28 to 376.33 up to 15.6 and the POWER switch's from 322.01 to 335.29 up to 17.4 [E]; the sockets' follow their housings, below.
+// The band's wall is not measured: the case's wall is taken.
+const BAND = { left: 5.16, right: 381.39, top: 27.7, depth: 2, radius: 1 },
+  CUT_TOP = 11.2,
+  VOLUME_WINDOW = { left: 353.28, right: 376.33, top: 15.6 },
+  POWER_WINDOW = { left: 322.01, right: 335.29, top: 17.4 }
+
+// Behind the cut the cabinet bottom rises along its rear edge in a black wall, as the exploded view draws it [A], CPC6128 Service Manual p3: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a. It closes the cut but for the edge connectors' openings: DISC DRIVE 2's from 238.71 to 306.68, and EXPANSION's and PRINTER's together from 21.77 to 179.58, about a post 3.48 across standing to 6.3 at 94.64 and 7.4 behind the face. Under the openings it is notched down to 4.45 below the seam [E].
+// Its face is taken a hairline behind the band's wall, and the wall 2.5 thick, rising 1 behind the band: none of the three is measured.
+const OPENINGS = [
+    { left: 21.77, right: 179.58 },
+    { left: 238.71, right: 306.68 }
+  ],
+  OPENING_SILL = -4.45,
+  POST = { middle: 94.64, behind: 7.4, diameter: 3.48, top: 6.3 },
+  CABINET_BOTTOM_WALL = { thickness: 2.5, rise: 1 }
+
+// The cabinet bottom's floor is slotted along its rear edge in groups of 11, 3, 2 and 13, the slots running on round its rounded edge, where the 1985 French and 1989 Spanish rears show them as notches rising 2.5 up the base [E]. A 1988 French underside with both ends in frame, mapped by its ends and by the openings' edges as the rears place them, within 0.3, puts the 29 on one grid 5.08 apart within 1, and within 1.8 of the vents' 32nd to 42nd, 60th to 62nd, 72nd and 73rd, and 79th to 91st. The 1985 French and 1989 Spanish undersides space the groups alike, and the 1988 French and 1989 Spanish ones start the first 1.4 and 1.2 past EXPANSION's opening [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// They run 9.5 to 11 in from the rear edge, 10 taken, and read 2.3 to 2.7 wide, the vents' 2.55 taken. The notches' height is taken for the floor's thickness. Through them the board shows green over the first group and the case's dark over the rest; the dark is drawn over all four, rising 2 above the floor, a choice of drawing.
+const UNDER_VENTS = {
+    groups: [
+      { first: 32, last: 42 },
+      { first: 60, last: 62 },
+      { first: 72, last: 73 },
+      { first: 79, last: 91 }
+    ],
+    reach: 10,
+    floor: 2.5,
+    dark: 2
+  },
+  FLOOR_TOP = UNDER_VENTS.floor - CABINET_BOTTOM_HEIGHT
+
+// In the openings the main board's edge connectors show as tabs: the drawing's printer, expansion and DISC DRIVE 2 connectors, 17, 25 and 17 fingers at 2.54, their middles 83.44 and 135.53 apart [A], amendment service manual p15: https://retronik.silicium.org/DOCUMENTS/Info/Amstrad_CPC/Amstrad%20CPC464%206128%20GT65%20CTM644%20MP3%20CT1%20amendment%20service%20manual.pdf, about the DISC DRIVE 2 tab's 272.9, which stands nearest both cameras' middles [E]. The French rear reads their middles 0.4 and 0.5 % closer together than the drawing and their fingers 2.50 to 2.56 apart, and the Spanish 1.3 and 1.5 % closer [E].
+// The tabs read 3.3 wider than their fingers' pitches, and are slotted after their 4th, 11th and 15th fingers from the left end. Their tips read 2.9 up on the French rear and 3.8 on the Spanish, which stands them 2.9 behind the face with the board's top 1.85 up, and the board's edge between them reads 15 behind [E]. The board's thickness, the fingers' width and length and the slots' width are not measured: 1.6, 1.8, 8 and 1 are taken.
+const BOARD = { top: 1.85, thickness: 1.6, tipBehind: 2.9, edgeBehind: 15 },
+  FINGERS = { pitch: 2.54, width: 1.8, length: 8 },
+  TAB_MARGIN = 1.65,
+  TAB_SLOT = 1,
+  EDGE_CONNECTORS = [
+    { middle: 272.9 - 135.53 - 83.44, fingers: 17, slotAfter: 4 },
+    { middle: 272.9 - 135.53, fingers: 25, slotAfter: 11 },
+    { middle: 272.9, fingers: 17, slotAfter: 15 }
+  ]
+
+// The MONITOR jack and the 5V DC jack stand 3 and 4 behind the face, by how much higher the Spanish rear reads their tops [E], each in a window of the band that follows its black housing. The MONITOR jack's is 17.78 across from 217.45, its top an arc rising 5.9 to 23, its mouth 13.3 across about 226.34 and 15.3 up about an insert 11.2 across, which the French rear shows; the DC jack's is 11.5 across from 200.48 and up to 15.1, its bore 5.83 across about 206.82 and 9.6 up [E].
+// How far the housings run back, how deep the mouths are, where the insert stands in its mouth and the DC jack's pin are not measured: 10, 2 and 5, 1 in, and a pin 2 across standing 1 inside its bore, are taken. The MONITOR jack's pins are not drawn.
+const MONITOR_JACK = { left: 217.45, right: 235.23, top: 23, rise: 5.9, behind: 3 },
+  MONITOR_MOUTH = { middle: 226.34, height: 15.3, diameter: 13.3, depth: 2 },
+  MONITOR_INSERT = { diameter: 11.2, inside: 1 },
+  DC_JACK = { left: 200.48, right: 211.98, top: 15.1, behind: 4 },
+  DC_BORE = { middle: 206.82, height: 9.6, diameter: 5.83, depth: 5 },
+  DC_PIN = { diameter: 2, inside: 1 },
+  JACK_LENGTH = 10
+
+// The 12V DC cord leaves through a half-round window 11.4 across about 189.34 on the cut's edge, in a grey ribbed boot running back about 14 and tapering to about 7 across [E]. The ribs are not drawn, and neither is the coiled cord beyond: where it lies is the desk's to say.
+const DC_CORD = { middle: 189.34, diameter: 11.4, length: 14, tipDiameter: 7 }
+
+// The VOLUME wheel is the knob 170806 [A], CPC6128 Service Manual p3: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a, which the 664's right end shows through a window 24.8 across [E], https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html; it is taken 24 across, its knurled rim at the band's face. Its thickness and height are not measured: 3.5 from 11.6 up are taken, and the knurls are not drawn.
+// The POWER switch's knob, 6.75 across, stands 4 behind the face from 8.3 to 13.5 [E]; how far it runs back is not measured, and 4 is taken. It is drawn at ON, at the window's end toward the left end, where the English words put it.
+const VOLUME_WHEEL = { diameter: 24, thickness: 3.5, bottom: 11.6 },
+  POWER_KNOB = { width: 6.75, behind: 4, bottom: 8.3, top: 13.5, depth: 4 }
+
+// The room behind the cut is drawn as deep and as high as the openings and windows show it, its back lined dark: choices of drawing, not figures of the machine.
+const ROOM = { depth: 18, top: 24, lining: 0.5 }
+
+// The band's words are moulded in it, upright capitals 2.6 tall, each measured across on a rear and set on its foot [E], in a plain grotesque TeX Gyre Heros stands in for. The Spanish unit's moulding sets Spanish words over the English; beside the switch they stand over the wrong ones, ENC. over OFF and APAG. over ON. The wheel's plus is read on the Spanish rear, its minus on the 1985 French one only, level with the plus there [E]; their strokes are not measured, and 0.4 is taken.
+// The 1985 and 1988 French rears carry the English words alone, the second mapped onto the face by the band's ends and the edges of its windows, openings and sockets, rms 0.6, and reading each word 0.5 to 1.5 further from the left end than the first. Each lies within 1.3 across and 0.5 up of the Spanish unit's, but for DISC DRIVE 2 and PRINTER, which stand apart, read on the 1985 rear and set on the top line [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html.
+// A German rear shows VOLUME, POWER, OFF, DISC DRIVE 2, MONITOR, 5V DC and 12V DC where the French rears have them, and its Centronics sockets hide the rest [B]: https://iser.wisski.data.fau.de/sites/default/files/2024-02/CPC6128.pdf. The rest are taken from the French rears, and the sockets are not drawn. The UK's rear is not read, and is taken to be the same.
+// The words read 0.53 to 0.6 of the band's light on the Spanish and 1985 French rears [E]. A plate a print's thickness fills the band's face and carries them, sunk flush: it stands in for the moulding, and can only take the words as the light catches them.
+const SHARED_WORDS = [
+    { word: "MONITOR", left: 230.6, right: 245.9, foot: 23.2 },
+    { word: "EXPANSION", left: 134.8, right: 154.5, foot: 23.2 },
+    { word: "VOLUME", left: 359, right: 372.1, foot: 19.05 },
+    { word: "POWER", left: 322.4, right: 335.1, foot: 19.05 },
+    { word: "OFF", left: 335.8, right: 343, foot: 11.8 },
+    { word: "ON", left: 314.9, right: 320.2, foot: 11.8 },
+    { word: "5V DC", left: 201.2, right: 212.1, foot: 18.2 },
+    { word: "12V DC", left: 183.1, right: 195.6, foot: 18.2 }
+  ],
+  BILINGUAL_WORDS = [
+    ...SHARED_WORDS,
+    { word: "DISC DRIVE 2/UNIDAD DE DISCO 2", left: 248.1, right: 308, foot: 23.2 },
+    { word: "PRINTER / IMPRESORA", left: 36.2, right: 80, foot: 23.2 },
+    { word: "VOLUMEN", left: 355.3, right: 372.9, foot: 23.2 },
+    { word: "ALIMENTACION", left: 317.7, right: 344.3, foot: 23.2 },
+    { word: "ENC.", left: 335.8, right: 343.6, foot: 15 },
+    { word: "APAG.", left: 310, right: 320.4, foot: 15 },
+    { word: "5V c.c.", left: 200.9, right: 212.3, foot: 21.9 },
+    { word: "12V c.c.", left: 182.9, right: 195.8, foot: 21.9 }
+  ],
+  ENGLISH_WORDS = [
+    ...SHARED_WORDS,
+    { word: "DISC DRIVE 2", left: 262, right: 285.2, foot: 23.2 },
+    { word: "PRINTER", left: 52.7, right: 67.4, foot: 23.2 }
+  ],
+  REAR_WORDS = { es: BILINGUAL_WORDS, en: ENGLISH_WORDS, fr: ENGLISH_WORDS, de: ENGLISH_WORDS },
+  WORD_CAP_HEIGHT = 2.6,
+  VOLUME_PLUS = { middle: 350.42, height: 13.4, size: 2.45 },
+  VOLUME_MINUS = { middle: 378.78, height: 13.4, size: 2.1 },
+  SIGN_STROKE = 0.4
 
 // The nameplate and the colour badge lie in shallow recesses in the rear strip, their outlines measured on the Spanish photograph from above, ±0.3 across and ±0.4 in depth [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. The light lines along their rear edges, at the photograph's own blur limit, bound the recesses under about 1.5, with no lower bound and no way to separate a recess's depth from its plate's thickness, so each recess is taken at the plate's thickness.
 // The badge's lamp shows through a window 5.25 by 2.05, its lens standing behind it as the drive's does.
@@ -292,6 +401,18 @@ const BEZEL = { name: "bezel", colour: "#1c1918" }
 
 // Sampled through the vent slots of the 1989 Spanish unit and a 1988 French one, #010102 to #0c0e0f, and taken at the middle: the inside of the case is black [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 const INTERIOR = { name: "interior", colour: "#07080a" }
+
+// Sampled on the two rears and corrected by the band's own reading against the cabinet's: the jacks' housings read 0.29 to 0.39 of the band's light, the wheel and the switch's knob as dark, and the cord's boot 0.54 to 0.76 in red and green, where the backdrop takes its blue, and is taken a neutral grey at 0.65. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+const BLACK_PLASTIC = { name: "black-plastic", colour: "#2e2f31" },
+  CORD = { name: "cord", colour: "#434343" }
+
+// Sampled on the Spanish unit's board, lifted from its case, in daylight: its green, and its fingers, tinned and not gilt, #a79f92 to #dcdfe0 and taken at the middle. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html
+const BOARD_PLATE = { name: "board", colour: "#5e8b71" },
+  FINGER_TIN = "#c2bfb9"
+
+// The rear's words at 0.55 of the band's light, on a plate of the band's own plastic [E].
+const LETTERING_PLATE = { name: "rear-lettering", colour: CABINET_TOP.colour },
+  LETTERING_INK = "#3d3e42"
 
 // Sampled on the same photograph, which reads the case #36404f where the cabinet's own photograph reads #535459, and corrected by that difference: the plates; the lamps' lenses, dark red while the machine stands off; the nameplate's box #a2b4d1, its logo's letters #e5e9fa and its words #e4e4ed, the letters standing barely a tenth above the box; and the badge's ENC., near-black at #020409. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html.
 const NAMEPLATE_BACKING = { name: "nameplate", colour: "#606768" },
@@ -316,15 +437,19 @@ const PLATE = { name: "plate", colour: "#4e4d53" },
   PLATE_GREEN = "#368943",
   PLATE_BLUE = "#1e4784"
 
-// How finely a print is rendered. A plate's hairlines and its 1.6 capitals want 12 pixels to the millimetre; the legend atlas, a tile to a key across the whole block, would stand 4115 wide at that density, past the 4096 a mobile GPU may hold, and takes 10 — which still gives a word's 2.5 capital 25 pixels.
+// How finely a print is rendered. A plate's hairlines and its 1.6 capitals want 12 pixels to the millimetre; the legend atlas, a tile to a key across the whole block, would stand 4115 wide at that density, past the 4096 a mobile GPU may hold, and takes 10 — which still gives a word's 2.5 capital 25 pixels. The band's words, over its 376, take 10 for the same reason, and the board's fingers, seen only through the openings, 8.
 const PLATE_PIXELS = 12,
-  LEGEND_PIXELS = 10
+  LEGEND_PIXELS = 10,
+  LETTERING_PIXELS = 10,
+  BOARD_PIXELS = 8
 
 const SPANISH = "es",
   DRIVE_PLATE_PRINT = "drive-plate",
   LEGENDS_PRINT = "legends",
   NAMEPLATE_PRINT = "nameplate",
-  BADGE_PRINT = "badge"
+  BADGE_PRINT = "badge",
+  LETTERING_PRINT = "rear-lettering",
+  BOARD_PRINT = "board"
 
 // The plate's words as printed on both Spanish units, the colours numbered 0 to 26 down three columns [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html and https://commons.wikimedia.org/wiki/File:AMSTRAD_CPC_6128.jpg
 const PLATE_WORDS = {
@@ -496,6 +621,17 @@ const TESSELLATION = { tolerance: 0.25, angularTolerance: 1 }
 const CENTRING = [-WIDTH / 2, -DEPTH / 2, CABINET_BOTTOM_HEIGHT + FOOT.height],
   QUARTERS = ["", "¼", "½", "¾"]
 
+// The words' print is drawn over the band's face above the cut, as the rear is read from behind: the left end at its right.
+const LETTERING_FRAME = { left: BAND.left, right: BAND.right, bottom: CUT_TOP, top: BAND.top }
+
+// The board as far as the openings show it, from the room's dark back to its tabs' tips: a choice of drawing.
+const BOARD_PLAN = {
+  left: OPENINGS[0].left - 10,
+  right: OPENINGS.at(-1).right + 10,
+  front: DEPTH - ROOM.depth + HAIRLINE + ROOM.lining / 2,
+  rear: DEPTH - BOARD.tipBehind
+}
+
 function slopeHeightAt(fromFront) {
   return FRONT_HEIGHT + (SLOPE_RISE * fromFront) / SLOPE_DEPTH
 }
@@ -504,24 +640,93 @@ function tangent(degrees) {
   return Math.tan((degrees * Math.PI) / 180)
 }
 
+// A face laid out in plan, where the model stands once centred.
+function centredFace({ left, right, front, rear }) {
+  return {
+    left: left + CENTRING[0],
+    right: right + CENTRING[0],
+    front: front + CENTRING[1],
+    rear: rear + CENTRING[1]
+  }
+}
+
+// A shape drawn across the rear, in x and z, run from one depth to another.
+function acrossRear(outline, front, rear) {
+  return outline.sketchOnPlane("XZ", -rear).extrude(rear - front)
+}
+
+function boxOutline({ left, right, top }, foot) {
+  return drawRectangle(right - left, top - foot).translate((left + right) / 2, (foot + top) / 2)
+}
+
+// Straight sides up from the foot, and a top arched through its middle, rising from the sides' tops.
+function archedOutline({ left, right, top, rise }, foot) {
+  const shoulder = top - rise,
+    middle = (left + right) / 2
+
+  return draw([left, foot])
+    .lineTo([left, shoulder])
+    .threePointsArcTo([right, shoulder], [middle, top])
+    .lineTo([right, foot])
+    .close()
+}
+
+function grown({ left, right, top, rise }, margin) {
+  return { left: left - margin, right: right + margin, top: top + margin, rise }
+}
+
+// The vents are counted from 1 at the left end, as they are named.
+function ventLeft(vent) {
+  return VENTS.left + (vent - 1) * VENTS.pitch
+}
+
+function overSpeaker(vent) {
+  return vent >= SPEAKER_SLOTS.first && vent < SPEAKER_SLOTS.first + SPEAKER_SLOTS.count
+}
+
+function buildVentSlot(left) {
+  return makeBox(
+    [left, DEPTH - VENTS.reach, VENTS.bottom],
+    [left + VENTS.width, DEPTH + OVERRUN, REAR_STRIP_HEIGHT + OVERRUN]
+  )
+}
+
+// A slot over the speaker leans about its top as it runs down the rear wall; on the top it is cut behind the wall as the others are, the two fused to cut as one.
+function buildSpeakerSlot(left) {
+  const lean = tangent(SPEAKER_SLOTS.lean),
+    foot = left - lean * (REAR_STRIP_HEIGHT - SPEAKER_SLOTS.bottom),
+    head = left + lean * OVERRUN,
+    top = REAR_STRIP_HEIGHT + OVERRUN,
+    outline = draw([foot, SPEAKER_SLOTS.bottom])
+      .lineTo([foot + VENTS.width, SPEAKER_SLOTS.bottom])
+      .lineTo([head + VENTS.width, top])
+      .lineTo([head, top])
+      .close(),
+    throughWall = acrossRear(outline, DEPTH - CASE_WALL - OVERRUN, DEPTH + OVERRUN),
+    onTop = makeBox(
+      [left, DEPTH - VENTS.reach, REAR_STRIP_HEIGHT - CASE_WALL - OVERRUN],
+      [left + VENTS.width, DEPTH - CASE_WALL, top]
+    )
+
+  return throughWall.fuse(onTop)
+}
+
 function buildVentSlots() {
   const slots = []
 
-  for (let slot = 0; slot < VENTS.count; slot++) {
-    const left = VENTS.left + slot * VENTS.pitch,
-      box = makeBox(
-        [left, DEPTH - VENTS.reach, VENTS.bottom],
-        [left + VENTS.width, DEPTH + OVERRUN, REAR_STRIP_HEIGHT + OVERRUN]
-      )
+  for (let vent = 1; vent <= VENTS.count; vent++) {
+    const left = ventLeft(vent),
+      speaker = overSpeaker(vent),
+      cut = speaker ? buildSpeakerSlot(left) : buildVentSlot(left)
 
-    slots.push(box)
+    slots.push(cut)
   }
 
   return makeCompound(slots)
 }
 
 function buildVentCavity(inset = 0) {
-  const right = VENTS.left + (VENTS.count - 1) * VENTS.pitch + VENTS.width
+  const right = ventLeft(VENTS.count) + VENTS.width
 
   return makeBox(
     [
@@ -531,6 +736,142 @@ function buildVentCavity(inset = 0) {
     ],
     [right + OVERRUN - inset, DEPTH - CASE_WALL - inset, REAR_STRIP_HEIGHT - CASE_WALL - inset]
   )
+}
+
+// A slot through the floor under the given vent.
+function buildUnderVentSlot(vent) {
+  const left = ventLeft(vent)
+
+  return makeBox(
+    [left, DEPTH - UNDER_VENTS.reach, -CABINET_BOTTOM_HEIGHT - OVERRUN],
+    [left + VENTS.width, DEPTH + OVERRUN, FLOOR_TOP]
+  )
+}
+
+function buildUnderVentSlots() {
+  const slots = []
+
+  for (const { first, last } of UNDER_VENTS.groups) {
+    for (let vent = first; vent <= last; vent++) {
+      slots.push(buildUnderVentSlot(vent))
+    }
+  }
+
+  return makeCompound(slots)
+}
+
+// The dark above each group of the floor's slots, its floor a hairline under the slots' tops, so that no face of the two stands in one plane.
+function buildUnderVentCavities(inset = 0) {
+  const cavities = []
+
+  for (const { first, last } of UNDER_VENTS.groups) {
+    const left = ventLeft(first),
+      right = ventLeft(last) + VENTS.width,
+      cavity = makeBox(
+        [
+          left - OVERRUN + inset,
+          DEPTH - UNDER_VENTS.reach - OVERRUN + inset,
+          FLOOR_TOP - HAIRLINE + inset
+        ],
+        [right + OVERRUN - inset, DEPTH - CASE_WALL - inset, FLOOR_TOP + UNDER_VENTS.dark - inset]
+      )
+
+    cavities.push(cavity)
+  }
+
+  return makeCompound(cavities)
+}
+
+// The dark behind the speaker's slots, down from the vents' own.
+function buildSpeakerCavity(inset = 0) {
+  const first = ventLeft(SPEAKER_SLOTS.first),
+    last = ventLeft(SPEAKER_SLOTS.first + SPEAKER_SLOTS.count - 1) + VENTS.width,
+    run = tangent(SPEAKER_SLOTS.lean) * (REAR_STRIP_HEIGHT - SPEAKER_SLOTS.bottom)
+
+  return makeBox(
+    [
+      first - run - OVERRUN + inset,
+      DEPTH - CASE_WALL - SPEAKER_ROOM + inset,
+      SPEAKER_SLOTS.bottom - OVERRUN + inset
+    ],
+    [last + OVERRUN - inset, DEPTH - CASE_WALL - inset, VENTS.bottom - inset]
+  )
+}
+
+// Windows through the band's wall, into the room behind it.
+function throughBand(outline) {
+  return acrossRear(outline, DEPTH - BAND.depth - CASE_WALL - OVERRUN, DEPTH - BAND.depth + OVERRUN)
+}
+
+// The band across the rear, its upper corners rounded, up from the given foot and the given margin in from its edges.
+function bandOutline(foot, inset) {
+  const left = BAND.left + inset,
+    right = BAND.right - inset,
+    top = BAND.top - inset,
+    radius = BAND.radius - inset
+
+  return draw([left, foot])
+    .lineTo([left, top])
+    .customCorner(radius)
+    .lineTo([right, top])
+    .customCorner(radius)
+    .lineTo([right, foot])
+    .close()
+}
+
+// The band is cut a plate's thickness deeper than its face, for the plate that carries its words.
+function buildBandRecess() {
+  const outline = bandOutline(-OVERRUN, 0)
+
+  return acrossRear(outline, DEPTH - BAND.depth - PLATE_THICKNESS, DEPTH + OVERRUN)
+}
+
+function buildRoom() {
+  return makeBox(
+    [BAND.left, DEPTH - ROOM.depth, -OVERRUN],
+    [BAND.right, DEPTH - BAND.depth - CASE_WALL, ROOM.top]
+  )
+}
+
+// The cord's window is a half circle standing on the cut's edge.
+function cordWindow(margin) {
+  const reach = DC_CORD.diameter / 2 + margin
+
+  return {
+    left: DC_CORD.middle - reach,
+    right: DC_CORD.middle + reach,
+    top: CUT_TOP + reach,
+    rise: reach
+  }
+}
+
+// The windows rising from the cut, the given margin wider than they open in the band's wall; the sockets' and the cord's stand a hairline clear of what passes through them.
+function rearWindows(margin) {
+  const clear = margin + HAIRLINE,
+    volume = grown(VOLUME_WINDOW, margin),
+    power = grown(POWER_WINDOW, margin),
+    dc = grown(DC_JACK, clear),
+    monitor = grown(MONITOR_JACK, clear),
+    cord = cordWindow(clear)
+
+  return [
+    boxOutline(volume, -OVERRUN),
+    boxOutline(power, -OVERRUN),
+    boxOutline(dc, -OVERRUN),
+    archedOutline(monitor, -OVERRUN),
+    archedOutline(cord, -OVERRUN)
+  ]
+}
+
+// What the rear's band, its cut and its windows take from the cabinet top, cut one by one, as several of them overlap.
+function buildRearCuts() {
+  const band = buildBandRecess(),
+    room = buildRoom(),
+    cutOutline = boxOutline({ left: BAND.left, right: BAND.right, top: CUT_TOP }, -OVERRUN),
+    windows = rearWindows(0),
+    throughWall = [cutOutline, ...windows].map(throughBand)
+
+  return [band, room, ...throughWall]
 }
 
 function buildPlateRecess(plate) {
@@ -559,14 +900,43 @@ function planOutline(radius) {
   return drawRoundedRectangle(WIDTH, DEPTH, radius).translate(WIDTH / 2, DEPTH / 2)
 }
 
+// The cabinet bottom's rear wall stands behind the band's wall from end to end of the cut; the openings are notched through it afterwards.
+function buildCabinetBottomWall() {
+  const face = DEPTH - BAND.depth - CASE_WALL - HAIRLINE,
+    back = face - CABINET_BOTTOM_WALL.thickness,
+    top = CUT_TOP + CABINET_BOTTOM_WALL.rise
+
+  return makeBox([BAND.left + HAIRLINE, back, -OVERRUN], [BAND.right - HAIRLINE, face, top])
+}
+
+function buildNotch({ left, right }) {
+  const top = CUT_TOP + CABINET_BOTTOM_WALL.rise + OVERRUN
+
+  return makeBox([left, DEPTH - ROOM.depth, OPENING_SILL], [right, DEPTH + OVERRUN, top])
+}
+
 function buildCabinetBottom() {
   const outline = planOutline(CABINET_BOTTOM_PLAN_RADIUS),
     block = outline.sketchOnPlane("XY", -CABINET_BOTTOM_HEIGHT).extrude(CABINET_BOTTOM_HEIGHT),
     rounded = block.fillet(CABINET_BOTTOM_EDGE_RADIUS, edge =>
       edge.inPlane("XY", -CABINET_BOTTOM_HEIGHT)
-    )
+    ),
+    wall = buildCabinetBottomWall(),
+    walled = rounded.fuse(wall),
+    notches = OPENINGS.map(buildNotch),
+    notched = notches.reduce((shape, notch) => shape.cut(notch), walled),
+    post = makeCylinder(
+      POST.diameter / 2,
+      POST.top - OPENING_SILL + OVERRUN,
+      [POST.middle, DEPTH - POST.behind, OPENING_SILL - OVERRUN],
+      [0, 0, 1]
+    ),
+    posted = notched.fuse(post),
+    underVentCavities = buildUnderVentCavities(),
+    underVentSlots = buildUnderVentSlots(),
+    vented = posted.cut(underVentCavities).cut(underVentSlots)
 
-  return { name: "cabinet-bottom", shape: rounded.translate(CENTRING), material: CABINET_BOTTOM }
+  return { name: "cabinet-bottom", shape: vented.translate(CENTRING), material: CABINET_BOTTOM }
 }
 
 function endTopEdges(edge) {
@@ -615,24 +985,28 @@ function buildCabinetTop() {
       [DRIVE_OPENING_RIGHT, DRIVE_BAY_DEPTH, DRIVE_OPENING_TOP]
     ),
     ventCavity = buildVentCavity(),
+    speakerCavity = buildSpeakerCavity(),
     ventSlots = buildVentSlots(),
     nameplateRecess = buildPlateRecess(NAMEPLATE),
     badgeRecess = buildPlateRecess(BADGE),
-    lampWindow = buildPowerLampWindow()
+    lampWindow = buildPowerLampWindow(),
+    rearCuts = buildRearCuts(),
+    shaped = body
+      .fuse(driveSection)
+      .fillet(DRIVE_SECTION_CORNER_RADIUS, edge => edge.inDirection("Z").containsPoint(corner))
+      .fillet(STEP_EDGE_RADIUS, edge => edge.inDirection("Z").containsPoint(stepEdge))
+      .fillet(END_EDGE_RADIUS, endTopEdges)
+      .intersect(plan)
+      .cut(keyOpening)
+      .cut(driveBay)
+      .cut(ventCavity)
+      .cut(speakerCavity)
+      .cut(ventSlots)
+      .cut(nameplateRecess)
+      .cut(badgeRecess)
+      .cut(lampWindow)
 
-  return body
-    .fuse(driveSection)
-    .fillet(DRIVE_SECTION_CORNER_RADIUS, edge => edge.inDirection("Z").containsPoint(corner))
-    .fillet(STEP_EDGE_RADIUS, edge => edge.inDirection("Z").containsPoint(stepEdge))
-    .fillet(END_EDGE_RADIUS, endTopEdges)
-    .intersect(plan)
-    .cut(keyOpening)
-    .cut(driveBay)
-    .cut(ventCavity)
-    .cut(ventSlots)
-    .cut(nameplateRecess)
-    .cut(badgeRecess)
-    .cut(lampWindow)
+  return rearCuts.reduce((shape, rearCut) => shape.cut(rearCut), shaped)
 }
 
 function buildOnBezel(outline, [standing, sunk]) {
@@ -759,10 +1133,190 @@ function buildFeet() {
   return { name: "feet", shape: standing.translate(CENTRING), material: FOOT_RUBBER }
 }
 
-function buildInterior() {
-  const cavity = buildVentCavity(HAIRLINE)
+function buildRoomBack() {
+  const back = DEPTH - ROOM.depth + HAIRLINE
 
-  return { name: "interior", shape: cavity.translate(CENTRING), material: INTERIOR }
+  return makeBox(
+    [BAND.left + HAIRLINE, back, HAIRLINE],
+    [BAND.right - HAIRLINE, back + ROOM.lining, ROOM.top - HAIRLINE]
+  )
+}
+
+function buildInterior() {
+  const vents = buildVentCavity(HAIRLINE),
+    speaker = buildSpeakerCavity(HAIRLINE),
+    behindVents = vents.fuse(speaker),
+    roomBack = buildRoomBack(),
+    aboveFloor = buildUnderVentCavities(HAIRLINE),
+    inside = makeCompound([behindVents, roomBack, aboveFloor])
+
+  return { name: "interior", shape: inside.translate(CENTRING), material: INTERIOR }
+}
+
+function buildMonitorJack() {
+  const face = DEPTH - MONITOR_JACK.behind,
+    outline = archedOutline(MONITOR_JACK, HAIRLINE),
+    housing = acrossRear(outline, face - JACK_LENGTH, face),
+    mouth = makeCylinder(
+      MONITOR_MOUTH.diameter / 2,
+      MONITOR_MOUTH.depth + OVERRUN,
+      [MONITOR_MOUTH.middle, face + OVERRUN, MONITOR_MOUTH.height],
+      [0, -1, 0]
+    ),
+    insert = makeCylinder(
+      MONITOR_INSERT.diameter / 2,
+      MONITOR_MOUTH.depth + OVERRUN - MONITOR_INSERT.inside,
+      [MONITOR_MOUTH.middle, face - MONITOR_MOUTH.depth - OVERRUN, MONITOR_MOUTH.height],
+      [0, 1, 0]
+    ),
+    jack = housing.cut(mouth).fuse(insert)
+
+  return { name: "monitor-jack", shape: jack.translate(CENTRING), material: BLACK_PLASTIC }
+}
+
+function buildDcJack() {
+  const face = DEPTH - DC_JACK.behind,
+    housing = makeBox(
+      [DC_JACK.left, face - JACK_LENGTH, HAIRLINE],
+      [DC_JACK.right, face, DC_JACK.top]
+    ),
+    bore = makeCylinder(
+      DC_BORE.diameter / 2,
+      DC_BORE.depth + OVERRUN,
+      [DC_BORE.middle, face + OVERRUN, DC_BORE.height],
+      [0, -1, 0]
+    ),
+    pin = makeCylinder(
+      DC_PIN.diameter / 2,
+      DC_BORE.depth + OVERRUN - DC_PIN.inside,
+      [DC_BORE.middle, face - DC_BORE.depth - OVERRUN, DC_BORE.height],
+      [0, 1, 0]
+    ),
+    jack = housing.cut(bore).fuse(pin)
+
+  return { name: "dc-jack", shape: jack.translate(CENTRING), material: BLACK_PLASTIC }
+}
+
+function cordSection(diameter, y) {
+  return drawCircle(diameter / 2)
+    .translate(DC_CORD.middle, CUT_TOP)
+    .sketchOnPlane("XZ", -y)
+}
+
+// The boot runs out of the room behind the band, full width as far as the face and tapering beyond it.
+function buildDcCord() {
+  const root = cordSection(DC_CORD.diameter, DEPTH - BAND.depth - CASE_WALL - OVERRUN),
+    face = cordSection(DC_CORD.diameter, DEPTH),
+    tip = cordSection(DC_CORD.tipDiameter, DEPTH + DC_CORD.length),
+    boot = root.loftWith([face, tip], { ruled: true })
+
+  return { name: "dc-cord", shape: boot.translate(CENTRING), material: CORD }
+}
+
+function buildVolumeWheel() {
+  const radius = VOLUME_WHEEL.diameter / 2,
+    middle = (VOLUME_WINDOW.left + VOLUME_WINDOW.right) / 2,
+    rim = DEPTH - BAND.depth - HAIRLINE,
+    wheel = makeCylinder(radius, VOLUME_WHEEL.thickness, [
+      middle,
+      rim - radius,
+      VOLUME_WHEEL.bottom
+    ])
+
+  return { name: "volume-wheel", shape: wheel.translate(CENTRING), material: BLACK_PLASTIC }
+}
+
+function buildPowerSwitch() {
+  const face = DEPTH - POWER_KNOB.behind,
+    left = POWER_WINDOW.left + HAIRLINE,
+    knob = makeBox(
+      [left, face - POWER_KNOB.depth, POWER_KNOB.bottom],
+      [left + POWER_KNOB.width, face, POWER_KNOB.top]
+    )
+
+  return { name: "power-switch", shape: knob.translate(CENTRING), material: BLACK_PLASTIC }
+}
+
+function tabOf({ middle, fingers }) {
+  const reach = (fingers * FINGERS.pitch) / 2 + TAB_MARGIN
+
+  return { left: middle - reach, right: middle + reach }
+}
+
+// The board's plan, its tabs standing out of its edge, drawn round from the front left corner.
+function boardOutline() {
+  const { left, right, front, rear } = BOARD_PLAN,
+    edge = DEPTH - BOARD.edgeBehind,
+    fromRight = EDGE_CONNECTORS.toReversed()
+
+  let outline = draw([left, front]).lineTo([right, front]).lineTo([right, edge])
+
+  for (const connector of fromRight) {
+    const tab = tabOf(connector)
+
+    outline = outline
+      .lineTo([tab.right, edge])
+      .lineTo([tab.right, rear])
+      .lineTo([tab.left, rear])
+      .lineTo([tab.left, edge])
+  }
+
+  return outline.lineTo([left, edge]).close()
+}
+
+// Each tab is slotted from its tip almost to the board's edge, a hairline short.
+function buildBoard() {
+  const bottom = BOARD.top - BOARD.thickness,
+    edge = DEPTH - BOARD.edgeBehind,
+    outline = boardOutline(),
+    slab = outline.sketchOnPlane("XY", bottom).extrude(BOARD.thickness),
+    slots = EDGE_CONNECTORS.map(function (connector) {
+      const tab = tabOf(connector),
+        middle = tab.left + TAB_MARGIN + connector.slotAfter * FINGERS.pitch
+
+      return makeBox(
+        [middle - TAB_SLOT / 2, edge + HAIRLINE, bottom - OVERRUN],
+        [middle + TAB_SLOT / 2, BOARD_PLAN.rear + OVERRUN, BOARD.top + OVERRUN]
+      )
+    }),
+    slotted = slots.reduce((shape, slot) => shape.cut(slot), slab),
+    face = centredFace(BOARD_PLAN)
+
+  return {
+    name: BOARD_PRINT,
+    shape: slotted.translate(CENTRING),
+    material: BOARD_PLATE,
+    face,
+    print: BOARD_PRINT
+  }
+}
+
+function letteringMapping([x, , z]) {
+  const caseX = x - CENTRING[0],
+    caseZ = z - CENTRING[2],
+    { left, right, bottom, top } = LETTERING_FRAME
+
+  return [(right - caseX) / (right - left), (top - caseZ) / (top - bottom)]
+}
+
+// The plate fills the band's face above the cut, a hairline in from its edges and clear of its windows.
+function buildLettering() {
+  const face = DEPTH - BAND.depth,
+    outline = bandOutline(CUT_TOP + HAIRLINE, HAIRLINE),
+    plate = acrossRear(outline, face - PLATE_THICKNESS, face),
+    windows = rearWindows(HAIRLINE),
+    openings = windows.map(window =>
+      acrossRear(window, face - PLATE_THICKNESS - OVERRUN, face + OVERRUN)
+    ),
+    pierced = openings.reduce((shape, opening) => shape.cut(opening), plate)
+
+  return {
+    name: LETTERING_PRINT,
+    shape: pierced.translate(CENTRING),
+    material: LETTERING_PLATE,
+    mapping: letteringMapping,
+    print: LETTERING_PRINT
+  }
 }
 
 function topOf(width, depth, height) {
@@ -1354,12 +1908,7 @@ function drawLegends(keys, legends) {
 function buildPlate(print, { left, right, rear, depth, bottom }, material) {
   const front = rear - depth,
     plate = makeBox([left, front, bottom], [right, rear, bottom + PLATE_THICKNESS]),
-    face = {
-      left: left + CENTRING[0],
-      right: right + CENTRING[0],
-      front: front + CENTRING[1],
-      rear: rear + CENTRING[1]
-    }
+    face = centredFace({ left, right, front, rear })
 
   return { name: print, shape: plate.translate(CENTRING), material, face, print }
 }
@@ -1440,6 +1989,74 @@ function drawBadge() {
   ].join("\n")
 }
 
+function drawMinus({ middle, height, size }) {
+  const x = LETTERING_FRAME.right - middle,
+    y = LETTERING_FRAME.top - height
+
+  return `<rect x="${x - size / 2}" y="${y - SIGN_STROKE / 2}" width="${size}" height="${SIGN_STROKE}"/>`
+}
+
+function drawPlus(sign) {
+  const x = LETTERING_FRAME.right - sign.middle,
+    y = LETTERING_FRAME.top - sign.height,
+    across = drawMinus(sign)
+
+  return `${across}<rect x="${x - SIGN_STROKE / 2}" y="${y - sign.size / 2}" width="${SIGN_STROKE}" height="${sign.size}"/>`
+}
+
+function drawLettering(words) {
+  const { left, right, bottom, top } = LETTERING_FRAME,
+    width = right - left,
+    height = top - bottom,
+    size = fontSize(WORD_CAP_HEIGHT),
+    plus = drawPlus(VOLUME_PLUS),
+    minus = drawMinus(VOLUME_MINUS),
+    drawn = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${HEROS}" fill="${LETTERING_INK}">`,
+      `<rect width="${width}" height="${height}" fill="${LETTERING_PLATE.colour}"/>`,
+      plus,
+      minus
+    ]
+
+  for (const word of words) {
+    const escaped = escapeXml(word.word)
+
+    drawn.push(
+      `<text x="${right - word.right}" y="${top - word.foot}" font-size="${size}" textLength="${word.right - word.left}" lengthAdjust="spacingAndGlyphs">${escaped}</text>`
+    )
+  }
+
+  drawn.push("</svg>")
+
+  return drawn.join("\n")
+}
+
+// The fingers run from the tabs' tips, at the print's top.
+function drawBoard() {
+  const width = BOARD_PLAN.right - BOARD_PLAN.left,
+    depth = BOARD_PLAN.rear - BOARD_PLAN.front,
+    drawn = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${depth}" viewBox="0 0 ${width} ${depth}" fill="${FINGER_TIN}">`,
+      `<rect width="${width}" height="${depth}" fill="${BOARD_PLATE.colour}"/>`
+    ]
+
+  for (const connector of EDGE_CONNECTORS) {
+    const tab = tabOf(connector)
+
+    for (let finger = 0; finger < connector.fingers; finger++) {
+      const middle = tab.left + TAB_MARGIN + (finger + 0.5) * FINGERS.pitch - BOARD_PLAN.left
+
+      drawn.push(
+        `<rect x="${middle - FINGERS.width / 2}" width="${FINGERS.width}" height="${FINGERS.length}"/>`
+      )
+    }
+  }
+
+  drawn.push("</svg>")
+
+  return drawn.join("\n")
+}
+
 function buildDrivePlate() {
   const left = DRIVE_SECTION_LEFT + (DRIVE_SECTION_WIDTH - PLATE_WIDTH) / 2,
     outline = {
@@ -1474,6 +2091,10 @@ function buildBadge() {
   return { ...badge, shape: pierced }
 }
 
+function drawnInEachLanguage(name, pixels, drawFor) {
+  return LANGUAGES.map(language => ({ name, language, svg: drawFor(language), pixels }))
+}
+
 export function buildCpc6128() {
   const keys = layKeys(),
     returnKey = layKey(RETURN_NUMBER, [RETURN_LEFT, RETURN_ROW], [RETURN_WIDTH, RETURN_ROWS]),
@@ -1486,14 +2107,15 @@ export function buildCpc6128() {
     badge = buildBadge(),
     drivePlatePrint = drawDrivePlate(),
     lettered = [...keys, returnKey],
-    legendsPrints = LANGUAGES.map(language => ({
-      name: LEGENDS_PRINT,
-      language,
-      svg: drawLegends(lettered, LEGENDS[language]),
-      pixels: LEGEND_PIXELS
-    })),
+    legendsPrints = drawnInEachLanguage(LEGENDS_PRINT, LEGEND_PIXELS, language =>
+      drawLegends(lettered, LEGENDS[language])
+    ),
     nameplatePrint = drawNameplate(),
-    badgePrint = drawBadge()
+    badgePrint = drawBadge(),
+    letteringPrints = drawnInEachLanguage(LETTERING_PRINT, LETTERING_PIXELS, language =>
+      drawLettering(REAR_WORDS[language])
+    ),
+    boardPrint = drawBoard()
 
   return {
     tessellation: TESSELLATION,
@@ -1502,6 +2124,13 @@ export function buildCpc6128() {
       buildCabinetBottom(),
       buildFeet(),
       buildInterior(),
+      buildLettering(),
+      buildBoard(),
+      buildMonitorJack(),
+      buildDcJack(),
+      buildDcCord(),
+      buildVolumeWheel(),
+      buildPowerSwitch(),
       { name: "drive", shape: drive.translate(CENTRING), material: BEZEL },
       driveSlot(),
       buildEjectButton(),
@@ -1517,7 +2146,9 @@ export function buildCpc6128() {
       { name: DRIVE_PLATE_PRINT, language: SPANISH, svg: drivePlatePrint, pixels: PLATE_PIXELS },
       ...legendsPrints,
       { name: NAMEPLATE_PRINT, language: SPANISH, svg: nameplatePrint, pixels: PLATE_PIXELS },
-      { name: BADGE_PRINT, language: SPANISH, svg: badgePrint, pixels: PLATE_PIXELS }
+      { name: BADGE_PRINT, language: SPANISH, svg: badgePrint, pixels: PLATE_PIXELS },
+      ...letteringPrints,
+      { name: BOARD_PRINT, language: SPANISH, svg: boardPrint, pixels: BOARD_PIXELS }
     ]
   }
 }
