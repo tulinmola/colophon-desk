@@ -302,6 +302,10 @@ const NAMEPLATE_BACKING = { name: "nameplate", colour: "#606768" },
   NAMEPLATE_INK = "#eceef0",
   BADGE_INK = "#111316"
 
+// Sampled on the UK unit's photograph, the one the cabinet's #535459 was sampled on. Around the badge the cabinet reads near that, and the badge's ground #3c3b3f to #434348 is taken at #3f3f43. Around the nameplate the cabinet reads lighter, #68676d to #6f6e74, and the nameplate's #5e5e65 to #737177, corrected by that difference, comes to #515257. Its white words are taken to be the Spanish nameplate's white. Uncalibrated, good for the hue and no more [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg
+const UK_NAMEPLATE_BACKING = "#515257",
+  UK_BADGE_BACKING = "#3f3f43"
+
 // Sampled on the space bar and ENTER in the same photograph as the cabinet's colour, #dcccb3 to #dfd6b9, and taken at the middle; the scan of the keys samples #e5e3bf. Uncalibrated, good for the hue and no more [E].
 const KEYCAP = { name: "keycap", colour: "#ddd1b6" }
 
@@ -320,81 +324,29 @@ const PLATE = { name: "plate", colour: "#4e4d53" },
 const PLATE_PIXELS = 12,
   LEGEND_PIXELS = 10
 
-const SPANISH = "es",
-  DRIVE_PLATE_PRINT = "drive-plate",
+const DRIVE_PLATE_PRINT = "drive-plate",
   LEGENDS_PRINT = "legends",
   NAMEPLATE_PRINT = "nameplate",
   BADGE_PRINT = "badge"
 
-// The plate's words as printed on both Spanish units, the colours numbered 0 to 26 down three columns [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html and https://commons.wikimedia.org/wiki/File:AMSTRAD_CPC_6128.jpg
-const PLATE_WORDS = {
-    title: "UNIDAD DE DISCO",
-    keyNumbers: "CODIGOS DE ENTRADA",
-    colourChart: "TABLA DE COLORES",
-    model: "CPC6128"
-  },
-  COLOUR_NAMES = [
-    "NEGRO",
-    "AZUL",
-    "AZUL BRILLANTE",
-    "ROJO",
-    "MAGENTA",
-    "MALVA",
-    "ROJO BRILLANTE",
-    "PÚRPURA",
-    "MAGENTA BRILLANTE",
-    "VERDE",
-    "CIANO",
-    "AZUL CIELO",
-    "AMARILLO",
-    "BLANCO",
-    "AZUL PASTEL",
-    "NARANJA",
-    "ROSA",
-    "MAGENTA PASTEL",
-    "VERDE BRILLANTE",
-    "VERDE MARINO",
-    "CIANO BRILLANTE",
-    "VERDE LIMA",
-    "VERDE PASTEL",
-    "CIANO PASTEL",
-    "AMARILLO BRILLANTE",
-    "AMARILLO PASTEL",
-    "BLANCO BRILLANTE"
-  ]
-
 // The artwork in its own frame of 92.5 × 138.5 from the plate's rear left corner, which the print stretches over the plate: measured on the Spanish photograph and on the UK and French ones, each warped to 95.9 × 142.5 and scaled to this frame, ±0.2 to 0.5 [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 // Rules stand 1.1 thick, hairlines 0.4 and the key map's and chart's lines 0.45, the keys' corners rounded about 0.4. The title and model mark are a bold grotesque condensed and leaning 16°, their right edges measured on the ink, which the lean carries 0.6 past the text's end; the headings are regular and letterspaced to their measured widths.
-// TeX Gyre Heros stands in for the plate's face, its capitals 0.729 of its size and its condensed cut's 0.718, the title set in the condensed cut 48.5 across against the measured 48.7: https://www.gust.org.pl/projects/e-foundry/tex-gyre/heros. The colour names are narrowed to 0.94, the plate's MAGENTA BRILLANTE against Heros Bold's at the same height.
+// TeX Gyre Heros stands in for the plate's face, its capitals 0.729 of its size and its condensed cut's 0.718: https://www.gust.org.pl/projects/e-foundry/tex-gyre/heros
 const ARTWORK_WIDTH = 92.5,
   ARTWORK_DEPTH = 138.5,
   PLATE_LAYOUT = {
-    title: { right: 83.9, baseline: 13.7, capHeight: 4.8, width: 48.7 },
+    title: { right: 83.9, baseline: 13.7, capHeight: 4.8 },
     redRule: { left: 2.4, right: 90.2, y: 18.1 },
-    keyNumbersHeading: { centre: 46.6, baseline: 25.2, capHeight: 3, width: 50.2 },
+    keyNumbersHeading: { centre: 46.6, baseline: 25.2, capHeight: 3 },
     wave: { left: 2.9, right: 89.1, y: 27.9, height: 1.25, cycles: 50, stroke: 0.3 },
     upperHairline: { left: 2.7, right: 90, y: 32.3 },
     keyMap: { left: 9.6, top: 35.5, keyWidth: 4.1, keyDepth: 4.06, capHeight: 1.3, radius: 0.4 },
     lowerHairline: { left: 2.9, right: 90, y: 59.1 },
     greenRule: { left: 2.4, right: 89.9, y: 66.1 },
-    chart: {
-      left: 7,
-      right: 85.5,
-      top: 73.75,
-      bottom: 115.5,
-      headingRule: 78.9,
-      columnRules: [34.6, 58],
-      firstRow: 82.1,
-      rowPitch: 3.84,
-      rowsPerColumn: 9,
-      capHeight: 1.6,
-      numberInset: 0.4,
-      nameInset: 3.25,
-      nameNarrowing: 0.94
-    },
-    chartHeading: { centre: 46.5, baseline: 78.05, capHeight: 3.05, width: 44.6 },
+    chart: { left: 7, right: 85.5, top: 73.75, bottom: 115.5, headingRule: 78.9, rowsPerColumn: 9 },
+    chartHeading: { centre: 46.5, baseline: 78.05, capHeight: 3.05 },
     blueRule: { left: 2.4, right: 89.9, y: 120.3 },
-    model: { right: 84.15, baseline: 130.5, capHeight: 5.05, width: 23.55 }
+    model: { words: "CPC6128", right: 84.15, baseline: 130.5, capHeight: 5.05, width: 23.55 }
   },
   RULE_THICKNESS = 1.1,
   HAIRLINE_THICKNESS = 0.4,
@@ -404,6 +356,150 @@ const ARTWORK_WIDTH = 92.5,
   HEROS_CONDENSED = "TeX Gyre Heros Cn",
   HEROS_CAP_HEIGHT = 0.729,
   HEROS_CONDENSED_CAP_HEIGHT = 0.718
+
+// What each country's plate prints on that one template: its words, each set to its measured width, and its colour chart, whose columns move with the names they hold.
+// The Spanish words as printed on both Spanish units, the colours numbered 0 to 26 down three columns [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html and https://commons.wikimedia.org/wiki/File:AMSTRAD_CPC_6128.jpg. The title is set in the condensed cut 48.5 across against the measured 48.7. The names are bold capitals 1.6 high narrowed to 0.94, the plate's MAGENTA BRILLANTE against Heros Bold's at that height, each number 0.4 inside its column and its name 3.25 after it.
+// The UK and French plates are read on their photographs, each rectified to this frame, ±0.4 [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. They read the chart's box 6.5 to 85.95 and 6.7 to 86.25 across, and what stands inside it is carried across from their box to the Spanish one; its rows stand as each reads them. Both read every word the plates share 0.25 to 0.4 taller than the Spanish photograph does, CPC6128's 5.05 as 5.4, and the 2.0 their names read is taken for the same blur; and both read that mark 0.75 and 1.1 right of the Spanish, so their titles, ending at 85.5 and 85.0, are taken to end where the Spanish one does. The UK's headings are bold and tightly set, the French regular and letterspaced as the Spanish are. The UK's names fit the Spanish setting within 0.31 rms over 23 of them, and are set as the Spanish are. The French are regular and in mixed case, and fit Heros at capitals 1.8 with its word spaces a millimetre wider within 0.32 rms over 25; on the plate some spaces are as narrow as Heros's own, and one width is taken for all.
+const DRIVE_PLATES = {
+  es: {
+    title: { words: "UNIDAD DE DISCO", width: 48.7 },
+    keyNumbers: { words: "CODIGOS DE ENTRADA", width: 50.2 },
+    colourChart: { words: "TABLA DE COLORES", width: 44.6 },
+    headingWeight: 400,
+    chart: {
+      columnRules: [34.6, 58],
+      numberLefts: [7.4, 35, 58.4],
+      nameLefts: [10.65, 38.25, 61.65],
+      firstRow: 82.1,
+      rowPitch: 3.84,
+      capHeight: 1.6,
+      weight: 700,
+      narrowing: 0.94,
+      wordSpacing: 0
+    },
+    colourNames: [
+      "NEGRO",
+      "AZUL",
+      "AZUL BRILLANTE",
+      "ROJO",
+      "MAGENTA",
+      "MALVA",
+      "ROJO BRILLANTE",
+      "PÚRPURA",
+      "MAGENTA BRILLANTE",
+      "VERDE",
+      "CIANO",
+      "AZUL CIELO",
+      "AMARILLO",
+      "BLANCO",
+      "AZUL PASTEL",
+      "NARANJA",
+      "ROSA",
+      "MAGENTA PASTEL",
+      "VERDE BRILLANTE",
+      "VERDE MARINO",
+      "CIANO BRILLANTE",
+      "VERDE LIMA",
+      "VERDE PASTEL",
+      "CIANO PASTEL",
+      "AMARILLO BRILLANTE",
+      "AMARILLO PASTEL",
+      "BLANCO BRILLANTE"
+    ]
+  },
+  en: {
+    title: { words: "DISC DRIVE", width: 32.9 },
+    keyNumbers: { words: "KEY NUMBERS", width: 28.1 },
+    colourChart: { words: "MASTER COLOUR CHART", width: 48.2 },
+    headingWeight: 700,
+    chart: {
+      columnRules: [33.03, 59.47],
+      numberLefts: [7.84, 34.17, 60.5],
+      nameLefts: [10.66, 37.53, 64.06],
+      firstRow: 81.4,
+      rowPitch: 3.87,
+      capHeight: 1.6,
+      weight: 700,
+      narrowing: 0.94,
+      wordSpacing: 0
+    },
+    colourNames: [
+      "BLACK",
+      "BLUE",
+      "BRIGHT BLUE",
+      "RED",
+      "MAGENTA",
+      "MAUVE",
+      "BRIGHT RED",
+      "PURPLE",
+      "BRIGHT MAGENTA",
+      "GREEN",
+      "CYAN",
+      "SKY BLUE",
+      "YELLOW",
+      "WHITE",
+      "PASTEL BLUE",
+      "ORANGE",
+      "PINK",
+      "PASTEL MAGENTA",
+      "BRIGHT GREEN",
+      "SEA GREEN",
+      "BRIGHT CYAN",
+      "LIME GREEN",
+      "PASTEL GREEN",
+      "PASTEL CYAN",
+      "BRIGHT YELLOW",
+      "PASTEL YELLOW",
+      "BRIGHT WHITE"
+    ]
+  },
+  fr: {
+    title: { words: "LECTEUR DE DISQUETTE", width: 64.75 },
+    keyNumbers: { words: "NUMÉROS DES TOUCHES", width: 49.1 },
+    colourChart: { words: "PALETTE DES COULEURS", width: 48.75 },
+    headingWeight: 400,
+    chart: {
+      columnRules: [33.35, 59.6],
+      numberLefts: [8.48, 34.73, 61.08],
+      nameLefts: [10.85, 38.18, 65.02],
+      firstRow: 81.75,
+      rowPitch: 3.865,
+      capHeight: 1.8,
+      weight: 400,
+      narrowing: 1,
+      wordSpacing: 1
+    },
+    colourNames: [
+      "Noir",
+      "Bleu",
+      "Bleu Vif",
+      "Rouge",
+      "Magenta",
+      "Mauve",
+      "Rouge Vif",
+      "Pourpre",
+      "Magenta Vif",
+      "Vert",
+      "Turquoise",
+      "Bleu ciel",
+      "Jaune",
+      "Blanc",
+      "Bleu Pastel",
+      "Orange",
+      "Rose",
+      "Magenta Pastel",
+      "Vert Vif",
+      "Vert marin",
+      "Turquoise Vif",
+      "Vert citron",
+      "Vert Pastel",
+      "Turquoise Pastel",
+      "Jaune Vif",
+      "Jaune Pastel",
+      "Blanc brillant"
+    ]
+  }
+}
 
 // The legends of the 1989 Spanish unit, measured on its photograph from above, every key's top rectified to its size, ±0.3 [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. They are drawn across from the key's axis and forward from its top's rear edge.
 // Every legend is centred 7.2 behind that edge. A letter's capital stands 5.4 high, regular; a pair's upper character 4.05 with its top at 2.65 and its lower 3.95 on a baseline at 11.8; a word 2.5 and bold, centred even on the widest keys; RETURN 2.7 with its top at 24.88. TeX Gyre Heros matches their widths within the photograph's precision, all but ←BORR's.
@@ -428,10 +524,10 @@ const LEGEND_MIDDLE = 7.2,
   KEYPAD_LEAN = 17.7
 
 // The nameplate's artwork in its own frame of 118 by 13.2 from its rear left corner, and the badge's in one of 35.2 by 13.6, measured on the Spanish photograph from above [E].
-// The nameplate's box carries AMSTRAD in white, extra-condensed and heavy, with a single slanting gap cut through it, leaning 27.2° from the front-back axis, the plate's dark showing in it and the letters running unbroken across it; the box's right end is square. The words lean 15.5°, their capitals 5.38 on a baseline at 10.7.
+// The Spanish nameplate's box carries AMSTRAD in white, extra-condensed and heavy, with a single slanting gap cut through it, leaning 27.2° from the front-back axis, the plate's dark showing in it and the letters running unbroken across it; the box's right end is square. The words lean 15.5°.
 // Heros Cn Bold has the photograph's own stems, 0.171 of the capital against the measured 0.178 to 0.188, and stands about a fifth wider.
-// The badge's three stripes lean 42.7°, each 3.5 across and 6.1 tall, at 0 4.85 and 10.15 from the first; they are taken to be the plate's three inks. ENC. stands upright above the lamp's window, its capitals 2.06 and its stems 0.16 of that, between Heros's Regular and Bold.
-const NAMEPLATE_ART = {
+// The badge's three stripes lean 42.7°, each 3.5 across and 6.1 tall, at 0 4.85 and 10.15 from the first; they are taken to be the plate's three inks.
+const NAMEPLATE_BOX_ART = {
     box: { left: 7.6, right: 27.9, top: 2.6, bottom: 11.9 },
     gap: [
       [20.8, 2.5],
@@ -439,28 +535,80 @@ const NAMEPLATE_ART = {
       [20.5, 11.95],
       [16, 11.95]
     ],
-    logo: { word: "AMSTRAD", left: 7.9, width: 19.2, capHeight: 5.25, baseline: 10.87 },
-    lean: 15.5,
-    capHeight: 5.38,
-    baseline: 10.7,
-    words: [
-      { word: "128K", left: 32.4, width: 12.5 },
-      { word: "ORDENADOR", left: 47.3, width: 31.5 },
-      { word: "PERSONAL", left: 82.1, width: 27.1 }
-    ]
+    logo: { word: "AMSTRAD", left: 7.9, width: 19.2, capHeight: 5.25, baseline: 10.87 }
   },
-  BADGE_ART = {
-    stripes: {
-      top: 3.75,
-      bottom: 9.83,
-      topLeft: 8.7,
-      bottomLeft: 3.1,
-      width: 3.5,
-      offsets: [0, 4.85, 10.15]
-    },
-    word: { word: "ENC.", left: 27.5, width: 5.7, capHeight: 2.06, baseline: 5.85 }
+  NAMEPLATE_LEAN = 15.5,
+  BADGE_STRIPES = {
+    top: 3.75,
+    bottom: 9.83,
+    topLeft: 8.7,
+    bottomLeft: 3.1,
+    width: 3.5,
+    offsets: [0, 4.85, 10.15]
   },
   BADGE_INKS = [PLATE_RED, PLATE_GREEN, PLATE_BLUE]
+
+// What each country's nameplate and badge print. The Spanish words' capitals stand 5.38 on a baseline at 10.7, and ENC. upright above the lamp's window, its capitals 2.06 and its stems 0.16 of that, between Heros's Regular and Bold. The UK's and the French are read on their photographs, each plate rectified on its edges, ±0.4 within a plate and ±2 for where the whole stands [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// The UK unit, an early one, carries a plain AMSTRAD, upright, extra-condensed and heavy, and a dark badge under a white ON. The 1988 French unit carries the Spanish box, its middle 2.7 further left, and the light badge under marche, which reads three times the plate's light and is taken white. Both set their words in mixed case, leaning as the Spanish do, their capitals 5.25 on a baseline at 10.6; Computer's left is read by eye, ±1. Their stripes stand where the Spanish badge's do, within what their photographs can tell.
+// ON is as heavy as ENC.; marche is light, and set in Heros's regular by its ascenders, 2.65, where Heros's x-height then stands 1.9 against the measured 1.6, which the photograph's 6 pixels to the millimetre cannot tell apart.
+const NAMEPLATES = {
+    es: {
+      backing: NAMEPLATE_BACKING.colour,
+      box: { shift: 0 },
+      capHeight: 5.38,
+      baseline: 10.7,
+      words: [
+        { word: "128K", left: 32.4, width: 12.5 },
+        { word: "ORDENADOR", left: 47.3, width: 31.5 },
+        { word: "PERSONAL", left: 82.1, width: 27.1 }
+      ]
+    },
+    en: {
+      backing: UK_NAMEPLATE_BACKING,
+      logo: { word: "AMSTRAD", left: 2.5, width: 28.65, capHeight: 7.95, baseline: 9.95 },
+      capHeight: 5.25,
+      baseline: 10.6,
+      words: [
+        { word: "128k", left: 34.9, width: 12.05 },
+        { word: "Colour", left: 49.4, width: 16.85 },
+        { word: "Personal", left: 67.85, width: 22.35 },
+        { word: "Computer", left: 91.4, width: 23.6 }
+      ]
+    },
+    fr: {
+      backing: NAMEPLATE_BACKING.colour,
+      box: { shift: -2.7 },
+      capHeight: 5.25,
+      baseline: 10.6,
+      words: [
+        { word: "Ordinateur", left: 29.75, width: 26.35 },
+        { word: "Personnel", left: 56.7, width: 25.3 },
+        { word: "Couleur", left: 82.5, width: 18.85 },
+        { word: "128k", left: 102.35, width: 11.55 }
+      ]
+    }
+  },
+  BADGES = {
+    es: {
+      backing: BADGE_BACKING.colour,
+      ink: BADGE_INK,
+      weight: 700,
+      word: { word: "ENC.", left: 27.5, width: 5.7, capHeight: 2.06, baseline: 5.85 }
+    },
+    en: {
+      backing: UK_BADGE_BACKING,
+      ink: NAMEPLATE_INK,
+      weight: 700,
+      word: { word: "ON", left: 28.6, width: 4.95, capHeight: 2.4, baseline: 6.5 }
+    },
+    fr: {
+      backing: BADGE_BACKING.colour,
+      ink: NAMEPLATE_INK,
+      weight: 400,
+      word: { word: "marche", left: 25.1, width: 9.6, capHeight: 2.65, baseline: 6.4 }
+    }
+  },
+  PLATE_LANGUAGES = Object.keys(DRIVE_PLATES)
 
 const HEAVY_ARROW = { length: 7, shaft: 1.16, headWidth: 2.45, headLength: 2.4 },
   THIN_ARROW = { length: 3.9, shaft: 0.4, headWidth: 1.2, headLength: 1.2 },
@@ -908,16 +1056,16 @@ function drawRule(line, thickness, colour) {
   return drawLine([line.left, line.y], [line.right, line.y], thickness, colour)
 }
 
-function drawLeaningTitle(words, style) {
-  const size = fontSize(style.capHeight, HEROS_CONDENSED_CAP_HEIGHT)
+function drawLeaningTitle({ words, right, baseline, capHeight, width }) {
+  const size = fontSize(capHeight, HEROS_CONDENSED_CAP_HEIGHT)
 
-  return `<text transform="translate(${style.right} ${style.baseline}) skewX(${-TITLE_LEAN})" font-family="${HEROS_CONDENSED}" font-size="${size}" font-weight="700" text-anchor="end" textLength="${style.width}" lengthAdjust="spacingAndGlyphs">${words}</text>`
+  return `<text transform="translate(${right} ${baseline}) skewX(${-TITLE_LEAN})" font-family="${HEROS_CONDENSED}" font-size="${size}" font-weight="700" text-anchor="end" textLength="${width}" lengthAdjust="spacingAndGlyphs">${words}</text>`
 }
 
-function drawHeading(words, style) {
-  const size = fontSize(style.capHeight)
+function drawHeading({ words, centre, baseline, capHeight, width }, weight) {
+  const size = fontSize(capHeight)
 
-  return `<text x="${style.centre}" y="${style.baseline}" font-size="${size}" text-anchor="middle" textLength="${style.width}" lengthAdjust="spacing">${words}</text>`
+  return `<text x="${centre}" y="${baseline}" font-size="${size}" font-weight="${weight}" text-anchor="middle" textLength="${width}" lengthAdjust="spacing">${words}</text>`
 }
 
 function drawWave(wave) {
@@ -985,9 +1133,8 @@ function drawKeyMap(map) {
   return drawn.join("\n")
 }
 
-function drawColourChart(chart) {
-  const size = fontSize(chart.capHeight),
-    columnLefts = [chart.left, ...chart.columnRules],
+function drawColourChart(chart, setting, colourNames) {
+  const size = fontSize(setting.capHeight),
     headingRule = drawLine(
       [chart.left, chart.headingRule],
       [chart.right, chart.headingRule],
@@ -999,7 +1146,7 @@ function drawColourChart(chart) {
       headingRule
     ]
 
-  for (const column of chart.columnRules) {
+  for (const column of setting.columnRules) {
     const columnRule = drawLine(
       [column, chart.headingRule],
       [column, chart.bottom],
@@ -1010,34 +1157,39 @@ function drawColourChart(chart) {
     drawn.push(columnRule)
   }
 
-  for (const [number, name] of COLOUR_NAMES.entries()) {
+  for (const [number, name] of colourNames.entries()) {
     const column = Math.floor(number / chart.rowsPerColumn),
       row = number % chart.rowsPerColumn,
-      numberLeft = columnLefts[column] + chart.numberInset,
-      baseline = chart.firstRow + row * chart.rowPitch + chart.capHeight / 2
+      baseline = setting.firstRow + row * setting.rowPitch + setting.capHeight / 2
 
     drawn.push(
-      `<text x="${numberLeft}" y="${baseline}" font-size="${size}" font-weight="700">${number}</text>`,
-      `<text transform="translate(${numberLeft + chart.nameInset} ${baseline}) scale(${chart.nameNarrowing} 1)" font-size="${size}" font-weight="700">${name}</text>`
+      `<text x="${setting.numberLefts[column]}" y="${baseline}" font-size="${size}" font-weight="${setting.weight}">${number}</text>`,
+      `<text transform="translate(${setting.nameLefts[column]} ${baseline}) scale(${setting.narrowing} 1)" font-size="${size}" font-weight="${setting.weight}" word-spacing="${setting.wordSpacing}">${name}</text>`
     )
   }
 
   return drawn.join("\n")
 }
 
-function drawDrivePlate() {
-  const title = drawLeaningTitle(PLATE_WORDS.title, PLATE_LAYOUT.title),
+function drawDrivePlate(plate) {
+  const title = drawLeaningTitle({ ...PLATE_LAYOUT.title, ...plate.title }),
     redRule = drawRule(PLATE_LAYOUT.redRule, RULE_THICKNESS, PLATE_RED),
-    keyNumbersHeading = drawHeading(PLATE_WORDS.keyNumbers, PLATE_LAYOUT.keyNumbersHeading),
+    keyNumbersHeading = drawHeading(
+      { ...PLATE_LAYOUT.keyNumbersHeading, ...plate.keyNumbers },
+      plate.headingWeight
+    ),
     wave = drawWave(PLATE_LAYOUT.wave),
     upperHairline = drawRule(PLATE_LAYOUT.upperHairline, HAIRLINE_THICKNESS, PLATE_INK),
     keyMap = drawKeyMap(PLATE_LAYOUT.keyMap),
     lowerHairline = drawRule(PLATE_LAYOUT.lowerHairline, HAIRLINE_THICKNESS, PLATE_INK),
     greenRule = drawRule(PLATE_LAYOUT.greenRule, RULE_THICKNESS, PLATE_GREEN),
-    colourChart = drawColourChart(PLATE_LAYOUT.chart),
-    colourChartHeading = drawHeading(PLATE_WORDS.colourChart, PLATE_LAYOUT.chartHeading),
+    colourChart = drawColourChart(PLATE_LAYOUT.chart, plate.chart, plate.colourNames),
+    colourChartHeading = drawHeading(
+      { ...PLATE_LAYOUT.chartHeading, ...plate.colourChart },
+      plate.headingWeight
+    ),
     blueRule = drawRule(PLATE_LAYOUT.blueRule, RULE_THICKNESS, PLATE_BLUE),
-    model = drawLeaningTitle(PLATE_WORDS.model, PLATE_LAYOUT.model)
+    model = drawLeaningTitle(PLATE_LAYOUT.model)
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${ARTWORK_WIDTH}" height="${ARTWORK_DEPTH}" viewBox="0 0 ${ARTWORK_WIDTH} ${ARTWORK_DEPTH}" font-family="${HEROS}" fill="${PLATE_INK}">`,
@@ -1370,37 +1522,50 @@ function drawPolygon(corners, colour) {
   return `<polygon points="${points.join(" ")}" fill="${colour}"/>`
 }
 
-function drawFittedWord(fitted, family, capHeightPerEm, ink) {
+function drawFittedWord(fitted, { family, capHeightPerEm, weight, ink }) {
   const size = fontSize(fitted.capHeight, capHeightPerEm)
 
-  return `<text x="${fitted.left}" y="${fitted.baseline}" font-family="${family}" font-size="${size}" font-weight="700" fill="${ink}" textLength="${fitted.width}" lengthAdjust="spacingAndGlyphs">${fitted.word}</text>`
+  return `<text x="${fitted.left}" y="${fitted.baseline}" font-family="${family}" font-size="${size}" font-weight="${weight}" fill="${ink}" textLength="${fitted.width}" lengthAdjust="spacingAndGlyphs">${fitted.word}</text>`
 }
 
-function drawNameplateWord({ word, left, width }) {
-  const size = fontSize(NAMEPLATE_ART.capHeight, HEROS_CONDENSED_CAP_HEIGHT),
-    slant = NAMEPLATE_ART.capHeight * tangent(NAMEPLATE_ART.lean),
+function drawNameplateWord({ word, left, width }, { capHeight, baseline }) {
+  const size = fontSize(capHeight, HEROS_CONDENSED_CAP_HEIGHT),
+    slant = capHeight * tangent(NAMEPLATE_LEAN),
     length = width - slant
 
-  return `<text transform="translate(${left} ${NAMEPLATE_ART.baseline}) skewX(${-NAMEPLATE_ART.lean})" font-family="${HEROS_CONDENSED}" font-size="${size}" font-weight="700" fill="${NAMEPLATE_INK}" textLength="${length}" lengthAdjust="spacingAndGlyphs">${word}</text>`
+  return `<text transform="translate(${left} ${baseline}) skewX(${-NAMEPLATE_LEAN})" font-family="${HEROS_CONDENSED}" font-size="${size}" font-weight="700" fill="${NAMEPLATE_INK}" textLength="${length}" lengthAdjust="spacingAndGlyphs">${word}</text>`
 }
 
-function drawNameplate() {
+function drawLogo(logo) {
+  return drawFittedWord(logo, {
+    family: HEROS_CONDENSED,
+    capHeightPerEm: HEROS_CONDENSED_CAP_HEIGHT,
+    weight: 700,
+    ink: NAMEPLATE_LOGO_INK
+  })
+}
+
+function drawBoxedLogo(shift, backing) {
+  const { box, gap, logo } = NAMEPLATE_BOX_ART
+
+  return [
+    `<g transform="translate(${shift} 0)">`,
+    `<rect x="${box.left}" y="${box.top}" width="${box.right - box.left}" height="${box.bottom - box.top}" fill="${NAMEPLATE_BOX}"/>`,
+    drawPolygon(gap, backing),
+    drawLogo(logo),
+    "</g>"
+  ].join("\n")
+}
+
+function drawNameplate(nameplate) {
   const width = NAMEPLATE.right - NAMEPLATE.left,
-    { box } = NAMEPLATE_ART,
-    logo = drawFittedWord(
-      NAMEPLATE_ART.logo,
-      HEROS_CONDENSED,
-      HEROS_CONDENSED_CAP_HEIGHT,
-      NAMEPLATE_LOGO_INK
-    ),
-    gap = drawPolygon(NAMEPLATE_ART.gap, NAMEPLATE_BACKING.colour),
-    words = NAMEPLATE_ART.words.map(drawNameplateWord)
+    boxed = Object.hasOwn(nameplate, "box"),
+    logo = boxed ? drawBoxedLogo(nameplate.box.shift, nameplate.backing) : drawLogo(nameplate.logo),
+    words = nameplate.words.map(word => drawNameplateWord(word, nameplate))
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${NAMEPLATE.depth}" viewBox="0 0 ${width} ${NAMEPLATE.depth}">`,
-    `<rect width="${width}" height="${NAMEPLATE.depth}" fill="${NAMEPLATE_BACKING.colour}"/>`,
-    `<rect x="${box.left}" y="${box.top}" width="${box.right - box.left}" height="${box.bottom - box.top}" fill="${NAMEPLATE_BOX}"/>`,
-    gap,
+    `<rect width="${width}" height="${NAMEPLATE.depth}" fill="${nameplate.backing}"/>`,
     logo,
     ...words,
     "</svg>"
@@ -1426,14 +1591,19 @@ function drawStripes(stripes) {
   return drawn.join("\n")
 }
 
-function drawBadge() {
+function drawBadge(badge) {
   const width = BADGE.right - BADGE.left,
-    stripes = drawStripes(BADGE_ART.stripes),
-    word = drawFittedWord(BADGE_ART.word, HEROS, HEROS_CAP_HEIGHT, BADGE_INK)
+    stripes = drawStripes(BADGE_STRIPES),
+    word = drawFittedWord(badge.word, {
+      family: HEROS,
+      capHeightPerEm: HEROS_CAP_HEIGHT,
+      weight: badge.weight,
+      ink: badge.ink
+    })
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${BADGE.depth}" viewBox="0 0 ${width} ${BADGE.depth}">`,
-    `<rect width="${width}" height="${BADGE.depth}" fill="${BADGE_BACKING.colour}"/>`,
+    `<rect width="${width}" height="${BADGE.depth}" fill="${badge.backing}"/>`,
     stripes,
     word,
     "</svg>"
@@ -1484,7 +1654,6 @@ export function buildCpc6128() {
     drivePlate = buildDrivePlate(),
     nameplate = buildRearStripPlate(NAMEPLATE_PRINT, NAMEPLATE, NAMEPLATE_BACKING),
     badge = buildBadge(),
-    drivePlatePrint = drawDrivePlate(),
     lettered = [...keys, returnKey],
     legendsPrints = LANGUAGES.map(language => ({
       name: LEGENDS_PRINT,
@@ -1492,8 +1661,21 @@ export function buildCpc6128() {
       svg: drawLegends(lettered, LEGENDS[language]),
       pixels: LEGEND_PIXELS
     })),
-    nameplatePrint = drawNameplate(),
-    badgePrint = drawBadge()
+    platePrints = PLATE_LANGUAGES.flatMap(language => [
+      {
+        name: DRIVE_PLATE_PRINT,
+        language,
+        svg: drawDrivePlate(DRIVE_PLATES[language]),
+        pixels: PLATE_PIXELS
+      },
+      {
+        name: NAMEPLATE_PRINT,
+        language,
+        svg: drawNameplate(NAMEPLATES[language]),
+        pixels: PLATE_PIXELS
+      },
+      { name: BADGE_PRINT, language, svg: drawBadge(BADGES[language]), pixels: PLATE_PIXELS }
+    ])
 
   return {
     tessellation: TESSELLATION,
@@ -1513,11 +1695,6 @@ export function buildCpc6128() {
       badge,
       buildPowerLamp()
     ],
-    prints: [
-      { name: DRIVE_PLATE_PRINT, language: SPANISH, svg: drivePlatePrint, pixels: PLATE_PIXELS },
-      ...legendsPrints,
-      { name: NAMEPLATE_PRINT, language: SPANISH, svg: nameplatePrint, pixels: PLATE_PIXELS },
-      { name: BADGE_PRINT, language: SPANISH, svg: badgePrint, pixels: PLATE_PIXELS }
-    ]
+    prints: [...legendsPrints, ...platePrints]
   }
 }

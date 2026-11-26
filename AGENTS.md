@@ -64,4 +64,4 @@ Where no figure exists the part is drawn anyway and says so: a dead flat screen 
 
 ## Unsettled
 
-What a machine wore for each country beyond its keys, and how a version that differs in shape or colour is drawn. What the glass shows beyond the picture, and what evidence could ever settle a tube's own figures.
+What Germany's machines wore beyond their keys, and how a version that differs in shape or colour is drawn. What the glass shows beyond the picture, and what evidence could ever settle a tube's own figures.

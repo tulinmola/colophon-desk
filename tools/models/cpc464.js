@@ -288,7 +288,7 @@ const NOTCH = { left: 428.1, right: 547, fromRear: 140.9, lipDrop: 4.6, floorBel
     { name: "pause-key", symbol: "none", words: ["PAUSE"] }
   ]
 
-// Read by eye on the rectified photograph, ±0.3: each key's legend stands centred on its top, a symbol about 1.8 tall in its rear half over a word in bold capitals about 2.1, STOP over EJECT in two lines and PAUSE alone in one [E]. Where the keys share one print, each one's sixth runs half the gap between them either side of its top.
+// Read by eye on the rectified photograph, ±0.3: each key's legend stands centred on its top, a symbol about 1.8 tall in its rear half over a word in bold capitals about 2.1, STOP over EJECT in two lines and PAUSE alone in one, in English in every country [E]. Where the keys share one print, each one's sixth runs half the gap between them either side of its top.
 const PIANO_ART = {
     size: 1.8,
     dot: 0.55,
@@ -315,7 +315,7 @@ const KEYCAPS = {
   },
   LEGEND_INK = "#c3c7c7"
 
-// The datacorder's parts and inks: the lid #474a4d; the counter's recess #3a3b3a; the piano keys #2d2d2d and REC #c85244, the RESET lever as dark as the keys, their legends #c8c8c3; on the lid the tape scale #cbcdcd and the label bar #b24034; on the inlay its ground #48494d, its green #547d43, its red #b24237 under darker lettering #a94c46, and its white #c1c1c2 [E].
+// The datacorder's parts and inks: the lid #474a4d; the counter's recess #3a3b3a; the piano keys #2d2d2d and REC #c85244, the RESET lever as dark as the keys, their legends #c8c8c3; on the lid the tape scale #cbcdcd and the label bar #b24034; on the inlay its ground #48494d, its green #547d43, its red #b24237 under darker lettering #733734, read on the darkest of its strokes, where their median reads #a94c46 and loses the word, and its white #c1c1c2 [E].
 // Through the window the holder reads #575b5b, its tabs #686a67, the metal plate #abacab and the dark of its opening #4c4c4d, which the open lid shows near black: so the glass lays a veil of reflected light over all of it, and under the veil the holder is #353738, its tabs #515250 and the plate #a8a9a8 [E].
 // The page draws no reflection, so the veil is drawn as the glass's own light grey over an eighth of what lies behind it, and the glass and the metal as smooth, roughness 0.1 and 0.3; those shares, that grey and those roughnesses are a guess. With no surroundings to reflect, metal is drawn as a bright grey.
 const LID = { name: "cassette-lid", colour: "#474a4d" },
@@ -336,31 +336,20 @@ const LID = { name: "cassette-lid", colour: "#474a4d" },
   LABEL_BAR_RED = "#b24034",
   INLAY_GREEN = "#547d43",
   INLAY_RED = "#b24237",
-  INLAY_RED_INK = "#a94c46",
+  INLAY_RED_INK = "#733734",
   INLAY_WHITE = "#c1c1c2"
 
 // The badge, measured on the rectified photograph from above and, for the Spanish words, on a photograph of a Spanish unit rectified on the plate's corners to 296.6 by 23.9, its positions agreeing with the first's within 0.4 [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC464_keyboard.jpg. Positions run from the plate's rear left corner.
 // The Spanish logo's box leans 9.9°, 10.8 to 49.3 across at its foot and 3.8 to 21.7 down, cut by a gap leaning 34.8° from the vertical, 7.4 wide, its left edge 28.0 across at 21 down; AMSTRAD runs across both, leaning with it. The box reads #8d8d8b and its letters #cfced0, which a snapshot sees dark: they are a foil, and a print can only take them white.
-// "64k ORDENADOR PERSONAL EN COLOR" stands 3.2 tall on a baseline at 19.7, from 56.3 to 154.4, its words where a plainer Spanish badge puts them, moved 3.0 to meet the two words this photograph resolves [E]: https://www.cpcwiki.eu/index.php/CPC_464. "CPC 464" stands 7.9 tall from 208.5 to 242.5 on a baseline at 19.5, in a thin squared face Heros only stands in for.
-// The colour plate, #aaa8a2, stands 246.3 to 267.4 by 12.2 to 19.2, carrying three bars #a32f2d, #57984b and #3a72b1, 5.9 wide at a 6.5 pitch from 1.0 in, each split by a 0.6 line, its outer ends rounded about 1.2. "COLOR" follows from 268 on the words' baseline, and "ENC." stands 2.7 tall over the lamp from 273.9, on a baseline at 8.7; the words read #c6c9c8, "CPC 464" #babcbb.
+// "CPC 464" stands 7.9 tall from 208.5 to 242.5 on a baseline at 19.5, in a thin squared face Heros only stands in for.
+// The colour plate, #aaa8a2, stands 246.3 to 267.4 by 12.2 to 19.2, carrying three bars #a32f2d, #57984b and #3a72b1, 5.9 wide at a 6.5 pitch from 1.0 in, each split by a 0.6 line, its outer ends rounded about 1.2. The words read #c6c9c8, "CPC 464" #babcbb.
 const BADGE_ART = {
     box: { left: 10.8, right: 49.3, top: 3.8, bottom: 21.7, lean: 9.9 },
     gap: { left: 28, at: 21, width: 7.4, lean: 34.8 },
     logo: { word: "AMSTRAD", capHeight: 9.5, baseline: 19.4, left: 12.6, width: 35.4 },
-    words: [
-      { word: "64k", left: 56.3, width: 8 },
-      { word: "ORDENADOR", left: 67.8, width: 29.7 },
-      { word: "PERSONAL", left: 101, width: 24.6 },
-      { word: "EN", left: 129.2, width: 6 },
-      { word: "COLOR", left: 138.4, width: 16 }
-    ],
-    wordsCapHeight: 3.2,
-    wordsBaseline: 19.7,
     model: { word: "CPC 464", left: 208.5, width: 34, capHeight: 7.9, baseline: 19.5 },
     plate: { left: 246.3, right: 267.4, top: 12.2, bottom: 19.2 },
-    bars: { first: 1, width: 5.9, pitch: 6.5, top: 1.25, split: 0.6, bottom: 6.15, round: 1.2 },
-    colour: { word: "COLOR", left: 268, width: 13.4 },
-    switchedOn: { word: "ENC.", left: 273.9, width: 7.5, capHeight: 2.7, baseline: 8.7 }
+    bars: { first: 1, width: 5.9, pitch: 6.5, top: 1.25, split: 0.6, bottom: 6.15, round: 1.2 }
   },
   BADGE_INKS = {
     box: "#8d8d8b",
@@ -371,9 +360,57 @@ const BADGE_ART = {
     bars: ["#a32f2d", "#57984b", "#3a72b1"]
   }
 
+// What each country's badge says, a line at a time, each line's words on its own baseline.
+// "64k ORDENADOR PERSONAL EN COLOR" stands 3.2 tall on a baseline at 19.7, from 56.3 to 154.4, its words where a plainer Spanish badge puts them, moved 3.0 to meet the two words the Spanish photograph resolves [E]: https://www.cpcwiki.eu/index.php/CPC_464. "COLOR" follows the plate from 268 on the words' baseline, and "ENC." stands 2.7 tall over the lamp from 273.9, on a baseline at 8.7.
+// The French words are read on the photograph from above at 20 pixels to the millimetre, ±0.3, and no word stands over the lamp; the UK's on a late UK unit's badge, in the photograph of a keyboard fitted to it in the replacement keyboard's repository, rectified on its recess to this plate, ±0.4 [E]: https://github.com/Bread80/CPC_Keyboards. Both set the colour's name beside the plate smaller than the words at the left. Their words are one wide grotesque, which Heros is stretched to, the UK's by 3 to 10% and the French by 13 to 22%; the UK's read 3.3 tall and the French 3.0, and the disagreement stands.
+const BADGE_LINES = {
+  es: [
+    {
+      capHeight: 3.2,
+      baseline: 19.7,
+      words: [
+        { word: "64k", left: 56.3, width: 8 },
+        { word: "ORDENADOR", left: 67.8, width: 29.7 },
+        { word: "PERSONAL", left: 101, width: 24.6 },
+        { word: "EN", left: 129.2, width: 6 },
+        { word: "COLOR", left: 138.4, width: 16 },
+        { word: "COLOR", left: 268, width: 13.4 }
+      ]
+    },
+    { capHeight: 2.7, baseline: 8.7, words: [{ word: "ENC.", left: 273.9, width: 7.5 }] }
+  ],
+  en: [
+    {
+      capHeight: 3.3,
+      baseline: 19.4,
+      words: [
+        { word: "64k", left: 53.9, width: 7.8 },
+        { word: "COLOUR", left: 65.15, width: 20.25 },
+        { word: "PERSONAL", left: 88.5, width: 24.9 },
+        { word: "COMPUTER", left: 116.75, width: 26.5 }
+      ]
+    },
+    { capHeight: 2.65, baseline: 18.6, words: [{ word: "COLOUR", left: 268.9, width: 16 }] },
+    { capHeight: 2.2, baseline: 7.55, words: [{ word: "ON", left: 277.55, width: 4.25 }] }
+  ],
+  fr: [
+    {
+      capHeight: 3,
+      baseline: 19.3,
+      words: [
+        { word: "ORDINATEUR", left: 53.9, width: 31.6 },
+        { word: "PERSONNEL", left: 88.05, width: 28.2 },
+        { word: "COULEUR", left: 118.3, width: 23.45 },
+        { word: "64K", left: 144.85, width: 8.7 }
+      ]
+    },
+    { capHeight: 2.55, baseline: 19, words: [{ word: "COULEUR", left: 269.7, width: 16.8 }] }
+  ]
+}
+
 // The lid's lower panel and the inlay, on the same rectified photograph, from each one's rear left corner [E].
 // The tape scale is a line 42.5 long, 7.2 down, with a short bar at each end 5.8 tall and two longer ticks at 10.8 and 31.3 rising 6.4, a tick every 2 between them 2.2 tall, and the middle one running 3.3 below the line; its strokes are about 0.35. The label bar is 62.2 by 5.9 from 27.8 across and 18.8 down. On the Spanish unit its words, dark red on the red, are unread on every photograph and are left off.
-// The inlay's three boxes stand 10.0 to 45.0 across and 3.4 to 8.0, 11.7 to 16.4 and 20.0 to 25.0 down; the green square 79.4 to 94.1 by 3.4 to 13.9; the datacorder's outline 66.4 to 108.0 by 16.6 to 25.6, its tape slot 69.5 to 94.2 by 20.5 to 23.5 and its red block 96.4 to 106.2 by 18.4 to 23.5. A green line runs from the first box to the square and on round to the outline's top at 101.4; a red one from the second steps down at 55.9 to 19.2 and on to the outline; a white one from the third. The words, about 2.1 tall, are the Spanish unit's own, MONITOR, CINTA and ORDENADOR [E]: https://www.cpcwiki.eu/index.php/CPC_472
+// The inlay's three boxes stand 10.0 to 45.0 across and 3.4 to 8.0, 11.7 to 16.4 and 20.0 to 25.0 down; the green square 79.4 to 94.1 by 3.4 to 13.9; the datacorder's outline 66.4 to 108.0 by 16.6 to 25.6, its tape slot 69.5 to 94.2 by 20.5 to 23.5 and its red block 96.4 to 106.2 by 18.4 to 23.5. A green line runs from the first box to the square and on round to the outline's top at 101.4; a red one from the second steps down at 55.9 to 19.2 and on to the outline; a white one from the third. The square is outlined in white about 0.45 wide, the outline's middle on its edge, on French, UK and Spanish units alike.
 const LID_ART = {
     scale: {
       left: 37.8,
@@ -391,14 +428,14 @@ const LID_ART = {
   },
   INLAY_ART = {
     boxes: [
-      { word: "MONITOR", top: 3.4, bottom: 8, fill: INLAY_GREEN, ink: INLAY_WHITE },
-      { word: "CINTA", top: 11.7, bottom: 16.4, fill: INLAY_RED, ink: INLAY_RED_INK },
-      { word: "ORDENADOR", top: 20, bottom: 25, fill: "none", ink: INLAY_WHITE }
+      { top: 3.4, bottom: 8, fill: INLAY_GREEN, ink: INLAY_WHITE },
+      { top: 11.7, bottom: 16.4, fill: INLAY_RED, ink: INLAY_RED_INK },
+      { top: 20, bottom: 25, fill: "none", ink: INLAY_WHITE }
     ],
     boxLeft: 10,
     boxRight: 45,
-    capHeight: 2.1,
     square: { left: 79.4, right: 94.1, top: 3.4, bottom: 13.9 },
+    squareOutline: 0.45,
     outline: { left: 66.4, right: 108, top: 16.6, bottom: 25.6 },
     slot: { left: 69.5, right: 94.2, top: 20.5, bottom: 23.5 },
     block: { left: 96.4, right: 106.2, top: 18.4, bottom: 23.5 },
@@ -408,7 +445,38 @@ const LID_ART = {
     stroke: 0.35
   }
 
-// The counter's three white numerals on dark wheels, #aaadae on #2d2e2f, about 3 tall; and the raised words above it, which read #525253 where the light catches them against the top's #454648 [E]. Each wheel carries the ten figures.
+// What each country prints on the lid's label bar and in the inlay's boxes, the label's lines centred down the bar and laid from its left end, and each box's word centred in it.
+// The French label reads DATACORDER POUR LOGICIELS, #7c2f2b on the red, and the inlay MONITEUR, CASSETTE and ORDINATEUR, all 2.7 tall, on the photograph from above rectified again at 20 pixels to the millimetre [E]. Rectified so, it puts the bar 1.1 right of where the model has it from the same photograph at 10, and the words are laid from the model's bar. Heros sets the inlay's words 5 to 10% wider than they read.
+// The UK's label reads MICRO COMPUTER SOFTWARE DATACORDER from 1.0 to 61.4 along the bar, and the inlay MONITOR, TAPE and COMPUTER, MONITOR 2.6 tall, on a photograph of a UK unit at 10 pixels to the millimetre, too soft for the label's letters: their 2.2 is derived from the French by the two labels' lengths, as though set in the same face and spacing, and Heros is fitted to the line's length, its word spaces narrower than the French label's; their ink is taken to be the French's [E]: https://www.cpcwiki.eu/index.php/File:CPC_464_old_logo_bilgisayarlarim.jpg
+// The Spanish unit's inlay reads MONITOR, CINTA and ORDENADOR, about 2.1 tall on a coarser photograph [E]: https://www.cpcwiki.eu/index.php/CPC_472. The French unit's 2.7 and the UK's 2.6 disagree with it, and the disagreement stands.
+const LABEL_LINES = {
+    es: [],
+    en: [
+      {
+        capHeight: 2.2,
+        words: [{ word: "MICRO COMPUTER SOFTWARE DATACORDER", left: 1, width: 60.4 }]
+      }
+    ],
+    fr: [
+      {
+        capHeight: 2.7,
+        words: [
+          { word: "DATACORDER", left: 3.75, width: 23.85 },
+          { word: "POUR", left: 30.25, width: 9.3 },
+          { word: "LOGICIELS", left: 41.75, width: 17.25 }
+        ]
+      }
+    ]
+  },
+  INLAY_WORDS = {
+    es: { capHeight: 2.1, words: ["MONITOR", "CINTA", "ORDENADOR"] },
+    en: { capHeight: 2.6, words: ["MONITOR", "TAPE", "COMPUTER"] },
+    fr: { capHeight: 2.7, words: ["MONITEUR", "CASSETTE", "ORDINATEUR"] }
+  },
+  LABEL_INK = "#7c2f2b",
+  PLATE_LANGUAGES = Object.keys(BADGE_LINES)
+
+// The counter's three white numerals on dark wheels, #aaadae on #2d2e2f, about 3 tall; and the raised words above it, which read #525253 where the light catches them against the top's #454648 [E]. Each wheel carries the ten figures. The late case is moulded with these Spanish and English words wherever it was sold, the French unit photographed from above among them [E].
 const COUNTER_ART = {
     capHeight: 3,
     lines: [
@@ -1707,18 +1775,17 @@ function drawLogo({ box, logo }) {
   return `<text transform="translate(${logo.left} ${logo.baseline}) skewX(${-box.lean})" font-family="${HEROS_CONDENSED}" font-size="${size}" font-weight="700" fill="${BADGE_INKS.letters}" textLength="${logo.width}" lengthAdjust="spacingAndGlyphs">${logo.word}</text>`
 }
 
-function drawBadge() {
+function drawWords({ capHeight, baseline, words }, ink) {
+  return words.map(word => drawFittedText(word, { capHeight, baseline, ink }))
+}
+
+function drawBadge(lines) {
   const width = BADGE.right - BADGE.left,
     depth = BADGE.toRear - BADGE.fromRear,
-    wordsStyle = {
-      capHeight: BADGE_ART.wordsCapHeight,
-      baseline: BADGE_ART.wordsBaseline,
-      ink: BADGE_INKS.words
-    },
-    words = BADGE_ART.words.map(word => drawFittedText(word, wordsStyle)),
+    words = lines.flatMap(line => drawWords(line, BADGE_INKS.words)),
     boxCorners = leaningCorners(BADGE_ART.box),
     cut = gapCorners(BADGE_ART),
-    { model, switchedOn } = BADGE_ART
+    { model } = BADGE_ART
 
   return [
     svgOpen(width, depth),
@@ -1726,7 +1793,6 @@ function drawBadge() {
     drawPolygon(boxCorners, BADGE_INKS.box),
     drawPolygon(cut, BADGE_PLATE.colour),
     drawLogo(BADGE_ART),
-    ...words,
     drawFittedText(model, {
       capHeight: model.capHeight,
       baseline: model.baseline,
@@ -1734,12 +1800,7 @@ function drawBadge() {
     }),
     drawBox(BADGE_ART.plate, { fill: BADGE_INKS.plate }),
     drawColourBars(BADGE_ART),
-    drawFittedText(BADGE_ART.colour, wordsStyle),
-    drawFittedText(switchedOn, {
-      capHeight: switchedOn.capHeight,
-      baseline: switchedOn.baseline,
-      ink: BADGE_INKS.words
-    }),
+    ...words,
     "</svg>"
   ].join("\n")
 }
@@ -1843,7 +1904,14 @@ function drawScale(scale) {
   return strokes.join("\n")
 }
 
-function drawLid() {
+function drawLabel({ capHeight, words }, bar) {
+  const baseline = bar.top + (bar.height + capHeight) / 2,
+    laid = words.map(word => ({ ...word, left: bar.left + word.left }))
+
+  return drawWords({ capHeight, baseline, words: laid }, LABEL_INK)
+}
+
+function drawLid(lines) {
   const width = LID_PANEL.right - LID_PANEL.left,
     depth = LID_PANEL.toRear - LID_PANEL.fromRear,
     bar = LID_ART.labelBar,
@@ -1852,38 +1920,41 @@ function drawLid() {
       right: bar.left + bar.width,
       top: bar.top,
       bottom: bar.top + bar.height
-    }
+    },
+    label = lines.flatMap(line => drawLabel(line, bar))
 
   return [
     svgOpen(width, depth),
     `<rect width="${width}" height="${depth}" fill="${LID.colour}"/>`,
     drawScale(LID_ART.scale),
     drawBox(barOutline, { fill: LABEL_BAR_RED }),
+    ...label,
     "</svg>"
   ].join("\n")
 }
 
-function drawInlayBox(box, art) {
-  const outline = { left: art.boxLeft, right: art.boxRight, top: box.top, bottom: box.bottom },
+function drawInlayBox(box, word, { capHeight }) {
+  const art = INLAY_ART,
+    outline = { left: art.boxLeft, right: art.boxRight, top: box.top, bottom: box.bottom },
     stroked = box.fill == "none",
     style = stroked ? { fill: "none", stroke: box.ink, thickness: art.stroke } : { fill: box.fill },
-    word = {
+    placed = {
       x: (art.boxLeft + art.boxRight) / 2,
-      baseline: (box.top + box.bottom) / 2 + art.capHeight / 2,
-      capHeight: art.capHeight,
+      baseline: (box.top + box.bottom) / 2 + capHeight / 2,
+      capHeight,
       ink: box.ink
     }
 
-  return drawBox(outline, style) + drawText(box.word, word)
+  return drawBox(outline, style) + drawText(word, placed)
 }
 
-function drawInlay() {
+function drawInlay(lettering) {
   const width = INLAY.right - INLAY.left,
     depth = INLAY.toRear - INLAY.fromRear,
     art = INLAY_ART,
     [green, red, white] = art.boxes,
     levelOf = box => (box.top + box.bottom) / 2,
-    boxes = art.boxes.map(box => drawInlayBox(box, art)),
+    boxes = art.boxes.map((box, index) => drawInlayBox(box, lettering.words[index], lettering)),
     outline = { fill: "none", stroke: INLAY_WHITE, thickness: art.stroke },
     greenLine = [
       [art.boxRight, levelOf(green)],
@@ -1909,7 +1980,7 @@ function drawInlay() {
     svgOpen(width, depth),
     `<rect width="${width}" height="${depth}" fill="${INLAY_PLATE.colour}"/>`,
     ...boxes,
-    drawBox(art.square, { fill: INLAY_GREEN }),
+    drawBox(art.square, { fill: INLAY_GREEN, stroke: INLAY_WHITE, thickness: art.squareOutline }),
     drawBox(art.outline, outline),
     drawBox(art.slot, outline),
     drawBox(art.block, { fill: INLAY_RED }),
@@ -2074,13 +2145,15 @@ export function buildCpc464() {
       svg: drawLegends(lettered, LEGENDS[language]),
       pixels: LEGEND_PIXELS
     })),
+    platePrints = PLATE_LANGUAGES.flatMap(language => [
+      { name: BADGE_PRINT, language, svg: drawBadge(BADGE_LINES[language]), pixels: PLATE_PIXELS },
+      { name: LID_PRINT, language, svg: drawLid(LABEL_LINES[language]), pixels: PLATE_PIXELS },
+      { name: INLAY_PRINT, language, svg: drawInlay(INLAY_WORDS[language]), pixels: PLATE_PIXELS }
+    ]),
     prints = [
-      [BADGE_PRINT, drawBadge(), PLATE_PIXELS],
       [COUNTER_PRINT, drawCounter(), PLATE_PIXELS],
       [COUNTER_DIGITS_PRINT, drawCounterDigits(), PLATE_PIXELS],
       [COUNTER_LEGEND_PRINT, drawCounterLegend(), PLATE_PIXELS],
-      [LID_PRINT, drawLid(), PLATE_PIXELS],
-      [INLAY_PRINT, drawInlay(), PLATE_PIXELS],
       [PIANO_PRINT, drawPianoLegends(), PLATE_PIXELS]
     ]
 
@@ -2128,6 +2201,7 @@ export function buildCpc464() {
     ],
     prints: [
       ...legendsPrints,
+      ...platePrints,
       ...prints.map(([name, svg, pixels]) => ({ name, language: SPANISH, svg, pixels }))
     ]
   }

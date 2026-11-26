@@ -9,7 +9,7 @@ import {
 
 // x runs from the left end, y back from the front face and z up from the desk, in millimetres.
 
-// The monitor is two mouldings over a tube: front cabinet 170841, rear cabinet 170313, the handle 170312 pivoting on the front one, the brightness knob 170304 in the right side, the push button 170305 and the D.C. jack 170844 in the bottom strip, and the C.R.T. 170307 bolted by its four lugs into the front cabinet [A], CPC6128 Service Manual p26, CTM644 cabinet drawing and parts list: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
+// The monitor is two mouldings over a tube: front cabinet 170841, rear cabinet 170313, the handle 170312 folded into the top where the two meet, the brightness knob 170304 in the right side, the push button 170305 and the D.C. jack 170844 in the bottom strip, and the C.R.T. 170307 bolted by its four lugs into the front cabinet [A], CPC6128 Service Manual p26, CTM644 cabinet drawing and parts list: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
 // The amendment manual redraws the same two mouldings as 170841/A and 170313/A for the MkII [A], p28: https://retronik.silicium.org/DOCUMENTS/Info/Amstrad_CPC/Amstrad%20CPC464%206128%20GT65%20CTM644%20MP3%20CT1%20amendment%20service%20manual.pdf
 // Neither drawing carries a dimension, so every figure below is Amstrad's overall size or read from photographs.
 
@@ -169,17 +169,15 @@ const KNOB = {
   recess: { diameter: 24, depth: 3 }
 }
 
-// The handle 170312 pivots on the front cabinet — its two retainers 170314 stand either side of a notch cut in that moulding's top — and folds back flat across the rear cabinet's slope. The rear view gives its bar 172 across; the notch reads about 165 with a floor 18 to 22 down [E].
-// It is a U, two arms and a grip, as the exploded view draws it [A], amendment manual p28. Every other figure — how deep the well runs, where along the depth it sits, the bar's own thickness and the width of its arms — is taken.
-const HANDLE = {
-  width: 172,
-  depth: 45,
-  thickness: 8,
-  arm: 22,
-  radius: 8,
-  fromFace: 108,
-  sunk: 20
-}
+// The handle 170312 is a U, a grip and two arms whose ends are bored for their pivots, and the front cabinet's top is cut away at its rear to take it, as the exploded views draw them; its retainer 170314 stands in the rear cabinet's top [A], amendment manual p28. Folded, it lies in a recess of its own shape, the grip along the top's rear edge and the arms running forward.
+// A Schneider unit seen from above, mapped by the four corners of the top's flat, 375 across and from 15 to 148 behind the face, makes it 167 across and 64 deep, its grip 21 deep and its arms 12 to 14.7 wide, their inner corners rounded about 5, in a recess 1.7 wider than it but for 4.8 clear in front of the grip, where the fingers go [E]: https://www.nightfallcrew.com/08/09/2013/amstrad-schneider-colour-monitor-ctm-644/. The arms' taper is not drawn, and 13 is taken.
+// The 2020 unit's rear view reads its grip 162 across, where an earlier reading made it 172, and so the Schneider's is taken for it. That view stands the grip about 5 below the top and 14 tall over a floor 23 down that opens out behind it [E]. How thick the arms are and how deep the recess runs under them are not measured, and the grip's are taken; the recess's sides, which slope outward at the rear edge, are drawn straight.
+const HANDLE = { width: 167, depth: 64, grip: 21, arm: 13, radius: 5, below: 5, thickness: 14 },
+  HANDLE_RECESS = { clearance: 1.7, gripGap: 4.8, floor: 23 }
+
+// Behind the grip the recess's floor runs back until the rear cabinet's shoulder has fallen below it.
+const HANDLE_RUN_ON =
+  ((SHOULDER[0] - FRONT_DEPTH + OVERRUN) * HANDLE_RECESS.floor) / (HEIGHT - SHOULDER[1])
 
 // Sampled on the front view above, whose backdrop reads neutral, so the readings stand as measured; uncalibrated, good for the hue and no more [E].
 const CABINET = { name: "cabinet", colour: "#4e5357" },
@@ -365,13 +363,34 @@ function buildKnobRecess() {
   )
 }
 
-function buildHandleWell() {
-  const left = (WIDTH - HANDLE.width) / 2
+function drawHandlePlan(clearance, gripGap, runOn) {
+  const left = (WIDTH - HANDLE.width) / 2 - clearance,
+    right = (WIDTH + HANDLE.width) / 2 + clearance,
+    front = FRONT_DEPTH - HANDLE.depth - clearance,
+    rear = FRONT_DEPTH + runOn,
+    gripFront = FRONT_DEPTH - HANDLE.grip - gripGap,
+    arm = HANDLE.arm + 2 * clearance,
+    radius = HANDLE.radius - clearance
 
-  return makeBox(
-    [left, HANDLE.fromFace, HEIGHT - HANDLE.sunk],
-    [left + HANDLE.width, HANDLE.fromFace + HANDLE.depth, HEIGHT + OVERRUN]
-  )
+  return draw([left, rear])
+    .lineTo([right, rear])
+    .lineTo([right, front])
+    .lineTo([right - arm, front])
+    .lineTo([right - arm, gripFront])
+    .customCorner(radius)
+    .lineTo([left + arm, gripFront])
+    .customCorner(radius)
+    .lineTo([left + arm, front])
+    .lineTo([left, front])
+    .close()
+}
+
+function buildHandleRecess() {
+  const plan = drawHandlePlan(HANDLE_RECESS.clearance, HANDLE_RECESS.gripGap, HANDLE_RUN_ON)
+
+  return plan
+    .sketchOnPlane("XY", HEIGHT - HANDLE_RECESS.floor)
+    .extrude(HANDLE_RECESS.floor + OVERRUN)
 }
 
 function buildFrontCabinet() {
@@ -386,7 +405,7 @@ function buildFrontCabinet() {
     amstradRecess = buildPanelRecess(AMSTRAD_PANEL),
     modelRecess = buildPanelRecess(MODEL_PLATE),
     knobRecess = buildKnobRecess(),
-    handleWell = buildHandleWell(),
+    handleRecess = buildHandleRecess(),
     plinthEnds = buildPlinthEnds(),
     cut = shell
       .cut(cavity)
@@ -397,7 +416,7 @@ function buildFrontCabinet() {
       .cut(amstradRecess)
       .cut(modelRecess)
       .cut(knobRecess)
-      .cut(handleWell)
+      .cut(handleRecess)
       .cut(plinthEnds)
 
   return { name: "front-cabinet", shape: cut.translate(CENTRING), material: CABINET }
@@ -445,23 +464,16 @@ function buildNeckBox() {
 function buildRearCabinet() {
   const shell = buildRearShell(),
     neck = buildNeckBox(),
-    handleWell = buildHandleWell(),
-    whole = shell.fuse(neck).cut(handleWell)
+    handleRecess = buildHandleRecess(),
+    whole = shell.fuse(neck).cut(handleRecess)
 
   return { name: "rear-cabinet", shape: whole.translate(CENTRING), material: CABINET }
 }
 
 function buildHandle() {
-  const outer = drawRoundedRectangle(HANDLE.width, HANDLE.depth, HANDLE.radius),
-    inner = drawRoundedRectangle(
-      HANDLE.width - 2 * HANDLE.arm,
-      HANDLE.depth,
-      HANDLE.radius
-    ).translate(0, HANDLE.arm),
-    bar = outer
-      .cut(inner)
-      .translate(WIDTH / 2, HANDLE.fromFace + HANDLE.depth / 2)
-      .sketchOnPlane("XY", HEIGHT - HANDLE.sunk)
+  const plan = drawHandlePlan(0, 0, 0),
+    bar = plan
+      .sketchOnPlane("XY", HEIGHT - HANDLE.below - HANDLE.thickness)
       .extrude(HANDLE.thickness)
 
   return { name: "handle", shape: bar.translate(CENTRING), material: CABINET }
