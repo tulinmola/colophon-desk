@@ -6,9 +6,8 @@
 // 22: https://archive.org/details/Schneider_CPC6128_Handbuch_1985_Schneider_Computer_Division_DE
 //
 // The computers in the order they came out, each named as its model is, with
-// its versions by the language each was sold in and how each one's keys were
-// lettered, and what may stand behind it and beside it, each by its model's
-// name.
+// its versions by the language each was sold in and how each one was lettered,
+// and what may stand behind it and beside it, each by its model's name.
 const COMPUTERS = [
   // Shown to the press in London on 23 April 1982 [C]: https://en.wikipedia.org/wiki/ZX_Spectrum. Its box reads "48K RAM" [B]: https://www.computerhistory.org/collections/catalog/102678097. It loads from "a normal domestic cassette recorder" [A], the ZX Spectrum Introduction, chapter six: https://worldofspectrum.org/ZXSpectrumIntroduction/chapter_six.html
   // Sinclair stood a Sony television behind it on page 3 of its 1982 brochure [A], known by its cabinet as the KV-1400 [E]: https://spectrumforeveryone.com/wp-content/uploads/2020/08/Spectrum-Brochure.pdf. Having no recorder of its own, it is offered one from the start; tools/models/crc1001.js says why it is the Computone.
