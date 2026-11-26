@@ -20,28 +20,23 @@ const PANEL_ARRIVING = [
 
 const LEGENDS = { monitor: "Monitor", television: "Television" }
 
-// How a computer is named in each language its keys were lettered in, and what
-// that keyboard was.
-const LANGUAGES = {
-  en: { adjective: "English", keyboard: "QWERTY, with £" },
-  fr: { adjective: "French", keyboard: "AZERTY" },
-  de: { adjective: "German", keyboard: "Schneider's, QWERTY with £" },
-  es: { adjective: "Spanish", keyboard: "QWERTY, with Ñ" }
-}
+// How a computer is named in each language it was sold in.
+const ADJECTIVES = { en: "English", fr: "French", de: "German", es: "Spanish" }
 
-// The reader's own language where the computer was lettered in it, or the
-// first it offers.
-function languageAtFirst({ languages }) {
-  const spoken = navigator.languages.map(tag => tag.split("-")[0]),
+// The reader's own language where the computer was sold in it, or the first it
+// offers.
+function languageAtFirst({ versions }) {
+  const languages = Object.keys(versions),
+    spoken = navigator.languages.map(tag => tag.split("-")[0]),
     shared = spoken.find(language => languages.includes(language))
 
   return shared ?? languages[0]
 }
 
-function headingOf({ title, languages }, language) {
-  const several = languages.length > 1
+function headingOf({ title, versions }, language) {
+  const several = Object.keys(versions).length > 1
 
-  return several ? `Your ${LANGUAGES[language].adjective} ${title}` : `Your ${title}`
+  return several ? `Your ${ADJECTIVES[language]} ${title}` : `Your ${title}`
 }
 
 function itemOf({ name, title, maker, year, features }) {
@@ -72,20 +67,22 @@ function optionOf(name, type, chosen) {
   </label>`
 }
 
-function languageOptionOf(language, chosen) {
-  const { adjective, keyboard } = LANGUAGES[language],
-    checked = chosen ? "checked" : ""
+function languageOptionOf(language, keyboard, chosen) {
+  const checked = chosen ? "checked" : ""
 
   return html`<label>
     <input type="radio" name="language" value="${language}" ${checked} />
-    <span class="name">${adjective}</span>
+    <span class="name">${ADJECTIVES[language]}</span>
     <span class="made">${keyboard}</span>
   </label>`
 }
 
-function formOf({ name, languages, displays, beside, chosenAtFirst }, language) {
-  const several = languages.length > 1,
-    lettered = languages.map(each => languageOptionOf(each, each == language)).join(""),
+function formOf({ name, versions, displays, beside, chosenAtFirst }, language) {
+  const sold = Object.entries(versions),
+    several = sold.length > 1,
+    lettered = sold
+      .map(([each, keyboard]) => languageOptionOf(each, keyboard, each == language))
+      .join(""),
     languageChoice = several
       ? html`<fieldset>
           <legend>Language</legend>
@@ -589,7 +586,7 @@ class Showroom {
     this.#draw()
   }
 
-  // A computer by its name, in the language its keys were last chosen in.
+  // A computer by its name, in the language it was last chosen in.
   #letteredOf(computer) {
     const { name } = computer,
       language = this.#languages.get(name) ?? languageAtFirst(computer)

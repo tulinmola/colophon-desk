@@ -94,7 +94,7 @@ test("the line-up draws every computer in a frame of its own", async function ({
   const items = page.locator(".line-up li[data-computer]"),
     names = await items.locator(".name").allTextContents()
 
-  expect(names).toEqual(["ZX Spectrum 48K", "CPC 464", "CPC 6128"])
+  expect(names).toEqual(["ZX Spectrum 48K", "CPC 464", "CPC 664", "CPC 6128"])
   await expectDrawnInEvery(page, items)
 })
 
@@ -283,6 +283,24 @@ test("a computer sold in several languages offers each, and one sold in one offe
   await page.goto("/?computer=spectrum48")
   await arrived(page)
   await expect(page.getByRole("group", { name: "Language" })).toHaveCount(0)
+})
+
+// How a computer's French version is described where it is set up.
+async function frenchVersionOf(page, computer) {
+  await page.goto(`/?computer=${computer}`)
+  await arrived(page)
+
+  const french = page.getByRole("radio", { name: /French/u }),
+    label = page.locator("label", { has: french })
+
+  return label.textContent()
+}
+
+test("each version is described as its own computer wore it", async function ({ page }) {
+  const qwerty = await frenchVersionOf(page, "cpc664"),
+    azerty = await frenchVersionOf(page, "cpc6128")
+
+  expect(qwerty).not.toEqual(azerty)
 })
 
 test("a language chosen letters the computer anew, and names it", async function ({ page }) {
