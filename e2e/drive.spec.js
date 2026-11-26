@@ -506,7 +506,7 @@ function catalogueOnMachine(page, disc) {
   return page.evaluate(async function (encoded) {
     const { Cpc, KEY_MATRIX } = await import("/js/emulator/index.js"),
       machine = new AbortController(),
-      cpc = await Cpc.create(machine.signal, 1)
+      cpc = await Cpc.create(machine.signal, { anisotropy: 1, language: "es" })
 
     let clock = 0
 

@@ -449,7 +449,7 @@ const LETTER_HEIGHT = 5.5,
 const LEGEND_PIXELS = 10,
   PLATE_PIXELS = 12
 
-const LANGUAGE = "es",
+const SPANISH = "es",
   LEGENDS_PRINT = "legends",
   BADGE_PRINT = "badge",
   COUNTER_PRINT = "counter",
@@ -1486,15 +1486,8 @@ function drawCursor(turn) {
   return drawArrow(ARROW, [0, PLACES.middle], ARROW_TURNS[turn])
 }
 
-function drawPesetaKey() {
-  const peseta = drawPeseta(PLACES.upper),
-    arrow = drawArrow(
-      THIN_ARROW,
-      [0, PLACES.lower.baseline - THIN_ARROW.length / 2],
-      ARROW_TURNS.up
-    )
-
-  return peseta + arrow
+function drawThinArrow() {
+  return drawArrow(THIN_ARROW, [0, PLACES.lower.baseline - THIN_ARROW.length / 2], ARROW_TURNS.up)
 }
 
 function drawWord(word, place = PLACES.word) {
@@ -1512,7 +1505,7 @@ function drawLines(first, second) {
   return above + below
 }
 
-const LEGENDS = new Map([
+const SPANISH_LEGENDS = new Map([
   [66, drawWord("ESC")],
   [64, drawPair("!", "1")],
   [65, drawPair('"', "2")],
@@ -1525,7 +1518,7 @@ const LEGENDS = new Map([
   [33, drawPair(")", "9")],
   [32, drawText("_", PLACES.upper) + drawSlashedZero(PLACES.lower)],
   [25, drawPair("=", "-")],
-  [24, drawPesetaKey()],
+  [24, drawPeseta(PLACES.upper) + drawThinArrow()],
   [16, drawWord("CLR")],
   [79, drawDelete("BORR", PLACES.word)],
   [68, drawWord("TAB")],
@@ -1588,12 +1581,72 @@ const LEGENDS = new Map([
   [2, drawCursor("down")]
 ])
 
-function drawLegends(keys) {
+// Where the UK's keys are lettered otherwise, read on a 464 sold in France before its AZERTY keyboard, whose keys are the UK's [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC464-IMG_7169.jpg
+const UK_LEGENDS = new Map([
+  ...SPANISH_LEGENDS,
+  [6, drawWord("ENTER")],
+  [9, drawWord("COPY")],
+  [17, drawLetter("[")],
+  [18, drawWord("ENTER", RETURN_PLACES.word)],
+  [19, drawLetter("]")],
+  [21, drawWord("SHIFT")],
+  [24, drawText("£", PLACES.upper) + drawThinArrow()],
+  [28, drawPair("+", ";")],
+  [29, drawPair("*", ":")],
+  [70, drawLines("CAPS", "LOCK")],
+  [79, drawWord("DEL")]
+])
+
+// France's AZERTY keys, from the keytop diagram of the French system, drawn on the 6128's keyboard, whose key numbers the 464 shares [A], SOFT 968 Appendix XII: https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual, and Amstrad's own drawing of the AZERTY 464, bound into the French 6128's manual [A]: https://amstrad.eu/wp-content/uploads/ftp_cpcscene/Librairie/Documentations/CPC-Manuels/Machines/CPC6128_AZERTY%5BFRA%5D_1985(acme).pdf. Its words stay the UK's. Read key by key on the BnF's AZERTY 464 from above, its zeros unslashed, which the diagram cannot show; the @ and \ sharing the top of the $ key stand side by side, their middles 1.57 left and 1.96 right of the key's axis, measured there and scaled by its letters to these [E]: https://commons.wikimedia.org/wiki/Category:Collection_Charles_Cros._Micro-ordinateurs_(m%C3%A9dia_-_multim%C3%A9dias)._Micro-ordinateurs_Amstrad_-_CPC_464._Micro-ordinateur_Amstrad_CPC_464,_n%C2%B0_de_s%C3%A9rie_du_clavier_533-7834019_-_btv1b55013024n
+const FRENCH_AT = -1.57,
+  FRENCH_BACKSLASH = 1.96
+
+const FRENCH_LEGENDS = new Map([
+  ...UK_LEGENDS,
+  [17, drawPair("<", "*")],
+  [19, drawPair(">", "#")],
+  [
+    22,
+    drawText("@", { ...PLACES.upper, x: FRENCH_AT }) +
+      drawText("\\", { ...PLACES.upper, x: FRENCH_BACKSLASH }) +
+      drawText("$", PLACES.lower)
+  ],
+  [24, drawPair("_", "-")],
+  [25, drawPair("[", ")")],
+  [26, drawBrokenBar(PLACES.upper) + drawText("^", PLACES.lower)],
+  [28, drawPair("%", "ù")],
+  [29, drawLetter("M")],
+  [30, drawPair("+", "=")],
+  [31, drawPair("/", ":")],
+  [32, drawPair("0", "à")],
+  [33, drawPair("9", "ç")],
+  [38, drawPair("?", ",")],
+  [39, drawPair(".", ";")],
+  [15, drawLetter("0")],
+  [40, drawPair("8", "!")],
+  [41, drawPair("7", "è")],
+  [48, drawPair("6", "]")],
+  [49, drawPair("5", "(")],
+  [56, drawPair("4", "'")],
+  [57, drawPair("3", '"')],
+  [59, drawLetter("Z")],
+  [64, drawPair("1", "&")],
+  [65, drawPair("2", "é")],
+  [67, drawLetter("A")],
+  [69, drawLetter("Q")],
+  [71, drawLetter("W")]
+])
+
+// Each language the keys were lettered in, the Spanish unit's own first.
+const LEGENDS = { es: SPANISH_LEGENDS, en: UK_LEGENDS, fr: FRENCH_LEGENDS },
+  LANGUAGES = Object.keys(LEGENDS)
+
+function drawLegends(keys, legends) {
   const drawn = [svgOpen(LEGEND_ATLAS_WIDTH, LEGEND_ATLAS_DEPTH, LEGEND_INK)]
 
   for (const key of keys) {
     const [axis, rear] = key.printedAt,
-      legend = LEGENDS.get(key.number)
+      legend = legends.get(key.number)
 
     drawn.push(`<g transform="translate(${axis} ${rear})">${legend}</g>`)
   }
@@ -2014,8 +2067,14 @@ export function buildCpc464() {
     keycaps = buildKeycaps(laid),
     returnKeycap = buildReturnKeycap(returnKey),
     cabinetTop = buildCabinetTop(),
+    lettered = [...laid, returnKey],
+    legendsPrints = LANGUAGES.map(language => ({
+      name: LEGENDS_PRINT,
+      language,
+      svg: drawLegends(lettered, LEGENDS[language]),
+      pixels: LEGEND_PIXELS
+    })),
     prints = [
-      [LEGENDS_PRINT, drawLegends([...laid, returnKey]), LEGEND_PIXELS],
       [BADGE_PRINT, drawBadge(), PLATE_PIXELS],
       [COUNTER_PRINT, drawCounter(), PLATE_PIXELS],
       [COUNTER_DIGITS_PRINT, drawCounterDigits(), PLATE_PIXELS],
@@ -2067,6 +2126,9 @@ export function buildCpc464() {
       floppyDisc(),
       buildVolumeWheel()
     ],
-    prints: prints.map(([name, svg, pixels]) => ({ name, language: LANGUAGE, svg, pixels }))
+    prints: [
+      ...legendsPrints,
+      ...prints.map(([name, svg, pixels]) => ({ name, language: SPANISH, svg, pixels }))
+    ]
   }
 }

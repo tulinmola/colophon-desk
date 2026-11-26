@@ -170,7 +170,7 @@ const HEROS = "TeX Gyre Heros",
   HEROS_X_HEIGHT = 0.523
 
 // The one GT64 photographed is lettered in English. A Spanish GT65 is lettered in Spanish, BRILLO, CONTRASTE and SINCRO VERT. under its thumbwheels [E], https://commons.wikimedia.org/wiki/File:Amstrad_CPC_464_(1984)_1.jpg, and a Spanish GT64 may have been too, but none has been seen, so the English is drawn.
-const LANGUAGE = "es",
+const ENGLISH = "en",
   BADGE_PRINT = "badge",
   LEGEND_PRINT = "panel-legends"
 
@@ -602,8 +602,8 @@ export function buildGt64() {
       buildLegendPanel()
     ],
     prints: [
-      { name: BADGE_PRINT, language: LANGUAGE, svg: drawBadge(), pixels: PLATE_PIXELS },
-      { name: LEGEND_PRINT, language: LANGUAGE, svg: drawLegends(), pixels: PLATE_PIXELS }
+      { name: BADGE_PRINT, language: ENGLISH, svg: drawBadge(), pixels: PLATE_PIXELS },
+      { name: LEGEND_PRINT, language: ENGLISH, svg: drawLegends(), pixels: PLATE_PIXELS }
     ]
   }
 }

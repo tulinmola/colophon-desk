@@ -182,7 +182,10 @@ function placeNode(node, place) {
   node.setTranslation(translation)
 }
 
-function createPartNode({ document, buffer, instancing, gltfMaterials, tessellation, name }, part) {
+function createPartNode(
+  { document, buffer, instancing, gltfMaterials, tessellation, name, languages },
+  part
+) {
   const meshed = part.shape.mesh(tessellation),
     positions = toGltf(meshed.vertices, METRES_PER_MILLIMETRE),
     normals = toGltf(meshed.normals, 1),
@@ -238,10 +241,12 @@ function createPartNode({ document, buffer, instancing, gltfMaterials, tessellat
 
   if (printed) {
     extras.print = `${name}-${part.print}`
+    extras.languages = languages.get(part.print)
   }
 
   if (lettered) {
     extras.legends = `${name}-${part.legends}`
+    extras.languages = languages.get(part.legends)
   }
 
   if (screened) {
@@ -288,13 +293,29 @@ function createNode(model, part) {
   return node
 }
 
-async function writeModel(name, { tessellation, parts }) {
+// Each print by its name, and the languages it was drawn in, its model's own
+// first.
+function languagesOf(prints) {
+  const grouped = Map.groupBy(prints, print => print.name),
+    languages = new Map()
+
+  for (const [print, drawn] of grouped) {
+    const drawnIn = drawn.map(each => each.language)
+
+    languages.set(print, drawnIn)
+  }
+
+  return languages
+}
+
+async function writeModel(name, { tessellation, parts, prints }) {
   const document = new Document(),
     buffer = document.createBuffer(),
     scene = document.createScene(name),
     instancing = createInstancing(document, parts),
     gltfMaterials = createMaterials(document, parts),
-    model = { document, buffer, instancing, gltfMaterials, tessellation, name }
+    languages = languagesOf(prints),
+    model = { document, buffer, instancing, gltfMaterials, tessellation, name, languages }
 
   for (const part of parts) {
     const node = createNode(model, part)

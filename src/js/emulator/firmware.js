@@ -9,10 +9,15 @@
 // The full record is the emulator's own tools/fetch-roms.sh.
 // https://worldofspectrum.net/app/themes/wosc-classic/static/legacy/amstrad-roms.txt
 //
-// A part is only ever half an image: the Spanish 6128 keeps its operating
-// system and its BASIC in separate files, and the machine wants them joined in
-// that order.
+// An image may come in parts, which the machine wants joined in order: the
+// Spanish 6128's operating system and its BASIC are kept in separate files.
 const IMAGES = {
+  // The UK 6128's firmware, from Caprice32's copy, as the emulator's own
+  // tools/fetch-roms.sh pins it: https://github.com/ColinPitrat/caprice32
+  cpc6128: {
+    sha256: "31c3668c67bea027dab698ece233c9434d9324f9ba7dac84db58f400b6689562",
+    parts: ["https://raw.githubusercontent.com/ColinPitrat/caprice32/master/rom/cpc6128.rom"]
+  },
   // Amstrad part 40038, the Spanish 6128's firmware, joined from the two
   // halves Arnold keeps: https://github.com/rofl0r/arnold
   cpc6128es: {
@@ -20,6 +25,14 @@ const IMAGES = {
     parts: [
       "https://raw.githubusercontent.com/rofl0r/arnold/master/roms/cpc6128s/os.rom",
       "https://raw.githubusercontent.com/rofl0r/arnold/master/roms/cpc6128s/basic.rom"
+    ]
+  },
+  // The French 6128's firmware, the AZERTY machine's, whole as zenzx keeps it
+  // at a fixed commit: https://github.com/ha1tch/zenzx
+  cpc6128fr: {
+    sha256: "8ec2639be145d242d18c02f5ed9eaa52c7d4c40b49dc672755200c3be701abf7",
+    parts: [
+      "https://raw.githubusercontent.com/ha1tch/zenzx/778e8b3b3999de401d65fbd112814a98ea3b4e02/rom/cpc6128-french.rom"
     ]
   },
   // The ROM the disc interface brings, from Caprice32's copy of Amstrad's

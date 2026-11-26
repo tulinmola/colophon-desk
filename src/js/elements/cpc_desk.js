@@ -73,6 +73,8 @@ const DRIVE_A = html`<input type="file" accept=".dsk,.zip" hidden />
 
 const NOTHING_PICKED = { name: null, view: null }
 
+const SPANISH = "es"
+
 class CpcDeskElement extends Element {
   #chooser
   #cpc = null
@@ -565,10 +567,11 @@ class CpcDeskElement extends Element {
     await renderer.init()
 
     const wireframe = this.hasAttribute("wireframe"),
+      language = this.getAttribute("language") ?? SPANISH,
       anisotropy = renderer.getMaxAnisotropy(),
-      cpc = await Cpc.create(signal, anisotropy)
+      cpc = await Cpc.create(signal, { anisotropy, language })
 
-    await desk.load(anisotropy, cpc)
+    await desk.load(cpc, { anisotropy, language })
     desk.scene.traverse(function (object) {
       const drawn = object.isMesh
 

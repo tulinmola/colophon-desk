@@ -35,12 +35,14 @@ export default class LineUp {
     this.#distance = FRAME_HEIGHT / (2 * Math.tan(halfField))
   }
 
-  async load(names, { anisotropy, studio }) {
-    const loading = names.map(name => Model.load(name, { anisotropy, small: true })),
+  async load(computers, { anisotropy, studio }) {
+    const loading = computers.map(({ name, language }) =>
+        Model.load(name, { anisotropy, small: true, language })
+      ),
       models = await Promise.all(loading)
 
     for (const [index, model] of models.entries()) {
-      this.stand(names[index], model, studio)
+      this.stand(computers[index].name, model, studio)
     }
   }
 

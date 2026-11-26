@@ -41,11 +41,11 @@ export default class Desk {
     this.scene.add(sky, sun)
   }
 
-  async load(anisotropy, { picture, keys }) {
+  async load({ picture, keys }, { anisotropy, language }) {
     const loading = [
-        Model.load("cpc6128", { anisotropy, keys }),
-        Model.load("ctm644", { anisotropy }),
-        Model.load("cf2", { anisotropy }),
+        Model.load("cpc6128", { anisotropy, keys, language }),
+        Model.load("ctm644", { anisotropy, language }),
+        Model.load("cf2", { anisotropy, language }),
         loadHandwriting()
       ],
       [machine, monitor, disc] = await Promise.all(loading)

@@ -79,3 +79,39 @@ test("a desk laid again lays one canvas, not two", async function ({ page }) {
 
   await expect(canvas).toHaveCount(1)
 })
+
+// The monitor's glass once the machine has started up, on the desk's own page
+// asking for the language given.
+async function startUpIn(page, language) {
+  await page.unrouteAll()
+  await page.route("**/desk.html", async function (route) {
+    const response = await route.fetch(),
+      markup = await response.text(),
+      body = markup.replace("<colophon-cpc-desk", `<colophon-cpc-desk language="${language}"`)
+
+    return route.fulfill({ response, body })
+  })
+  await stand(page)
+  await page.locator("colophon-cpc-desk").getByRole("button", { name: "The monitor" }).click()
+
+  return settled(page)
+}
+
+test("each language starts a machine of its own", async function ({ page }) {
+  test.setTimeout(120000)
+
+  const pictures = []
+
+  for (const language of ["en", "es", "fr", "de"]) {
+    const picture = await startUpIn(page, language)
+
+    pictures.push(picture)
+  }
+
+  for (const [index, picture] of pictures.entries()) {
+    const later = pictures.slice(index + 1),
+      alike = later.some(other => other.equals(picture))
+
+    expect(alike).toBe(false)
+  }
+})

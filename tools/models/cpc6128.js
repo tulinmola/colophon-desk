@@ -320,7 +320,7 @@ const PLATE = { name: "plate", colour: "#4e4d53" },
 const PLATE_PIXELS = 12,
   LEGEND_PIXELS = 10
 
-const LANGUAGE = "es",
+const SPANISH = "es",
   DRIVE_PLATE_PRINT = "drive-plate",
   LEGENDS_PRINT = "legends",
   NAMEPLATE_PRINT = "nameplate",
@@ -470,6 +470,7 @@ const HEAVY_ARROW = { length: 7, shaft: 1.16, headWidth: 2.45, headLength: 2.4 }
   DELETE_GAP = 0.2,
   DOT = { width: 0.87, thickness: 0.87, tops: [6.67] },
   FULL_STOP = { width: 0.87, thickness: 0.87, tops: [9.82] },
+  RAISED_STOP = { width: 0.87, thickness: 0.87, tops: [4.4] },
   UNDERSCORE = { width: 4.2, thickness: 0.34, tops: [4.71] },
   BROKEN_BAR = { width: 0.5, thickness: 1.35, tops: [3.03, 5.56] },
   EQUALS = { width: 3.03, thickness: 0.51, tops: [3.95, 5.47] },
@@ -1145,15 +1146,10 @@ function drawBracket(bracket) {
   return `<path d="M ${arms} ${top} H ${back} V ${bottom} H ${arms}" fill="none" stroke="${LEGEND_INK}" stroke-width="${BRACKET.stroke}"/>`
 }
 
-function drawSlant(slant) {
+function drawSlant(slant, foot = LOWER.baseline, x = 0) {
   const reach = (SLANT_LEANS[slant] * SLANT.side) / 2
 
-  return drawLine(
-    [-reach, LOWER.baseline],
-    [reach, LOWER.baseline - SLANT.side],
-    SLANT.stroke,
-    LEGEND_INK
-  )
+  return drawLine([x - reach, foot], [x + reach, foot - SLANT.side], SLANT.stroke, LEGEND_INK)
 }
 
 function drawSlashedZero(place, x = 0) {
@@ -1202,7 +1198,7 @@ function drawKeypadZero() {
   return drawLeaningF() + drawSlashedZero(KEYPAD, KEYPAD_APART / 2)
 }
 
-const LEGENDS = new Map([
+const SPANISH_LEGENDS = new Map([
   [66, drawWord("ESC")],
   [64, drawPair("!", "1")],
   [65, drawPair('"', "2")],
@@ -1278,14 +1274,74 @@ const LEGENDS = new Map([
   [1, drawHeavyArrow("right")]
 ])
 
-function drawLegends(keys) {
+// Where a UK unit's keys are lettered otherwise, read on its photograph from above [E]: https://commons.wikimedia.org/wiki/File:Amstrad_CPC_6128_solo_macchina.jpg. Its characters and words are set by the Spanish unit's measured rules; where each stands on its own key was not measured.
+const UK_LEGENDS = new Map([
+  ...SPANISH_LEGENDS,
+  [6, drawWord("ENTER")],
+  [9, drawWord("COPY")],
+  [17, drawCharacter("{", UPPER) + drawBracket("[")],
+  [19, drawCharacter("}", UPPER) + drawBracket("]")],
+  [21, drawWord("SHIFT")],
+  [24, drawCharacter("£", UPPER) + drawThinArrow()],
+  [28, drawPair("+", ";")],
+  [29, drawPair("*", ":")],
+  [70, drawLines(["CAPS", "LOCK"])],
+  [79, drawWord("DEL")]
+])
+
+// France's AZERTY keys, from the keytop diagram of the French system [A], SOFT 968 Appendix XII: https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual, read key by key on the 600 dpi scan of a French 6128's keys [D], http://sasfepu78.fr/articles/Amstrad/, whose zeros are unslashed, which the diagram cannot show, and whose key 23 reads CONTROL as the UK's does, where the diagram draws CTRL. Its words stay the UK's. On the scan the @ and the \ share the top of the $ key, their middles 1.94 left and 2.12 right of the axis, the \ the keytops' own slant hanging from the upper characters' cap line; and the full stop over ; is the keytops' square dot with its top at 4.4 [E].
+const FRENCH_AT = -1.94,
+  FRENCH_BACKSLASH = 2.12,
+  HANGING_SLANT = UPPER.baseline - UPPER.capHeight + SLANT.side
+
+const FRENCH_LEGENDS = new Map([
+  ...UK_LEGENDS,
+  [17, drawPair("<", "*")],
+  [19, drawPair(">", "#")],
+  [
+    22,
+    drawCharacter("@", UPPER, FRENCH_AT) +
+      drawSlant("\\", HANGING_SLANT, FRENCH_BACKSLASH) +
+      drawCharacter("$", LOWER)
+  ],
+  [24, drawBars(UNDERSCORE) + drawBars(MINUS)],
+  [25, drawPair("[", ")")],
+  [26, drawBars(BROKEN_BAR) + drawCharacter("^", LOWER)],
+  [28, drawPair("%", "ù")],
+  [29, drawLetter("M")],
+  [30, drawPair("+", "=")],
+  [31, drawPair("/", ":")],
+  [32, drawPair("0", "à")],
+  [33, drawPair("9", "ç")],
+  [38, drawCharacter("?", UPPER) + drawCharacter(",", COMMA)],
+  [39, drawBars(RAISED_STOP) + drawCharacter(";", LOWER)],
+  [15, drawLeaningF() + drawCharacter("0", KEYPAD, KEYPAD_APART / 2)],
+  [40, drawPair("8", "!")],
+  [41, drawPair("7", "è")],
+  [48, drawCharacter("6", UPPER) + drawBracket("]")],
+  [49, drawPair("5", "(")],
+  [56, drawPair("4", "'")],
+  [57, drawPair("3", '"')],
+  [59, drawLetter("Z")],
+  [64, drawPair("1", "&")],
+  [65, drawPair("2", "é")],
+  [67, drawLetter("A")],
+  [69, drawLetter("Q")],
+  [71, drawLetter("W")]
+])
+
+// Each language the keys were lettered in, the Spanish unit's own first. Germany's 6128 was Schneider's, lettered as the UK's [A], Schneider CPC6128 Handbuch, Kap. 7 S. 22: https://archive.org/details/Schneider_CPC6128_Handbuch_1985_Schneider_Computer_Division_DE
+const LEGENDS = { es: SPANISH_LEGENDS, en: UK_LEGENDS, fr: FRENCH_LEGENDS, de: UK_LEGENDS },
+  LANGUAGES = Object.keys(LEGENDS)
+
+function drawLegends(keys, legends) {
   const drawn = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${LEGEND_ATLAS_WIDTH}" height="${LEGEND_ATLAS_DEPTH}" viewBox="0 0 ${LEGEND_ATLAS_WIDTH} ${LEGEND_ATLAS_DEPTH}" font-family="${HEROS}" fill="${LEGEND_INK}">`
   ]
 
   for (const key of keys) {
     const [axis, rear] = key.printedAt,
-      legend = LEGENDS.get(key.number)
+      legend = legends.get(key.number)
 
     drawn.push(`<g transform="translate(${axis} ${rear})">${legend}</g>`)
   }
@@ -1429,7 +1485,13 @@ export function buildCpc6128() {
     nameplate = buildRearStripPlate(NAMEPLATE_PRINT, NAMEPLATE, NAMEPLATE_BACKING),
     badge = buildBadge(),
     drivePlatePrint = drawDrivePlate(),
-    legendsPrint = drawLegends([...keys, returnKey]),
+    lettered = [...keys, returnKey],
+    legendsPrints = LANGUAGES.map(language => ({
+      name: LEGENDS_PRINT,
+      language,
+      svg: drawLegends(lettered, LEGENDS[language]),
+      pixels: LEGEND_PIXELS
+    })),
     nameplatePrint = drawNameplate(),
     badgePrint = drawBadge()
 
@@ -1452,10 +1514,10 @@ export function buildCpc6128() {
       buildPowerLamp()
     ],
     prints: [
-      { name: DRIVE_PLATE_PRINT, language: LANGUAGE, svg: drivePlatePrint, pixels: PLATE_PIXELS },
-      { name: LEGENDS_PRINT, language: LANGUAGE, svg: legendsPrint, pixels: LEGEND_PIXELS },
-      { name: NAMEPLATE_PRINT, language: LANGUAGE, svg: nameplatePrint, pixels: PLATE_PIXELS },
-      { name: BADGE_PRINT, language: LANGUAGE, svg: badgePrint, pixels: PLATE_PIXELS }
+      { name: DRIVE_PLATE_PRINT, language: SPANISH, svg: drivePlatePrint, pixels: PLATE_PIXELS },
+      ...legendsPrints,
+      { name: NAMEPLATE_PRINT, language: SPANISH, svg: nameplatePrint, pixels: PLATE_PIXELS },
+      { name: BADGE_PRINT, language: SPANISH, svg: badgePrint, pixels: PLATE_PIXELS }
     ]
   }
 }

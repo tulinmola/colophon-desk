@@ -176,7 +176,7 @@ const LABEL_PIXELS = 12
 
 const CENTRING = [-WIDTH / 2, -LENGTH / 2, 0],
   MIDDLE = WIDTH / 2,
-  LANGUAGE = "es"
+  ENGLISH = "en"
 
 function fromHeadEnd(distance) {
   return LENGTH - distance
@@ -578,6 +578,6 @@ export function buildCf2() {
   return {
     tessellation: TESSELLATION,
     parts: [buildCase(), buildShutter(), buildHub(), buildWriteProtectShutters(), buildLabel()],
-    prints: [{ name: LABEL_PRINT, language: LANGUAGE, svg: drawSheet(), pixels: LABEL_PIXELS }]
+    prints: [{ name: LABEL_PRINT, language: ENGLISH, svg: drawSheet(), pixels: LABEL_PIXELS }]
   }
 }

@@ -1,5 +1,13 @@
+// Amstrad's own national systems were Spanish, French and Danish [A], SOFT 968
+// Appendix XII: https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual.
+// The Danish is not offered: no photograph of its keys is known, and no image
+// of its firmware starts up as that appendix says it should. Germany's 6128 was
+// Schneider's, lettered as the UK's [A], Schneider CPC6128 Handbuch, Kap. 7 S.
+// 22: https://archive.org/details/Schneider_CPC6128_Handbuch_1985_Schneider_Computer_Division_DE
+//
 // The computers in the order they came out, each named as its model is, with
-// what may stand behind it and beside it, each by its model's name.
+// the languages its keys were lettered in, and what may stand behind it and
+// beside it, each by its model's name.
 const COMPUTERS = [
   // Shown to the press in London on 23 April 1982 [C]: https://en.wikipedia.org/wiki/ZX_Spectrum. Its box reads "48K RAM" [B]: https://www.computerhistory.org/collections/catalog/102678097. It loads from "a normal domestic cassette recorder" [A], the ZX Spectrum Introduction, chapter six: https://worldofspectrum.org/ZXSpectrumIntroduction/chapter_six.html
   // Sinclair stood a Sony television behind it on page 3 of its 1982 brochure [A], known by its cabinet as the KV-1400 [E]: https://spectrumforeveryone.com/wp-content/uploads/2020/08/Spectrum-Brochure.pdf. Having no recorder of its own, it is offered one from the start; tools/models/crc1001.js says why it is the Computone.
@@ -9,6 +17,7 @@ const COMPUTERS = [
     maker: "Sinclair Research",
     year: 1982,
     features: ["48 KB of memory", "Loads from a cassette recorder"],
+    languages: ["en"],
     displays: ["kv1400"],
     beside: ["crc1001"],
     chosenAtFirst: ["crc1001"]
@@ -21,6 +30,7 @@ const COMPUTERS = [
     maker: "Amstrad",
     year: 1984,
     features: ["64 KB of memory", "Datacorder built in"],
+    languages: ["en", "fr", "es"],
     displays: ["gt64", "ctm644"],
     beside: ["ddi1"],
     chosenAtFirst: []
@@ -33,6 +43,7 @@ const COMPUTERS = [
     maker: "Amstrad",
     year: 1985,
     features: ["128 KB of memory", "3-inch disc drive built in"],
+    languages: ["en", "fr", "de", "es"],
     displays: ["ctm644", "gt64"],
     beside: ["crc1001"],
     chosenAtFirst: []

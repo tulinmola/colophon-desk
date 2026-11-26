@@ -21,6 +21,11 @@
 /* The 6128's own drive is A, the one the core numbers 0. */
 #define DESK_DRIVE 0
 
+/* "LK4 is fitted for 60 Hz TV standards and omitted for 50 Hz standards", and
+   every country the desk's machines were sold in watched 50 Hz television:
+   SOFT 968, https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual */
+#define DESK_FIFTY_HZ true
+
 /* A CPC's own discs are a fifth of this. The rest is for the extended images
    of protected ones, which store every reading of an unstable sector. */
 #define DESK_DISC_SIZE 0x100000
@@ -91,8 +96,11 @@ void desk_blank_picture(void) { memset(framebuffer, GATE_ARRAY_BLACK, sizeof fra
  *
  * With no monitor plugged in the machine runs on and draws into the void, so
  * the framebuffer is never written and no frame ever ends.
+ *
+ * The maker is the board's links as cpc_set_links takes them, which the
+ * firmware names on its first line; cpc_init sets them back to Amstrad's.
  */
-void desk_boot_cpc6128(void) {
+void desk_boot_cpc6128(uint8_t manufacturer) {
   desk_blank_picture();
   /* cpc_init wipes the machine's own chips and not the store the host lends
      it, so a machine made again would wake inside the dead one's memory. Zero
@@ -100,6 +108,7 @@ void desk_boot_cpc6128(void) {
      held, and a machine made here is made new. */
   memset(ram, 0, sizeof ram);
   cpc_init(&cpc, ram, DESK_RAM_SIZE, rom);
+  cpc_set_links(&cpc, DESK_FIFTY_HZ, manufacturer);
   cpc_set_upper_rom(&cpc, 0, rom + DESK_BASIC_AT);
   cpc_fit_disc_interface(&cpc, true);
   cpc_set_upper_rom(&cpc, 7, amsdos);

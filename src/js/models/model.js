@@ -3,20 +3,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import KeycapMaterial from "./keycap_material"
 import ScreenMaterial from "./screen_material"
 
-// Each model's prints are in the language of the units it was drawn from: the
-// Spanish CPCs with their monitors, drive and disc, and the English Spectrum
-// with the English television Sinclair stood it before and an English-lettered
-// recorder.
-const LANGUAGES = {
-  cpc6128: "es",
-  cpc464: "es",
-  ctm644: "es",
-  gt64: "es",
-  ddi1: "es",
-  cf2: "es",
-  spectrum48: "en",
-  kv1400: "en",
-  crc1001: "en"
+// A print is laid in the language asked for where it was drawn in it, and in
+// its model's own where it was not.
+function languageOf({ languages }, asked) {
+  const drawn = languages.includes(asked)
+
+  return drawn ? asked : languages[0]
 }
 
 function printUrl(name, { language, small }) {
@@ -42,13 +34,14 @@ async function loadPrint(name, printing) {
 
 export default class Model extends Group {
   keyboard = null
+  #asked
+  #printing
   #prints = []
 
-  static async load(name, { anisotropy, keys, small }) {
+  static async load(name, { anisotropy, keys, small, language }) {
     const url = new URL(`../../assets/models/${name}.glb`, import.meta.url),
       loader = new GLTFLoader(),
       gltf = await loader.loadAsync(url.href),
-      printing = { language: LANGUAGES[name], small, anisotropy },
       model = new Model(),
       printed = [],
       lettered = []
@@ -68,14 +61,42 @@ export default class Model extends Group {
       }
     })
 
+    model.#asked = language
+    model.#printing = { small, anisotropy }
+
     const byAtlas = Map.groupBy(lettered, keycap => keycap.userData.legends),
       capSets = byAtlas.values(),
-      laying = printed.map(part => model.#printOn(part, printing)),
-      lettering = Array.from(capSets, keycaps => model.#letter(keycaps, printing, keys))
+      laying = printed.map(part => model.#printOn(part)),
+      lettering = Array.from(capSets, keycaps => model.#letter(keycaps, keys))
 
     await Promise.all([...laying, ...lettering])
 
     return model
+  }
+
+  // Each print drawn in the language asked for takes its place where it stands,
+  // and only the last language asked for is laid.
+  async reprint(language) {
+    this.#asked = language
+
+    const changing = this.#prints.filter(laid => languageOf(laid, language) != laid.language),
+      loading = changing.map(laid => this.#load(laid.name, laid)),
+      loaded = await Promise.all(loading),
+      overtaken = this.#asked != language
+
+    if (overtaken) {
+      return
+    }
+
+    for (const [index, laid] of changing.entries()) {
+      const { print, language: drawnIn } = loaded[index]
+
+      // The image is copied into the texture already on the GPU at that
+      // texture's size, so every language of a print is drawn at one size.
+      laid.print.image = print.image
+      laid.print.needsUpdate = true
+      laid.language = drawnIn
+    }
   }
 
   showPicture({ node, lines }) {
@@ -96,7 +117,8 @@ export default class Model extends Group {
   // The walk starts from the children: the model in its own set would dispose
   // of itself without end.
   dispose() {
-    const owned = new Set(this.#prints)
+    const prints = this.#prints.map(laid => laid.print),
+      owned = new Set(prints)
 
     for (const child of this.children) {
       child.traverse(function (part) {
@@ -118,19 +140,25 @@ export default class Model extends Group {
     super.dispose()
   }
 
-  async #printOn(part, printing) {
-    const print = await loadPrint(part.userData.print, printing)
+  async #printOn(part) {
+    const { print, language } = await this.#load(part.userData.print, part.userData)
 
     part.material.color.setRGB(1, 1, 1)
     part.material.map = print
-    this.#prints.push(print)
+    this.#prints.push({
+      name: part.userData.print,
+      languages: part.userData.languages,
+      print,
+      language
+    })
   }
 
   // Caps of one plastic share one material, and caps of every plastic one atlas
   // and one travel.
-  async #letter(keycaps, printing, keys) {
+  async #letter(keycaps, keys) {
     const [keycap] = keycaps,
-      atlas = await loadPrint(keycap.userData.legends, printing),
+      { legends, languages } = keycap.userData,
+      { print: atlas, language } = await this.#load(legends, keycap.userData),
       settings = KeycapMaterial.settings(),
       byPlastic = Map.groupBy(keycaps, lettered => lettered.material)
 
@@ -143,6 +171,14 @@ export default class Model extends Group {
     }
 
     this.keyboard = settings
-    this.#prints.push(atlas)
+    this.#prints.push({ name: legends, languages, print: atlas, language })
+  }
+
+  async #load(name, drawn) {
+    const language = languageOf(drawn, this.#asked),
+      printing = { ...this.#printing, language },
+      print = await loadPrint(name, printing)
+
+    return { print, language }
   }
 }

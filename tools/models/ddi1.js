@@ -119,7 +119,7 @@ const OVERRUN = 1
 
 const HAIRLINE = 0.1
 
-const LANGUAGE = "es",
+const ENGLISH = "en",
   BADGE_PRINT = "badge"
 
 const RADIANS = Math.PI / 180,
@@ -530,6 +530,6 @@ export function buildDdi1() {
       },
       buildRibbonRun()
     ],
-    prints: [{ name: BADGE_PRINT, language: LANGUAGE, svg: drawBadge(), pixels: BADGE_PIXELS }]
+    prints: [{ name: BADGE_PRINT, language: ENGLISH, svg: drawBadge(), pixels: BADGE_PIXELS }]
   }
 }

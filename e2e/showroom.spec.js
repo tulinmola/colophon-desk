@@ -107,7 +107,7 @@ test("a computer chosen is set up under an address of its own", async function (
   await arrived(page)
 
   await expect(page).toHaveURL(/\?computer=cpc464$/u)
-  await expect(page.getByRole("heading", { name: "Your CPC 464" })).toBeFocused()
+  await expect(page.getByRole("heading", { name: "Your English CPC 464" })).toBeFocused()
   await expect(page.locator(".line-up")).toBeHidden()
   await expectDrawnOnStage(page)
   expect(errors).toEqual([])
@@ -120,7 +120,7 @@ test("a computer is chosen from the keyboard as from the pointer", async functio
   await page.keyboard.press("Enter")
   await arrived(page)
 
-  await expect(page.getByRole("heading", { name: "Your CPC 6128" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Your English CPC 6128" })).toBeVisible()
 })
 
 test("all computers leads back to the line-up, to the computer left", async function ({ page }) {
@@ -268,6 +268,56 @@ test("a piece chosen comes in from beyond the edge of the screen, on either side
   expect(errors).toEqual([])
 })
 
+test("a computer sold in several languages offers each, and one sold in one offers none", async function ({
+  page
+}) {
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+
+  const languages = page.getByRole("group", { name: "Language" }),
+    offered = await languages
+      .getByRole("radio")
+      .evaluateAll(radios => radios.map(radio => radio.value))
+
+  expect(offered.length).toBeGreaterThan(1)
+  await page.goto("/?computer=spectrum48")
+  await arrived(page)
+  await expect(page.getByRole("group", { name: "Language" })).toHaveCount(0)
+})
+
+test("a language chosen letters the computer anew, and names it", async function ({ page }) {
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+
+  const before = await stillStage(page)
+
+  await page.getByRole("radio", { name: /French/u }).check()
+  await expect(page.getByRole("heading", { name: "Your French CPC 6128" })).toBeVisible()
+
+  const lettered = await stillStage(page),
+    changed = !lettered.equals(before)
+
+  expect(changed).toBe(true)
+  await page.getByRole("radio", { name: /English/u }).check()
+
+  const after = await stillStage(page),
+    restored = after.equals(before)
+
+  expect(restored).toBe(true)
+})
+
+test.describe("for a reader of Spanish", function () {
+  test.use({ locale: "es-ES" })
+
+  test("a computer is set up first in the reader's own language", async function ({ page }) {
+    await page.goto("/?computer=cpc464")
+    await arrived(page)
+
+    await expect(page.getByRole("heading", { name: "Your Spanish CPC 464" })).toBeVisible()
+    await expect(page.getByRole("radio", { name: /Spanish/u })).toBeChecked()
+  })
+})
+
 test("switching on asks the desk for what was chosen", async function ({ page }) {
   await page.route("**/desk.html?*", function (route) {
     return route.fulfill({ contentType: "text/html", body: "<!doctype html><html></html>" })
@@ -278,7 +328,9 @@ test("switching on asks the desk for what was chosen", async function ({ page })
   await page.getByRole("checkbox", { name: /DDI-1/u }).check()
   await page.getByRole("button", { name: "Switch on" }).click()
 
-  await expect(page).toHaveURL(/desk\.html\?computer=cpc464&monitor=ctm644&drive=ddi1$/u)
+  await expect(page).toHaveURL(
+    /desk\.html\?computer=cpc464&language=en&monitor=ctm644&drive=ddi1$/u
+  )
 })
 
 test("on a narrow screen the desk stands above its choices", async function ({ page }) {

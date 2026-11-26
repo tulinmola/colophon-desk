@@ -6,9 +6,28 @@ import fetchFirmware from "./firmware"
 // time instead, as one switched off would.
 const MAXIMUM_DEBT_MILLISECONDS = 80
 
-// The machine on the desk is a Spanish 6128, and this is the firmware its
-// keys are lettered for.
-const MACHINE_IMAGE = "cpc6128es",
+// Port B's bits 1 to 3 read "Not option link LK1…LK3", a link fitted reading 0
+// [A], SOFT 968: https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual.
+// The firmware reads them, inverted, as the number of the name it starts up
+// with, past one it never shows: Amstrad's with no link fitted, Schneider's
+// with LK2 alone. Bread80's disassembly of the 6128's firmware, Machine.asm at
+// &0723: https://github.com/Bread80/CPC6128-Firmware-Source/blob/60cefd64623a91b38657a0c1091385e53c6097df/Machine.asm
+const AMSTRAD = 0b111,
+  SCHNEIDER = 0b101
+
+// The 6128 in each language its keys were lettered in, with its firmware and
+// the maker its board names. The German machines were Schneider's, with the UK
+// firmware and keyboard: Schneider's own Handbuch prints the UK key table, Kap.
+// 7 S. 22, and starts up "Schneider 128K Microcomputer (v3)" [A],
+// https://archive.org/details/Schneider_CPC6128_Handbuch_1985_Schneider_Computer_Division_DE;
+// "Amazingly German CPCs didn't have German keyboard layouts" [C],
+// https://web.archive.org/web/20210601095905/http://www.cpcwiki.eu/index.php/Schneider
+const VERSIONS = {
+    en: { image: "cpc6128", maker: AMSTRAD },
+    es: { image: "cpc6128es", maker: AMSTRAD },
+    fr: { image: "cpc6128fr", maker: AMSTRAD },
+    de: { image: "cpc6128", maker: SCHNEIDER }
+  },
   DISC_IMAGE = "amsdos"
 
 const BITS_A_LINE = 8
@@ -31,6 +50,7 @@ export default class Cpc {
   #debt = 0
   #discAt
   #last
+  #maker
   #matrix
   #module
   #pendingReleases = new Set()
@@ -39,9 +59,10 @@ export default class Cpc {
   #ticksPerFrame
   #ticksPerMillisecond
 
-  static async create(signal, anisotropy) {
-    const module = await createModule(),
-      fetching = [fetchFirmware(MACHINE_IMAGE, signal), fetchFirmware(DISC_IMAGE, signal)],
+  static async create(signal, { anisotropy, language }) {
+    const { image, maker } = VERSIONS[language],
+      module = await createModule(),
+      fetching = [fetchFirmware(image, signal), fetchFirmware(DISC_IMAGE, signal)],
       // An image answering to its pin is the length that pin was taken over,
       // so the room it lands in is settled before it is fetched.
       [rom, amsdos] = await Promise.all(fetching),
@@ -50,12 +71,12 @@ export default class Cpc {
 
     module.HEAPU8.set(rom, romAt)
     module.HEAPU8.set(amsdos, amsdosAt)
-    module._desk_boot_cpc6128()
+    module._desk_boot_cpc6128(maker)
 
-    return new Cpc(module, anisotropy)
+    return new Cpc(module, { anisotropy, maker })
   }
 
-  constructor(module, anisotropy) {
+  constructor(module, { anisotropy, maker }) {
     const framebufferAt = module._desk_framebuffer(),
       columns = module._desk_framebuffer_width(),
       rows = module._desk_framebuffer_height(),
@@ -71,6 +92,7 @@ export default class Cpc {
     this.#matrix = module.HEAPU8.subarray(matrixAt, matrixAt + lines)
     this.#discAt = module._desk_disc()
     this.discCapacity = module._desk_disc_capacity()
+    this.#maker = maker
     this.#module = module
     this.#ticksPerFrame = module._desk_ticks_per_frame()
     this.#ticksPerMillisecond = module._desk_ticks_per_millisecond()
@@ -156,7 +178,7 @@ export default class Cpc {
     this.running = true
     this.#debt = 0
     this.#last = performance.now()
-    this.#module._desk_boot_cpc6128()
+    this.#module._desk_boot_cpc6128(this.#maker)
     this.#readKeys()
     this.picture.refresh()
   }

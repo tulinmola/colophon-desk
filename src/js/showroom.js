@@ -20,6 +20,30 @@ const PANEL_ARRIVING = [
 
 const LEGENDS = { monitor: "Monitor", television: "Television" }
 
+// How a computer is named in each language its keys were lettered in, and what
+// that keyboard was.
+const LANGUAGES = {
+  en: { adjective: "English", keyboard: "QWERTY, with £" },
+  fr: { adjective: "French", keyboard: "AZERTY" },
+  de: { adjective: "German", keyboard: "Schneider's, QWERTY with £" },
+  es: { adjective: "Spanish", keyboard: "QWERTY, with Ñ" }
+}
+
+// The reader's own language where the computer was lettered in it, or the
+// first it offers.
+function languageAtFirst({ languages }) {
+  const spoken = navigator.languages.map(tag => tag.split("-")[0]),
+    shared = spoken.find(language => languages.includes(language))
+
+  return shared ?? languages[0]
+}
+
+function headingOf({ title, languages }, language) {
+  const several = languages.length > 1
+
+  return several ? `Your ${LANGUAGES[language].adjective} ${title}` : `Your ${title}`
+}
+
 function itemOf({ name, title, maker, year, features }) {
   const listed = features.map(feature => html`<li>${feature}</li>`).join("")
 
@@ -48,8 +72,27 @@ function optionOf(name, type, chosen) {
   </label>`
 }
 
-function formOf({ name, displays, beside, chosenAtFirst }) {
-  const [first] = displays,
+function languageOptionOf(language, chosen) {
+  const { adjective, keyboard } = LANGUAGES[language],
+    checked = chosen ? "checked" : ""
+
+  return html`<label>
+    <input type="radio" name="language" value="${language}" ${checked} />
+    <span class="name">${adjective}</span>
+    <span class="made">${keyboard}</span>
+  </label>`
+}
+
+function formOf({ name, languages, displays, beside, chosenAtFirst }, language) {
+  const several = languages.length > 1,
+    lettered = languages.map(each => languageOptionOf(each, each == language)).join(""),
+    languageChoice = several
+      ? html`<fieldset>
+          <legend>Language</legend>
+          ${lettered}
+        </fieldset>`
+      : "",
+    [first] = displays,
     { kind } = PIECES[first],
     displayed = displays.map(each => optionOf(each, "radio", each == first)).join(""),
     offeredBeside = beside
@@ -61,6 +104,7 @@ function formOf({ name, displays, beside, chosenAtFirst }) {
       .join("")
 
   return html`<input type="hidden" name="computer" value="${name}" />
+    ${languageChoice}
     <fieldset>
       <legend>${LEGENDS[kind]}</legend>
       ${displayed}
@@ -120,6 +164,7 @@ class Showroom {
   #heading
   #hovered = null
   #items = new Map()
+  #languages = new Map()
   #line
   #lineUpSection
   #main
@@ -176,7 +221,7 @@ class Showroom {
     this.#stage = main.querySelector(".stage")
     this.#title = main.querySelector(".line-up h2")
     this.#titled = document.title
-    this.#form.addEventListener("change", () => this.onChanged())
+    this.#form.addEventListener("change", event => this.onChanged(event))
     back.addEventListener("click", event => this.onBack(event))
     addEventListener("popstate", () => this.onAddressChanged())
     addEventListener("scroll", () => this.#draw(), { passive: true })
@@ -224,8 +269,16 @@ class Showroom {
     this.#travel()
   }
 
-  onChanged() {
-    const chosen = this.#chosen(),
+  onChanged({ target }) {
+    const lettering = target.name == "language"
+
+    if (lettering) {
+      this.#letter(target.value)
+
+      return
+    }
+
+    const chosen = this.#piecesChosen(),
       framing = this.#framing()
 
     this.#tell()
@@ -340,10 +393,10 @@ class Showroom {
 
   async #openLineUp() {
     const lineUp = new LineUp(),
-      names = COMPUTERS.map(computer => computer.name),
+      lettered = COMPUTERS.map(computer => this.#letteredOf(computer)),
       options = this.#options()
 
-    await lineUp.load(names, options)
+    await lineUp.load(lettered, options)
     this.#standLineUp(lineUp)
     this.#arrived = true
 
@@ -355,8 +408,9 @@ class Showroom {
 
   async #openSetUp(computer) {
     const setUp = new SetUp(),
-      seenSmall = { anisotropy: this.#anisotropy, small: true },
-      options = this.#options(),
+      { language } = this.#letteredOf(computer),
+      seenSmall = { anisotropy: this.#anisotropy, small: true, language },
+      options = { ...this.#options(), language },
       loading = [Model.load(computer.name, seenSmall), setUp.load(computer, options)],
       [model] = await Promise.all(loading)
 
@@ -367,7 +421,7 @@ class Showroom {
     this.#laySetUp(computer)
 
     const arriving = this.#animate(this.#panel, PANEL_ARRIVING, ARRIVING),
-      chosen = this.#chosen(),
+      chosen = this.#piecesChosen(),
       framing = this.#framing()
 
     setUp.choose(chosen, framing)
@@ -381,10 +435,10 @@ class Showroom {
   // desk, the panel coming only once it has left the panel's side, and they
   // come.
   async #choose(computer) {
-    const { name } = computer,
+    const { name, language } = this.#letteredOf(computer),
       lineUp = this.#drawn,
       setUp = new SetUp(),
-      options = this.#options(),
+      options = { ...this.#options(), language },
       loading = setUp.load(computer, options),
       leaving = this.#lineUpMotions(name),
       left = leaving.map(animation => animation.finished)
@@ -414,7 +468,7 @@ class Showroom {
     await Promise.all([flying, arriving.finished])
     arriving.cancel()
 
-    const chosen = this.#chosen(),
+    const chosen = this.#piecesChosen(),
       framing = this.#framing()
 
     setUp.choose(chosen, framing)
@@ -430,7 +484,7 @@ class Showroom {
       { name } = computer,
       setUp = this.#drawn,
       lineUp = new LineUp(),
-      others = COMPUTERS.filter(each => each != computer).map(each => each.name),
+      others = COMPUTERS.filter(each => each != computer).map(each => this.#letteredOf(each)),
       options = this.#options(),
       loading = lineUp.load(others, options),
       framing = this.#framing(),
@@ -508,14 +562,39 @@ class Showroom {
   }
 
   #laySetUp(computer) {
-    const heading = `Your ${computer.title}`
+    const { language } = this.#letteredOf(computer)
+
+    this.#form.innerHTML = formOf(computer, language)
+    this.#setUpSection.hidden = false
+    scrollTo(0, 0)
+    this.#name(computer, language)
+    this.#tell()
+  }
+
+  #name(computer, language) {
+    const heading = headingOf(computer, language)
 
     this.#heading.textContent = heading
-    this.#form.innerHTML = formOf(computer)
-    this.#setUpSection.hidden = false
     document.title = `${heading} · ${this.#titled}`
-    scrollTo(0, 0)
-    this.#tell()
+  }
+
+  // The computer set up, and every piece offered with it, take the language
+  // chosen, which the computer keeps for as long as the page stands.
+  async #letter(language) {
+    const computer = this.#showing
+
+    this.#languages.set(computer.name, language)
+    this.#name(computer, language)
+    await this.#drawn.reprint(language)
+    this.#draw()
+  }
+
+  // A computer by its name, in the language its keys were last chosen in.
+  #letteredOf(computer) {
+    const { name } = computer,
+      language = this.#languages.get(name) ?? languageAtFirst(computer)
+
+    return { name, language }
   }
 
   // The title rises away, the computers either side of the one chosen slide off
@@ -591,16 +670,16 @@ class Showroom {
     }
   }
 
-  #chosen() {
-    const inputs = this.#form.querySelectorAll(":checked")
+  #piecesChosen() {
+    const inputs = this.#form.querySelectorAll(":checked:not([name='language'])")
 
     return Array.from(inputs, input => input.value)
   }
 
   // The line under the computer's name says what stands with it.
   #tell() {
-    const inputs = this.#form.querySelectorAll(":checked"),
-      named = Array.from(inputs, function ({ value }) {
+    const chosen = this.#piecesChosen(),
+      named = chosen.map(function (value) {
         const { title, description } = PIECES[value]
 
         return `the ${title} ${description}`

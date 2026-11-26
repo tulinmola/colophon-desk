@@ -79,7 +79,7 @@ const HEROS = "TeX Gyre Heros",
 // How finely the label is rendered, as the disc's.
 const LABEL_PIXELS = 12
 
-const LANGUAGE = "es"
+const ENGLISH = "en"
 
 const LABEL_WIDTH = LABEL.right - LABEL.left,
   LABEL_DEPTH = LABEL.back - LABEL.front
@@ -279,6 +279,6 @@ export function buildCt15() {
       ...buildReels(HUB_PLASTIC, TAPE_OXIDE),
       buildFrontTape(TAPE_OXIDE)
     ],
-    prints: [{ name: LABEL_PRINT, language: LANGUAGE, svg: drawLabel(), pixels: LABEL_PIXELS }]
+    prints: [{ name: LABEL_PRINT, language: ENGLISH, svg: drawLabel(), pixels: LABEL_PIXELS }]
   }
 }

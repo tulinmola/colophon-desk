@@ -132,9 +132,9 @@ export default class SetUp {
 
   // Every piece the computer may be given is loaded, so that choosing one never
   // waits on it.
-  async load({ name, displays, beside }, { anisotropy, studio }) {
+  async load({ name, displays, beside }, { anisotropy, studio, language }) {
     const names = [...displays, ...beside],
-      loading = names.map(each => Model.load(each, { anisotropy, small: true })),
+      loading = names.map(each => Model.load(each, { anisotropy, small: true, language })),
       pieces = await Promise.all(loading)
 
     this.#name = name
@@ -289,6 +289,15 @@ export default class SetUp {
       pose = this.#poseFor(frame.width / frame.height)
 
     return [{ name: this.#name, pose, frame, scene: this.scene, clipped: false }]
+  }
+
+  // The computer and every piece offered beside it, in the language asked for
+  // where each was lettered in it.
+  async reprint(language) {
+    const models = [this.#computer, ...this.#pieces.values()],
+      reprinting = models.map(model => model.reprint(language))
+
+    await Promise.all(reprinting)
   }
 
   // The computer leaves for the line-up, still standing square at the origin.

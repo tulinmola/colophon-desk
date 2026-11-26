@@ -206,8 +206,8 @@ const HEROS = "TeX Gyre Heros",
 // A plate's outlined capitals stand 12.5 tall and want their stroke clean, so the prints are rendered at twelve pixels to the millimetre, as the 6128's plates are.
 const PLATE_PIXELS = 12
 
-// Amstrad's own plates carry this English lettering in every market; a Schneider unit is relabelled "Colour Monitor »CTM644«" and is a monitor of its own.
-const LANGUAGE = "es",
+// The plates are lettered as the UK's units are. Spanish units homologated in 1986 read "CTM 644" over "MONITOR DE COLOR", "12V C.C." and "A. RED" [E], read on a seller's photograph: https://www.todocoleccion.net/vintage/amstrad-cpc-6128-monitor-color-sintonizador-tv~x524402272; a Schneider unit is relabelled "Colour Monitor »CTM644«" and is a monitor of its own.
+const ENGLISH = "en",
   AMSTRAD_PRINT = "amstrad-panel",
   MODEL_PRINT = "model-plate",
   DC_PRINT = "dc-legend",
@@ -633,10 +633,10 @@ export function buildCtm644() {
       { name: "feet", shape: feet.translate(CENTRING), material: FOOT }
     ],
     prints: [
-      { name: AMSTRAD_PRINT, language: LANGUAGE, svg: drawAmstradPanel(), pixels: PLATE_PIXELS },
-      { name: MODEL_PRINT, language: LANGUAGE, svg: drawModelPlate(), pixels: PLATE_PIXELS },
-      { name: DC_PRINT, language: LANGUAGE, svg: drawDcLegend(), pixels: PLATE_PIXELS },
-      { name: POWER_PRINT, language: LANGUAGE, svg: drawPowerLegend(), pixels: PLATE_PIXELS }
+      { name: AMSTRAD_PRINT, language: ENGLISH, svg: drawAmstradPanel(), pixels: PLATE_PIXELS },
+      { name: MODEL_PRINT, language: ENGLISH, svg: drawModelPlate(), pixels: PLATE_PIXELS },
+      { name: DC_PRINT, language: ENGLISH, svg: drawDcLegend(), pixels: PLATE_PIXELS },
+      { name: POWER_PRINT, language: ENGLISH, svg: drawPowerLegend(), pixels: PLATE_PIXELS }
     ]
   }
 }
