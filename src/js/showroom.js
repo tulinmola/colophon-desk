@@ -582,7 +582,7 @@ class Showroom {
 
     this.#languages.set(computer.name, language)
     this.#name(computer, language)
-    await this.#drawn.reprint(language)
+    await this.#drawn.takeLanguage(language)
     this.#draw()
   }
 

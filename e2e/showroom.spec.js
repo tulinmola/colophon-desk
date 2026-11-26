@@ -225,6 +225,26 @@ test("a piece chosen comes onto the desk and goes again, and the line says so", 
   expect(gone).toBe(true)
 })
 
+test("a display chosen away and back stands as it stood", async function ({ page }) {
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+
+  const before = await stillStage(page)
+
+  await page.getByRole("radio", { name: /GT65/u }).check()
+
+  const other = await stillStage(page),
+    changed = !other.equals(before)
+
+  expect(changed).toBe(true)
+  await page.getByRole("radio", { name: /CTM644/u }).check()
+
+  const after = await stillStage(page),
+    restored = after.equals(before)
+
+  expect(restored).toBe(true)
+})
+
 // The page's clock is held, so that the first frame after a choice is drawn
 // alone: everything then stands where it set out from.
 async function firstFrameAfter(page, choosing) {

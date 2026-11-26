@@ -1,6 +1,7 @@
 import { Group, SRGBColorSpace, TextureLoader } from "three/webgpu"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import KeycapMaterial from "./keycap_material"
+import Lead from "./lead"
 import ScreenMaterial from "./screen_material"
 
 // A print is laid in the language asked for where it was drawn in it, and in
@@ -32,11 +33,18 @@ async function loadPrint(name, printing) {
   return print
 }
 
+// A part drawn for some versions of its model alone stands in the language of those versions.
+function standIn(part, language) {
+  part.visible = part.userData.versions.includes(language)
+}
+
 export default class Model extends Group {
   keyboard = null
+  lead = null
   #asked
   #printing
   #prints = []
+  #versioned = []
 
   static async load(name, { anisotropy, keys, small, language }) {
     const url = new URL(`../../assets/models/${name}.glb`, import.meta.url),
@@ -44,13 +52,18 @@ export default class Model extends Group {
       gltf = await loader.loadAsync(url.href),
       model = new Model(),
       printed = [],
-      lettered = []
+      lettered = [],
+      versioned = []
+
+    let leading = null
 
     model.name = name
     model.add(...gltf.scene.children)
     model.traverse(function (part) {
       const hasPrint = Object.hasOwn(part.userData, "print"),
-        hasLegends = Object.hasOwn(part.userData, "legends")
+        hasLegends = Object.hasOwn(part.userData, "legends"),
+        hasVersions = Object.hasOwn(part.userData, "versions"),
+        hasLead = Object.hasOwn(part.userData, "lead")
 
       if (hasPrint) {
         printed.push(part)
@@ -59,10 +72,27 @@ export default class Model extends Group {
       if (hasLegends) {
         lettered.push(part)
       }
+
+      if (hasVersions) {
+        versioned.push(part)
+      }
+
+      if (hasLead) {
+        leading = part
+      }
     })
 
     model.#asked = language
     model.#printing = { small, anisotropy }
+    model.#versioned = versioned
+
+    for (const part of versioned) {
+      standIn(part, language)
+    }
+
+    if (leading) {
+      model.lead = new Lead(model, leading)
+    }
 
     const byAtlas = Map.groupBy(lettered, keycap => keycap.userData.legends),
       capSets = byAtlas.values(),
@@ -74,10 +104,14 @@ export default class Model extends Group {
     return model
   }
 
-  // Each print drawn in the language asked for takes its place where it stands,
-  // and only the last language asked for is laid.
-  async reprint(language) {
+  // The parts drawn for the language asked for stand, and each print drawn in it
+  // takes its place where it stands; only the last language asked for is laid.
+  async takeLanguage(language) {
     this.#asked = language
+
+    for (const part of this.#versioned) {
+      standIn(part, language)
+    }
 
     const changing = this.#prints.filter(laid => languageOf(laid, language) != laid.language),
       loading = changing.map(laid => this.#load(laid.name, laid)),

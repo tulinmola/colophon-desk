@@ -118,6 +118,8 @@ export default class SetUp {
   scene = new Scene()
   #computer = null
   #corners = []
+  #display = null
+  #landing = null
   #eye = new PerspectiveCamera()
   #glass
   #middle = new Vector3()
@@ -241,6 +243,7 @@ export default class SetUp {
     }
 
     this.#standing = new Set(wanted)
+    this.#awaitDisplay(pieces.monitor ?? pieces.television)
 
     const clear = this.#glass.presence < 1
 
@@ -251,7 +254,15 @@ export default class SetUp {
 
   // Everything on the desk goes but the computer, and the glass with it.
   leave(framing) {
-    const going = [this.#fade(0)]
+    const going = [this.#fade(0)],
+      { lead } = this.#computer
+
+    if (lead) {
+      lead.stow()
+    }
+
+    this.#display = null
+    this.#landing = null
 
     for (const name of this.#standing) {
       const piece = this.#pieces.get(name),
@@ -280,6 +291,14 @@ export default class SetUp {
       moving ||= going
     }
 
+    const landing = this.#landing,
+      landed = landing != null && !this.#motions.has(landing)
+
+    if (landed) {
+      this.#computer.lead.show(true)
+      this.#landing = null
+    }
+
     return moving
   }
 
@@ -292,12 +311,12 @@ export default class SetUp {
   }
 
   // The computer and every piece offered beside it, in the language asked for
-  // where each was lettered in it.
-  async reprint(language) {
+  // where each was made in it.
+  async takeLanguage(language) {
     const models = [this.#computer, ...this.#pieces.values()],
-      reprinting = models.map(model => model.reprint(language))
+      taking = models.map(model => model.takeLanguage(language))
 
-    await Promise.all(reprinting)
+    await Promise.all(taking)
   }
 
   // The computer leaves for the line-up, still standing square at the origin.
@@ -346,6 +365,23 @@ export default class SetUp {
     standBetween(from, from, 0)
     piece.visible = true
     this.#motions.set(piece, motion)
+  }
+
+  // A computer's lead, laid anew by every arrangement, stays hidden while a
+  // display newly chosen, or one still on its way, travels, and shows once it
+  // stands.
+  #awaitDisplay(display) {
+    const { lead } = this.#computer,
+      shifting = display != this.#display,
+      underway = this.#landing != null,
+      awaiting = lead != null && (shifting || underway)
+
+    this.#display = display
+
+    if (awaiting) {
+      lead.show(false)
+      this.#landing = display
+    }
   }
 
   #fade(presence) {
@@ -424,6 +460,7 @@ export default class SetUp {
   // under the whole of them.
   #frame() {
     const { displays, beside } = this.#offered,
+      { lead } = this.#computer,
       whole = new Box3()
 
     for (const display of displays) {
@@ -444,6 +481,10 @@ export default class SetUp {
           }
         }
       }
+    }
+
+    if (lead) {
+      lead.stow()
     }
 
     const glass = new GlassTop(whole)

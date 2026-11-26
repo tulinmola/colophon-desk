@@ -211,6 +211,7 @@ function createPartNode(
     lettered = Object.hasOwn(part, "legends"),
     screened = Object.hasOwn(part, "screen"),
     written = Object.hasOwn(part, "writing"),
+    versioned = Object.hasOwn(part, "versions"),
     placed = Object.hasOwn(part, "place"),
     turned = Object.hasOwn(part, "tilt") && !standsForKeys
 
@@ -259,9 +260,22 @@ function createPartNode(
     extras.writing = part.writing
   }
 
+  if (versioned) {
+    extras.versions = part.versions
+  }
+
   node.setExtras(extras)
 
   return node
+}
+
+// A lead's figures, its lengths in metres as the page reads every length.
+function leadExtras({ cable, coil, turns }) {
+  return {
+    cable: cable * METRES_PER_MILLIMETRE,
+    coil: coil * METRES_PER_MILLIMETRE,
+    turns
+  }
 }
 
 // A group is a node of its own holding its parts, which move with it.
@@ -274,7 +288,8 @@ function createNode(model, part) {
 
   const node = model.document.createNode(part.name),
     placed = Object.hasOwn(part, "place"),
-    turned = Object.hasOwn(part, "tilt")
+    turned = Object.hasOwn(part, "tilt"),
+    leading = Object.hasOwn(part, "lead")
 
   if (placed) {
     placeNode(node, part.place)
@@ -284,6 +299,12 @@ function createNode(model, part) {
     const tilt = tiltAboutX(part.tilt)
 
     node.setRotation(tilt)
+  }
+
+  if (leading) {
+    const lead = leadExtras(part.lead)
+
+    node.setExtras({ lead })
   }
 
   for (const child of part.parts) {

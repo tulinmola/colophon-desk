@@ -304,6 +304,13 @@ function jackHousing() {
   )
 }
 
+// The socket's mouth, which the page finds by name to lay a computer's 12V lead in it.
+function jackMouth() {
+  const place = [JACK_MIDDLE, JACK_FACE, JACK_AXIS].map((value, axis) => value + CENTRING[axis])
+
+  return { name: "jack-mouth", place, parts: [] }
+}
+
 function buildJack() {
   const housing = jackHousing(),
     socket = makeCylinder(
@@ -431,6 +438,7 @@ export function buildGt65() {
       buildWheels(),
       buildPowerButton(),
       buildJack(),
+      jackMouth(),
       buildJackPin(),
       buildScreen(),
       buildBadgePanel(BADGE_PANEL),

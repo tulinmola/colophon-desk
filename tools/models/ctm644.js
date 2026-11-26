@@ -499,6 +499,15 @@ function buildKnob() {
   return { name: "brightness-knob", shape: knob.translate(CENTRING), material: FITTING }
 }
 
+// The socket's mouth, which the page finds by name to lay a computer's 12V lead in it.
+function jackMouth() {
+  const place = [JACK.middle, STRIP_SET_BACK, JACK.height].map(
+    (value, axis) => value + CENTRING[axis]
+  )
+
+  return { name: "jack-mouth", place, parts: [] }
+}
+
 function buildJack() {
   const barrel = makeCylinder(
       JACK.diameter / 2,
@@ -637,6 +646,7 @@ export function buildCtm644() {
       buildPowerButton(),
       buildKnob(),
       buildJack(),
+      jackMouth(),
       buildScreen(),
       amstradPanel,
       modelPlate,

@@ -76,10 +76,17 @@ function standBeside(recorder, reach, display) {
 }
 
 // Each piece is stood from where it would stand alone, so a desk whose pieces
-// change is arranged again whole.
+// change is arranged again whole; a computer's lead is stowed while it is
+// measured, and laid to the display once that stands.
 export default function arrange(computer, { monitor, television, drive, recorder }) {
   const display = monitor ?? television,
-    reach = boundsOf(computer),
+    { lead } = computer
+
+  if (lead) {
+    lead.stow()
+  }
+
+  const reach = boundsOf(computer),
     behind = reach.clone()
 
   if (drive) {
@@ -97,5 +104,9 @@ export default function arrange(computer, { monitor, television, drive, recorder
 
   if (recorder) {
     standBeside(recorder, reach, display)
+  }
+
+  if (lead) {
+    lead.lay(display)
   }
 }

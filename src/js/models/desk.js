@@ -1,16 +1,15 @@
 import { DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
 import Disc from "./disc"
 import Model from "./model"
+import arrange from "./arrangement"
 import boundsOf from "./bounds_of"
 import { loadHandwriting } from "./handwriting"
 
-// Depths 170 mm and 365 mm [A], CPC6128 Service Manual technical specifications: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
-const MACHINE_DEPTH = 170,
-  MONITOR_DEPTH = 365
+// Depth 170 mm [A], CPC6128 Service Manual technical specifications: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
+const MACHINE_DEPTH = 170
 
-// One chosen gap of 30 mm stands between the machines and before the disc: half each depth and the gap give 297.5 mm between the machine's middle and the monitor's, and 115 mm from that middle to the disc's rear [E]. The gap is an arrangement choice, not a measurement.
+// One chosen gap of 30 mm stands before the disc: half the depth and the gap give 115 mm from the machine's middle to the disc's rear [E]. The gap is an arrangement choice, not a measurement; the monitor stands behind as every desk is arranged.
 const GAP = 30,
-  MONITOR_BEHIND = -(MACHINE_DEPTH / 2 + MONITOR_DEPTH / 2 + GAP) / 1000,
   DISC_REAR = (MACHINE_DEPTH / 2 + GAP) / 1000
 
 // No source here gives the colour of a lamp alight, and the lenses were sampled with the machine standing off, so a lamp glowing in its lens's own hue, and how brightly, are both guesses.
@@ -59,7 +58,7 @@ export default class Desk {
     driveBounds.getCenter(driveMiddle)
     this.settings = { ...screen.settings, ...machine.keyboard }
     this.#wireLamps(machine)
-    monitor.position.z = MONITOR_BEHIND
+    arrange(machine, { monitor })
     disc.position.set(driveMiddle.x, 0, DISC_REAR - discBounds.min.z)
     this.disc = new Disc(disc, drive)
     this.machine = machine
