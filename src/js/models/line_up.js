@@ -23,6 +23,17 @@ const SETTLED = 0.001
 
 const UP = new Vector3(0, 1, 0)
 
+// An angle turned back toward square the shorter way, as far as the time
+// elapsed brings it, or square once near enough, or at once where motion is
+// reduced.
+function turnedBack(angle, elapsed) {
+  const back = Math.atan2(Math.sin(angle), Math.cos(angle)),
+    settled = REDUCED_MOTION.matches || Math.abs(back) < SETTLED,
+    closing = 1 - Math.exp(-elapsed / SETTLE_MILLISECONDS)
+
+  return settled ? 0 : back - back * closing
+}
+
 export default class LineUp {
   #computers = new Map()
   #distance
@@ -53,7 +64,18 @@ export default class LineUp {
       pivot = new Group(),
       scene = new Scene(),
       span = bounds.max.x - bounds.min.x + 2 * MARGIN,
-      computer = { model, pivot, scene, middle, span, approach: 0, turn: 0, shownAt: null }
+      computer = {
+        model,
+        pivot,
+        scene,
+        middle,
+        span,
+        approach: 0,
+        turn: 0,
+        shownAt: null,
+        byHand: 0,
+        held: false
+      }
 
     bounds.getCenter(middle)
     pivot.position.copy(middle)
@@ -75,6 +97,23 @@ export default class LineUp {
     this.#shown = name
   }
 
+  // A computer turned by hand, its front carried as far across as the hand
+  // goes, and held there until let go.
+  turnBy(name, across) {
+    const computer = this.#computers.get(name)
+
+    computer.byHand += across
+    computer.held = true
+  }
+
+  // Let go, a computer still shown gathers its own turn anew.
+  letGo(name) {
+    const computer = this.#computers.get(name)
+
+    computer.held = false
+    computer.shownAt = null
+  }
+
   advance(now) {
     const elapsed = this.#lastFrameAt == null ? 0 : now - this.#lastFrameAt
 
@@ -83,9 +122,11 @@ export default class LineUp {
     for (const [name, computer] of this.#computers) {
       const shown = name == this.#shown,
         approaching = this.#approach(computer, shown, elapsed),
-        turning = this.#turn(computer, shown, now, elapsed)
+        turning = this.#turn(computer, shown, now, elapsed),
+        turningBack = this.#turnBack(computer, elapsed)
 
-      moving ||= approaching || turning
+      computer.pivot.rotation.y = computer.turn + computer.byHand
+      moving ||= approaching || turning || turningBack
     }
 
     this.#lastFrameAt = moving ? now : null
@@ -111,13 +152,14 @@ export default class LineUp {
   // under the same light, for whatever takes it to turn square.
   release(name) {
     const computer = this.#computers.get(name),
-      { model, pivot, middle, turn } = computer,
+      { model, pivot, middle, turn, byHand } = computer,
       pose = this.#poseOf(computer),
-      turned = middle.clone()
+      turned = middle.clone(),
+      angle = turn + byHand
 
-    turned.applyAxisAngle(UP, turn)
+    turned.applyAxisAngle(UP, angle)
     pivot.remove(model)
-    model.rotation.y = turn
+    model.rotation.y = angle
     model.position.subVectors(middle, turned)
     this.#computers.delete(name)
 
@@ -140,8 +182,9 @@ export default class LineUp {
     return computer.approach != target
   }
 
-  // A computer shown turns, gathering speed slowly; one no longer shown turns
-  // back the shorter way.
+  // A computer shown turns, gathering speed slowly, but not while held by hand;
+  // one no longer shown stands while held, and once let go turns back the
+  // shorter way from all it was turned, its own turn and the hand's together.
   #turn(computer, shown, now, elapsed) {
     const still = REDUCED_MOTION.matches
 
@@ -150,23 +193,40 @@ export default class LineUp {
 
       const turningFor = now - computer.shownAt,
         gathered = MathUtils.clamp(turningFor / TURN_GATHERING, 0, 1),
-        speed = still ? 0 : TURN_SPEED * gathered ** 2
+        turning = !still && !computer.held,
+        speed = turning ? TURN_SPEED * gathered ** 2 : 0
 
       computer.turn += (speed * elapsed) / 1000
-      computer.pivot.rotation.y = computer.turn
 
-      return !still
+      return turning
     }
 
-    const back = Math.atan2(Math.sin(computer.turn), Math.cos(computer.turn)),
-      settled = still || Math.abs(back) < SETTLED,
-      closing = 1 - Math.exp(-elapsed / SETTLE_MILLISECONDS)
+    const { held } = computer
 
     computer.shownAt = null
-    computer.turn = settled ? 0 : back - back * closing
-    computer.pivot.rotation.y = computer.turn
 
-    return !settled
+    if (held) {
+      return false
+    }
+
+    computer.turn += computer.byHand
+    computer.byHand = 0
+    computer.turn = turnedBack(computer.turn, elapsed)
+
+    return computer.turn != 0
+  }
+
+  // A computer let go turns back from wherever the hand left it.
+  #turnBack(computer, elapsed) {
+    const { held } = computer
+
+    if (held) {
+      return false
+    }
+
+    computer.byHand = turnedBack(computer.byHand, elapsed)
+
+    return computer.byHand != 0
   }
 
   #poseOf({ middle, approach }) {

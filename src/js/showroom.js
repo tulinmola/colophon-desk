@@ -18,6 +18,10 @@ const PANEL_ARRIVING = [
   ],
   WORDS_LEAVING = [{ opacity: 1 }, { opacity: 0 }]
 
+// How far a press moves before it is a drag, in CSS pixels, beyond a finger's wobble in a tap, and how far a drag the whole width of what it holds turns it, across or down, in radians. Presentation choices.
+const DRAGGED = 10,
+  TURN_ACROSS = Math.PI
+
 const LEGENDS = { monitor: "Monitor", television: "Television" }
 
 // How a computer is named in each language it was sold in.
@@ -43,7 +47,7 @@ function itemOf({ name, title, maker, year, features }) {
   const listed = features.map(feature => html`<li>${feature}</li>`).join("")
 
   return html`<li data-computer="${name}">
-    <a href="?computer=${name}" aria-describedby="${name}-features">
+    <a href="?computer=${name}" aria-describedby="${name}-features" draggable="false">
       <span class="frame"></span>
       <span class="name">${title}</span>
       <span class="made">${maker} · ${year}</span>
@@ -132,6 +136,98 @@ function addressOf(computer) {
   return address
 }
 
+// A main-button drag on the element turns what it shows, in radians across
+// and down, until let go; the click it ends in is stopped on the link holding
+// it, where an engine may aim it, but the keyboard's click is not.
+function turnByHand(element, { turn, letGo }) {
+  const clicked = element.closest("a") ?? element
+
+  let press = null,
+    dragging = false
+
+  function end(event) {
+    const ours = event.pointerId == press?.id
+
+    if (ours) {
+      press = null
+
+      if (dragging) {
+        letGo()
+      }
+    }
+  }
+
+  element.addEventListener("pointerdown", function (event) {
+    const taken = press == null && event.button == 0
+
+    if (!taken) {
+      return
+    }
+
+    element.setPointerCapture(event.pointerId)
+    press = { id: event.pointerId, x: event.clientX, y: event.clientY }
+  })
+
+  // A touch is captured by whatever it lands on, so a second finger is
+  // answered by its own id alone; and a release lost to a menu or another
+  // window ends the press at the next move made with no button down.
+  element.addEventListener("pointermove", function (event) {
+    const ours = event.pointerId == press?.id,
+      lifted = event.buttons == 0
+
+    if (!ours) {
+      return
+    }
+
+    if (lifted) {
+      end(event)
+      return
+    }
+
+    const across = event.clientX - press.x,
+      down = event.clientY - press.y,
+      moved = Math.hypot(across, down),
+      far = dragging || moved >= DRAGGED
+
+    if (!far) {
+      return
+    }
+
+    const perPixel = TURN_ACROSS / element.clientWidth
+
+    dragging = true
+    press.x = event.clientX
+    press.y = event.clientY
+    turn(across * perPixel, down * perPixel)
+  })
+
+  element.addEventListener("lostpointercapture", end)
+  clicked.addEventListener(
+    "pointerdown",
+    function () {
+      const fresh = press == null
+
+      if (fresh) {
+        dragging = false
+      }
+    },
+    { capture: true }
+  )
+  clicked.addEventListener(
+    "click",
+    function (event) {
+      const pointed = event.detail > 0,
+        dragged = dragging && pointed
+
+      if (dragged) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      }
+    },
+    { capture: true }
+  )
+}
+
 function rectOf(element) {
   const { left, top, width, height } = element.getBoundingClientRect()
 
@@ -184,7 +280,8 @@ class Showroom {
       observer = new ResizeObserver(resized),
       chosen = this.onChosen.bind(this),
       list = main.querySelector("ol"),
-      back = main.querySelector(".panel a")
+      back = main.querySelector(".panel a"),
+      stage = main.querySelector(".stage")
 
     renderer.setPixelRatio(devicePixelRatio)
     renderer.toneMapping = NeutralToneMapping
@@ -195,8 +292,13 @@ class Showroom {
 
     for (const item of list.children) {
       const link = item.querySelector("a"),
+        frame = item.querySelector(".frame"),
         { computer } = item.dataset
 
+      turnByHand(frame, {
+        turn: across => this.#byHand(true, lineUp => lineUp.turnBy(computer, across)),
+        letGo: () => this.#byHand(true, lineUp => lineUp.letGo(computer))
+      })
       link.addEventListener("click", chosen)
       link.addEventListener("pointerenter", () => this.onPointerEnter(computer))
       link.addEventListener("pointerleave", () => this.onPointerLeave(computer))
@@ -215,13 +317,17 @@ class Showroom {
     this.#panel = main.querySelector(".panel")
     this.#renderer = renderer
     this.#setUpSection = main.querySelector(".set-up")
-    this.#stage = main.querySelector(".stage")
+    this.#stage = stage
     this.#title = main.querySelector(".line-up h2")
     this.#titled = document.title
     this.#form.addEventListener("change", event => this.onChanged(event))
     back.addEventListener("click", event => this.onBack(event))
     addEventListener("popstate", () => this.onAddressChanged())
     addEventListener("scroll", () => this.#draw(), { passive: true })
+    turnByHand(stage, {
+      turn: (across, down) => this.#byHand(false, setUp => setUp.turnBy(across, down)),
+      letGo: () => this.#byHand(false, setUp => setUp.letGo())
+    })
     observer.observe(canvas)
   }
 
@@ -697,6 +803,17 @@ class Showroom {
 
   #options() {
     return { anisotropy: this.#anisotropy, studio: this.#studio }
+  }
+
+  // A press can outlast the section it began in, and turns only what is drawn
+  // there.
+  #byHand(inLineUp, act) {
+    const drawnThere = (this.#showing == null) == inLineUp
+
+    if (drawnThere) {
+      act(this.#drawn)
+      this.#draw()
+    }
   }
 
   // A computer in the line-up stands in its own frame there, and on its desk

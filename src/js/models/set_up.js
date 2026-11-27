@@ -14,6 +14,11 @@ const HEADING = -25,
   ELEVATION = 25,
   ROOM = 1.12
 
+// The reader may carry the eye round the desk by hand, all the way round, and from a little above the desk to nearly overhead, in degrees; let go, it comes back in so many milliseconds. Presentation choices.
+const LOWEST = 5,
+  HIGHEST = 85,
+  RETURN_MILLISECONDS = 500
+
 // A display comes in from the left, behind the computer, where nothing else stands, and a piece beside it from the right, each from wholly beyond the canvas, a little further still and lifted, both in metres, and each goes back the way it came. Each takes so many milliseconds, those coming one after another by the stagger; those coming, and those staying that move to new places, set off once the others have gone, for a display going and a display coming pass the same way; and the glass fades in or out. Presentation choices.
 const BEYOND = 0.05,
   LIFT = 0.12,
@@ -130,6 +135,8 @@ export default class SetUp {
   #pose = new Pose()
   #posedFor = null
   #standing = new Set()
+  #turned = { heading: 0, elevation: 0 }
+  #turnedPose = new Pose()
   #width
 
   // Every piece the computer may be given is loaded, so that choosing one never
@@ -302,12 +309,47 @@ export default class SetUp {
     return moving
   }
 
-  // The desk in the frame the page gives it.
+  // The desk in the frame the page gives it, seen from wherever the hand has
+  // carried the eye.
   views(frameOf) {
     const frame = frameOf(this.#name),
-      pose = this.#poseFor(frame.width / frame.height)
+      standing = this.#poseFor(frame.width / frame.height),
+      pose = this.#turnedPose.copy(standing),
+      { heading, elevation } = this.#turned
+
+    pose.heading += heading
+    pose.elevation += elevation
 
     return [{ name: this.#name, pose, frame, scene: this.scene, clipped: false }]
+  }
+
+  // The desk turned by hand: its front carried across as the hand goes, the
+  // eye going the other way round it, and its top tipped toward the eye as the
+  // hand goes down. The eye is caught wherever it is, even on its way back.
+  turnBy(across, down) {
+    const turned = this.#turned,
+      lowest = MathUtils.degToRad(LOWEST - ELEVATION),
+      highest = MathUtils.degToRad(HIGHEST - ELEVATION),
+      elevation = turned.elevation + down
+
+    this.#motions.delete(turned)
+    turned.heading -= across
+    turned.elevation = MathUtils.clamp(elevation, lowest, highest)
+  }
+
+  // Let go, the eye comes back the shorter way round.
+  letGo() {
+    const turned = this.#turned,
+      heading = Math.atan2(Math.sin(turned.heading), Math.cos(turned.heading)),
+      { elevation } = turned,
+      duration = REDUCED_MOTION.matches ? 0 : RETURN_MILLISECONDS,
+      timing = { duration, ease: Motion.easeInOut },
+      motion = new Motion(timing, function (progress) {
+        turned.heading = heading * (1 - progress)
+        turned.elevation = elevation * (1 - progress)
+      })
+
+    this.#motions.set(turned, motion)
   }
 
   // The computer and every piece offered beside it, in the language asked for

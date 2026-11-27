@@ -245,6 +245,73 @@ test("a display chosen away and back stands as it stood", async function ({ page
   expect(restored).toBe(true)
 })
 
+// Where a press on the element lands, and how wide the element is.
+async function middleOf(locator) {
+  const { x, y, width, height } = await locator.boundingBox()
+
+  return { x: x + width / 2, y: y + height / 2, width }
+}
+
+test("the desk turns while dragged, and stands as it stood once let go", async function ({ page }) {
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+
+  const before = await stillStage(page),
+    { x, y, width } = await middleOf(page.locator(".stage"))
+
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + width / 4, y + width / 8)
+
+  const turned = await stillStage(page),
+    changed = !turned.equals(before)
+
+  expect(changed).toBe(true)
+  await page.mouse.up()
+
+  const after = await stillStage(page),
+    restored = after.equals(before)
+
+  expect(restored).toBe(true)
+})
+
+test("a computer in the line-up turns while dragged, and the drag does not choose it, though the keyboard still does", async function ({
+  page
+}) {
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await page.goto("/")
+  await arrived(page)
+
+  const frame = page.locator("[data-computer='cpc464'] .frame"),
+    name = page.locator("[data-computer='cpc464'] .name"),
+    { x, y, width } = await middleOf(frame),
+    over = await middleOf(name),
+    picture = () => within(page, frame)
+
+  await page.mouse.move(x, y)
+
+  const shown = await stillPicture(picture)
+
+  await page.mouse.down()
+  await page.mouse.move(x + width / 4, y)
+
+  const turned = await stillPicture(picture),
+    changed = !turned.equals(shown)
+
+  expect(changed).toBe(true)
+  await page.mouse.move(over.x, over.y)
+  await page.mouse.up()
+  await page.mouse.move(x, y)
+
+  const after = await stillPicture(picture),
+    restored = after.equals(shown)
+
+  expect(restored).toBe(true)
+  await expect(page).not.toHaveURL(/computer=/u)
+  await page.getByRole("link", { name: "CPC 464" }).press("Enter")
+  await expect(page).toHaveURL(/computer=cpc464/u)
+})
+
 // The page's clock is held, so that the first frame after a choice is drawn
 // alone: everything then stands where it set out from.
 async function firstFrameAfter(page, choosing) {

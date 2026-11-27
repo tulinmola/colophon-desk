@@ -284,6 +284,24 @@ body:has(> .showroom) {
     font-size: 0.8rem;
     color: var(--muted);
   }
+
+  /* Turned by hand: a finger's vertical swipe still scrolls the page, and a
+     long press on a computer is the start of a turn, not a link's preview. */
+  .frame,
+  .stage {
+    touch-action: pan-y pinch-zoom;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .stage {
+    cursor: grab;
+  }
 }
 
 .line-up {
