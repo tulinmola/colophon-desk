@@ -21,6 +21,7 @@ const THROWN_OUT = 0.03
 
 export default class Disc {
   model
+  #arrived = null
   #bound
   #label
   #from = new Vector3()
@@ -52,7 +53,8 @@ export default class Disc {
     model.visible = false
   }
 
-  // There is one disc here, so a disc offered while one is in takes its own place.
+  // There is one disc here, so a disc offered while one is in takes its own
+  // place. Answers once it is seated in the drive, or turned back before it.
   insert(filename) {
     const swapping = this.#bound == this.#seated,
       journey = swapping ? [...this.#outward(), ...this.#inward()] : this.#inward()
@@ -60,6 +62,10 @@ export default class Disc {
     this.#label.write(filename)
     this.model.visible = true
     this.#travel(journey)
+
+    return new Promise(resolve => {
+      this.#arrived = resolve
+    })
   }
 
   // A file the machine would not read was never a disc, so the label it was
@@ -85,7 +91,7 @@ export default class Disc {
     const travelling = this.#journey.length > 0
 
     if (!travelling) {
-      return false
+      return
     }
 
     this.#started ??= now
@@ -97,19 +103,23 @@ export default class Disc {
       arrived = progress == 1
 
     if (arrived) {
+      const seated = leg.to == this.#seated
+
       this.model.position.copy(leg.to)
       this.#from.copy(leg.to)
       this.#started = null
       this.#journey.shift()
 
-      return leg.to == this.#seated
+      if (seated) {
+        this.#answer(true)
+      }
+
+      return
     }
 
     const eased = progress * progress * (3 - 2 * progress)
 
     this.model.position.lerpVectors(this.#from, leg.to, eased)
-
-    return false
   }
 
   #inward() {
@@ -126,14 +136,21 @@ export default class Disc {
     ]
   }
 
+  // A journey begun turns back whatever disc was still on its way in.
   #travel(journey) {
     const cut = REDUCED_MOTION.matches,
       legs = cut ? journey.map(leg => ({ ...leg, milliseconds: 0 })) : journey,
       [last] = legs.slice(-1)
 
+    this.#answer(false)
     this.#bound = last.to
     this.#from.copy(this.model.position)
     this.#journey = legs
     this.#started = null
+  }
+
+  #answer(seated) {
+    this.#arrived?.(seated)
+    this.#arrived = null
   }
 }

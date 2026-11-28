@@ -11,7 +11,8 @@ body {
   background: var(--ground);
 }
 
-h1 {
+h1,
+.desk > h2 {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -20,25 +21,43 @@ h1 {
   clip-path: inset(50%);
 }
 
-colophon-cpc-desk {
+colophon-desk-controls,
+colophon-options {
   --inset: 0.75rem;
   --button-size: 2.25rem;
   --spacing: 0.4rem;
+}
 
+/* The studio's dark, which the glass under the desk fades into. */
+colophon-desk {
   position: relative;
   display: block;
   height: 100dvh;
+  background: #000;
 
-  /* A desk holding the focus is a desk holding the keyboard: arrow keys stop
-     scrolling the page and Escape stops meaning escape, so it says so. Not
-     :focus-visible, because the ordinary way to reach it is a click. */
+  > canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+colophon-desk-controls {
+  position: absolute;
+  inset: 0;
+  display: block;
+
+  /* Controls holding the focus are a desk holding the keyboard: arrow keys
+     stop scrolling the page and Escape stops meaning escape, so they say so.
+     Not :focus-visible, because the ordinary way to reach them is a click. */
   &:focus {
     outline: 2px solid color-mix(in srgb, var(--ink) 10%, transparent);
     outline-offset: -2px;
   }
 
-  canvas {
-    display: block;
+  .surface {
+    position: absolute;
+    inset: 0;
 
     &[data-answers] {
       cursor: pointer;
@@ -46,7 +65,7 @@ colophon-cpc-desk {
   }
 }
 
-colophon-cpc-desk > menu button,
+colophon-desk-controls > menu button,
 colophon-options > button {
   display: grid;
   place-items: center;
@@ -81,7 +100,7 @@ colophon-options > button {
   }
 }
 
-colophon-cpc-desk > menu {
+colophon-desk-controls > menu {
   position: absolute;
   top: var(--inset);
   left: var(--inset);
@@ -96,7 +115,7 @@ colophon-cpc-desk > menu {
   }
 }
 
-colophon-cpc-desk > output {
+colophon-desk-controls > output {
   position: absolute;
   box-sizing: border-box;
   top: calc(var(--inset) + var(--button-size) + var(--spacing));
@@ -115,7 +134,7 @@ colophon-cpc-desk > output {
   }
 }
 
-colophon-cpc-desk > dialog {
+colophon-desk-controls > dialog {
   margin-block: auto var(--inset);
   color: var(--ink);
   background: var(--ground);
@@ -409,7 +428,7 @@ body:has(> .showroom) {
       outline: none;
     }
 
-    p {
+    > p {
       margin: 0 0 1.75rem;
       color: var(--muted);
     }
@@ -419,6 +438,16 @@ body:has(> .showroom) {
     display: grid;
     justify-items: start;
     gap: 1.75rem;
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+
+      &:empty {
+        display: none;
+      }
+    }
   }
 
   fieldset {
@@ -465,5 +494,22 @@ body:has(> .showroom) {
       outline: 2px solid var(--ink);
       outline-offset: 3px;
     }
+
+    &:disabled {
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      cursor: not-allowed;
+    }
   }
+}
+
+.desk > a {
+  position: absolute;
+  z-index: 1;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.9rem;
+  color: var(--muted);
 }

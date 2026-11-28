@@ -1,7 +1,6 @@
-import { CameraRig, Desk } from "../models"
-import { Cpc, KEY_MATRIX, discsIn } from "../emulator"
-import { Vector2, WebGPURenderer } from "three/webgpu"
+import { KEY_MATRIX, discsIn } from "../emulator"
 import Element from "./element"
+import { Vector2 } from "three/webgpu"
 import html from "../html"
 
 // A pointer that travels further than this, in CSS pixels, between going down
@@ -31,30 +30,30 @@ const DESK_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M6 10h12M6 14h.01M15 14h3" />
   </svg>`
 
-const VIEW_MENU = html`<menu aria-label="Views" hidden>
-  <li>
-    <button type="button" data-view="desk" title="The whole desk" aria-pressed="false">
-      ${DESK_ICON}
-    </button>
-  </li>
-  <li>
-    <button type="button" data-view="set" title="The computer and monitor" aria-pressed="false">
-      ${SET_ICON}
-    </button>
-  </li>
-  <li>
-    <button type="button" data-view="monitor" title="The monitor" aria-pressed="false">
-      ${MONITOR_ICON}
-    </button>
-  </li>
-  <li>
-    <button type="button" data-view="drive" title="The disc drive" aria-pressed="false">
-      ${DRIVE_ICON}
-    </button>
-  </li>
-</menu>`
-
-const DRIVE_A = html`<input type="file" accept=".dsk,.zip" hidden />
+const CONTROLS = html`<div class="surface"></div>
+  <menu aria-label="Views" hidden>
+    <li>
+      <button type="button" data-view="desk" title="The whole desk" aria-pressed="false">
+        ${DESK_ICON}
+      </button>
+    </li>
+    <li>
+      <button type="button" data-view="set" title="The computer and monitor" aria-pressed="false">
+        ${SET_ICON}
+      </button>
+    </li>
+    <li>
+      <button type="button" data-view="monitor" title="The monitor" aria-pressed="false">
+        ${MONITOR_ICON}
+      </button>
+    </li>
+    <li>
+      <button type="button" data-view="drive" title="The disc drive" aria-pressed="false">
+        ${DRIVE_ICON}
+      </button>
+    </li>
+  </menu>
+  <input type="file" accept=".dsk,.zip" hidden />
   <output name="drive"></output>
   <dialog name="discs">
     <form method="dialog">
@@ -73,75 +72,64 @@ const DRIVE_A = html`<input type="file" accept=".dsk,.zip" hidden />
 
 const NOTHING_PICKED = { name: null, view: null }
 
-const SPANISH = "es"
-
-class CpcDeskElement extends Element {
+// The reader's hands on a running desk: the machine's keys while it holds the
+// focus, the camera turned and parts pressed on its surface, the views, the
+// disc drive and the power. It is laid once the desk it is given stands.
+class DeskControlsElement extends Element {
   #chooser
-  #cpc = null
-  #desk
+  #desk = null
   #discs = []
   #discsDialog
-  #powerDialog
   #driveNotice
   #heldByCode = new Map()
-  #hovering
-  #initialising
+  #hovering = false
   #menu
-  #observer
-  #offered = null
   #pointer = new Vector2()
+  #powerDialog
   #pressedAt = new Vector2()
-  #renderer
-  #rig
-  #shown
+  #shown = { view: null, lead: null, answers: false }
+  #surface
   #viewBeforeChoosing
   #viewBeforeSwitching
 
   init() {
-    const renderer = new WebGPURenderer({ alpha: true, antialias: true }),
-      canvas = renderer.domElement,
-      desk = new Desk(),
-      rig = new CameraRig(canvas)
+    const { signal } = this
 
-    renderer.setPixelRatio(devicePixelRatio)
-    this.prepend(canvas)
-    canvas.insertAdjacentHTML("afterend", VIEW_MENU)
-
-    const menu = this.querySelector("menu")
-
-    menu.insertAdjacentHTML("afterend", DRIVE_A)
-
+    this.tabIndex = 0
+    this.innerHTML = CONTROLS
     this.#chooser = this.querySelector("input[type='file']")
-    this.#desk = desk
     this.#discsDialog = this.querySelector("dialog[name='discs']")
-    this.#powerDialog = this.querySelector("dialog[name='power']")
     this.#driveNotice = this.querySelector("output[name='drive']")
-    this.#hovering = false
-    this.#menu = menu
-    this.#renderer = renderer
-    this.#rig = rig
-    this.#shown = { view: null, lead: null, answers: false }
-
-    const resized = this.onResized.bind(this),
-      { signal } = this
-
-    this.#observer = new ResizeObserver(resized)
-    this.#observer.observe(this)
+    this.#menu = this.querySelector("menu")
+    this.#powerDialog = this.querySelector("dialog[name='power']")
+    this.#surface = this.querySelector(".surface")
 
     this.addEventListener("keydown", this.onKeyDown.bind(this), { signal })
     this.addEventListener("keyup", this.onKeyUp.bind(this), { signal })
     this.addEventListener("blur", this.onBlur.bind(this), { signal })
-    canvas.addEventListener("pointerdown", this.onPointerDown.bind(this), { signal })
-    canvas.addEventListener("pointermove", this.onPointerMove.bind(this), { signal })
-    canvas.addEventListener("pointerleave", this.onPointerLeave.bind(this), { signal })
-    canvas.addEventListener("click", this.onSceneClicked.bind(this), { signal })
+    this.#surface.addEventListener("pointerdown", this.onPointerDown.bind(this), { signal })
+    this.#surface.addEventListener("pointermove", this.onPointerMove.bind(this), { signal })
+    this.#surface.addEventListener("pointerleave", this.onPointerLeave.bind(this), { signal })
+    this.#surface.addEventListener("click", this.onSurfaceClicked.bind(this), { signal })
     this.#menu.addEventListener("click", this.onViewChosen.bind(this), { signal })
     this.#chooser.addEventListener("change", this.onDiscChosen.bind(this), { signal })
     this.#chooser.addEventListener("cancel", this.onChoiceCancelled.bind(this), { signal })
     this.#discsDialog.addEventListener("close", this.onDiscPicked.bind(this), { signal })
     this.#powerDialog.addEventListener("close", this.onPowerAnswered.bind(this), { signal })
+  }
 
-    this.#initialising = this.#load(desk, rig, renderer, signal)
+  dispose() {
+    this.#desk = null
+    this.replaceChildren()
+  }
+
+  // The views shown follow the eye wherever the hand takes it, and wherever
+  // the controls send it.
+  use(desk) {
+    this.#desk = desk
+    desk.turnFrom(this.#surface, () => this.#showViews())
+    this.#menu.hidden = false
+    this.#showViews()
   }
 
   onPointerDown(event) {
@@ -154,13 +142,15 @@ class CpcDeskElement extends Element {
 
     this.#hovering = !touching && !pressing
     this.#aim(event)
+    this.#showViews()
   }
 
   onPointerLeave() {
     this.#hovering = false
+    this.#showViews()
   }
 
-  onSceneClicked(event) {
+  onSurfaceClicked(event) {
     const travelled = this.#pressedAt.distanceTo({ x: event.clientX, y: event.clientY }),
       turned = travelled > CLICK_SLACK
 
@@ -170,8 +160,8 @@ class CpcDeskElement extends Element {
 
     this.#aim(event)
 
-    const rig = this.#rig,
-      picked = rig.pick(this.#pointer),
+    const desk = this.#desk,
+      picked = desk.pick(this.#pointer),
       intent = this.#intentOf(picked)
 
     switch (intent) {
@@ -185,14 +175,16 @@ class CpcDeskElement extends Element {
         this.#switchPower()
         break
       case "look":
-        rig.look(picked.view)
+        desk.look(picked.view)
         break
       default:
         break
     }
+
+    this.#showViews()
   }
 
-  // The machine's keys reach it only while the desk holds the focus, so a
+  // The machine's keys reach it only while the controls hold the focus, so a
   // view chosen from the menu hands the focus back.
   onViewChosen(event) {
     const button = event.target.closest("button")
@@ -201,8 +193,9 @@ class CpcDeskElement extends Element {
       return
     }
 
-    this.#rig.look(button.dataset.view)
+    this.#desk.look(button.dataset.view)
     this.focus()
+    this.#showViews()
   }
 
   // The chooser is emptied before the read, or the same file chosen again
@@ -304,10 +297,12 @@ class CpcDeskElement extends Element {
   }
 
   // The image is unpacked only once its disc is chosen, so an archive of
-  // several costs the reader one of them and not all.
+  // several costs the reader one of them and not all; and the machine is given
+  // it only once the drive has it, never if the reader pressed EJECT first.
   async #take(disc) {
     const { signal } = this,
-      roomy = disc.length <= this.#cpc.discCapacity
+      { machine } = this.#desk,
+      roomy = disc.length <= machine.discCapacity
 
     // The archive says how large a disc stands before it is unpacked, so one
     // the machine has no room for is never unpacked at all.
@@ -316,27 +311,40 @@ class CpcDeskElement extends Element {
       return
     }
 
+    const bytes = await this.#read(disc)
+
+    if (!bytes) {
+      return
+    }
+
+    const laidAway = signal.aborted
+
+    if (laidAway) {
+      return
+    }
+
+    const seated = await this.#desk.disc.insert(disc.name),
+      gone = signal.aborted || !seated
+
+    if (gone) {
+      return
+    }
+
+    this.#insert(disc.name, bytes)
+  }
+
+  async #read(disc) {
     try {
-      const bytes = await disc.read(),
-        laidAway = signal.aborted
-
-      if (laidAway) {
-        return
-      }
-
-      this.#offered = { name: disc.name, bytes }
-      this.#desk.disc.insert(disc.name)
+      return await disc.read()
     } catch (problem) {
       this.#tell(`${disc.name} was refused: ${problem.message}`)
+      return null
     }
   }
 
-  #insertOffered() {
-    const { name, bytes } = this.#offered,
-      cpc = this.#cpc,
-      inserted = cpc.insertDisc(bytes)
-
-    this.#offered = null
+  #insert(name, bytes) {
+    const { machine, disc } = this.#desk,
+      inserted = machine.insertDisc(bytes)
 
     if (inserted) {
       this.#tell(`${name} is in drive A`)
@@ -344,11 +352,11 @@ class CpcDeskElement extends Element {
       return
     }
 
-    const problem = cpc.discProblem()
+    const problem = machine.discProblem()
 
     this.#tell(`${name} was refused: ${problem}`)
-    this.#desk.disc.erase()
-    this.#desk.disc.eject()
+    disc.erase()
+    disc.eject()
   }
 
   onChoiceCancelled() {
@@ -361,7 +369,8 @@ class CpcDeskElement extends Element {
     const returning = left != null
 
     if (returning) {
-      this.#rig.look(left)
+      this.#desk.look(left)
+      this.#showViews()
     }
   }
 
@@ -369,7 +378,7 @@ class CpcDeskElement extends Element {
     const ejects = name == "eject-button",
       takesDisc = view == "drive",
       switches = view == "power",
-      leads = view != null && view != this.#rig.view
+      leads = view != null && view != this.#desk.view
 
     if (ejects) {
       return "eject"
@@ -389,28 +398,29 @@ class CpcDeskElement extends Element {
   // A browser opens the chooser only within the click that asked for it, so
   // nothing may be awaited before it opens.
   #chooseDisc() {
-    this.#viewBeforeChoosing = this.#rig.view
-    this.#rig.look("drive")
+    const desk = this.#desk
+
+    this.#viewBeforeChoosing = desk.view
+    desk.look("drive")
     this.#chooser.click()
   }
 
   // A machine switched on is made afresh and asks nothing; one switched off is
   // gone, with whatever it held, so that is the answer worth asking for.
   #switchPower() {
-    const cpc = this.#cpc,
-      off = !cpc.running
+    const desk = this.#desk,
+      off = !desk.machine.running
 
     // A machine made again carries the eye back to where the badge took it
     // from; one about to be destroyed keeps it here to watch.
     if (off) {
-      cpc.switchOn()
-      this.#desk.showPower(true)
+      desk.switchOn()
       this.#lookBack(this.#viewBeforeSwitching)
       return
     }
 
-    this.#viewBeforeSwitching = this.#rig.view
-    this.#rig.look("power")
+    this.#viewBeforeSwitching = desk.view
+    desk.look("power")
     this.#powerDialog.returnValue = ""
     this.#powerDialog.showModal()
   }
@@ -424,8 +434,7 @@ class CpcDeskElement extends Element {
     // The notice stands: a disc in the drive is in it whether the machine is
     // running or not, and it is there again when the power comes back.
     if (off) {
-      this.#cpc.switchOff()
-      this.#desk.showPower(false)
+      this.#desk.switchOff()
       return
     }
 
@@ -435,10 +444,11 @@ class CpcDeskElement extends Element {
   // A disc still on its way in is turned around, and the machine is never
   // given it: the reader pressed EJECT before the drive had it.
   #ejectDisc() {
-    this.#rig.look("drive")
-    this.#offered = null
-    this.#cpc.ejectDisc()
-    this.#desk.disc.eject()
+    const desk = this.#desk
+
+    desk.look("drive")
+    desk.machine.ejectDisc()
+    desk.disc.eject()
     this.#tell("")
   }
 
@@ -456,9 +466,9 @@ class CpcDeskElement extends Element {
   }
 
   #showViews() {
-    const rig = this.#rig,
-      { view } = rig,
-      picked = this.#hovering ? rig.pick(this.#pointer) : NOTHING_PICKED,
+    const desk = this.#desk,
+      { view } = desk,
+      picked = this.#hovering ? desk.pick(this.#pointer) : NOTHING_PICKED,
       answers = this.#intentOf(picked) != null,
       lead = picked.view == view ? null : picked.view,
       shown = this.#shown,
@@ -469,7 +479,7 @@ class CpcDeskElement extends Element {
     }
 
     this.#shown = { view, lead, answers }
-    this.#renderer.domElement.toggleAttribute("data-answers", answers)
+    this.#surface.toggleAttribute("data-answers", answers)
 
     for (const button of this.#menu.querySelectorAll("button")) {
       const chosen = button.dataset.view == view,
@@ -490,22 +500,15 @@ class CpcDeskElement extends Element {
     this.#heldByCode.set(event.code, keys)
 
     for (const key of keys) {
-      this.#cpc.pressKey(key)
+      this.#desk.machine.pressKey(key)
     }
   }
 
   // A release is never withheld. A key let go of while a modifier happens to
   // be down is still let go of, and a press left standing repeats for ever.
   onKeyUp(event) {
-    const standing = this.#cpc != null,
-      keys = KEY_MATRIX[event.code],
-      known = standing && Boolean(keys)
-
-    if (!known) {
-      return
-    }
-
-    const wasHeld = this.#heldByCode.delete(event.code)
+    const keys = KEY_MATRIX[event.code],
+      wasHeld = this.#heldByCode.delete(event.code)
 
     if (wasHeld) {
       this.#letGo(keys)
@@ -513,12 +516,8 @@ class CpcDeskElement extends Element {
   }
 
   onBlur() {
-    const standing = this.#cpc != null
-
-    if (standing) {
-      this.#heldByCode.clear()
-      this.#cpc.releaseAllKeys()
-    }
+    this.#heldByCode.clear()
+    this.#desk.machine.releaseAllKeys()
   }
 
   // A switch two browser keys close is still closed while either is down:
@@ -534,19 +533,18 @@ class CpcDeskElement extends Element {
 
     for (const key of keys) {
       if (!stillHeld.has(key)) {
-        this.#cpc.releaseKey(key)
+        this.#desk.machine.releaseKey(key)
       }
     }
   }
 
+  // Only a key pressed on the controls themselves reaches the machine: one
+  // pressed on a button among them, or in a dialog, is the page's.
   #takeKeys(event) {
-    const standing = this.#cpc != null,
-      keys = KEY_MATRIX[event.code],
+    const keys = KEY_MATRIX[event.code],
       systemChord = event.metaKey || event.altKey,
-      // The options panel stands inside this element, and a slider being
-      // turned with the arrow keys is not the machine's keyboard.
       onTheDesk = event.target == this,
-      reaches = standing && onTheDesk && Boolean(keys) && !systemChord
+      reaches = onTheDesk && Boolean(keys) && !systemChord
 
     if (!reaches) {
       return null
@@ -562,95 +560,6 @@ class CpcDeskElement extends Element {
 
     return keys
   }
-
-  async #load(desk, rig, renderer, signal) {
-    await renderer.init()
-
-    const wireframe = this.hasAttribute("wireframe"),
-      language = this.getAttribute("language") ?? SPANISH,
-      anisotropy = renderer.getMaxAnisotropy(),
-      cpc = await Cpc.create(signal, { anisotropy, language })
-
-    await desk.load(cpc, { anisotropy, language })
-    desk.scene.traverse(function (object) {
-      const drawn = object.isMesh
-
-      if (drawn) {
-        object.material.wireframe = wireframe
-      }
-    })
-
-    const standing = !signal.aborted
-
-    if (standing) {
-      const options = this.querySelector("colophon-options"),
-        insertOffered = this.#insertOffered.bind(this),
-        showViews = this.#showViews.bind(this)
-
-      this.#cpc = cpc
-      rig.use(desk)
-      options.use(desk.settings)
-      this.#menu.hidden = false
-      renderer.setAnimationLoop(function (now) {
-        cpc.advance(now)
-        rig.advance(now)
-
-        const seated = desk.disc.advance(now)
-
-        if (seated) {
-          insertOffered()
-        }
-
-        // Read after the insert: the machine clears the lamp's line as it is asked for it.
-        const inUse = cpc.driveInUse()
-
-        desk.showDriveInUse(inUse)
-        showViews()
-        renderer.render(desk.scene, rig.camera)
-      })
-    }
-
-    return { cpc, desk }
-  }
-
-  dispose() {
-    const renderer = this.#renderer
-
-    renderer.setAnimationLoop(null)
-    this.#cpc = null
-    this.#observer.disconnect()
-    this.#rig.dispose()
-    this.#menu.remove()
-    this.#chooser.remove()
-    this.#discsDialog.remove()
-    this.#powerDialog.remove()
-    this.#driveNotice.remove()
-    this.#release(renderer)
-    renderer.domElement.remove()
-  }
-
-  // A load that threw built nothing to release, but the device it was building
-  // on is owed its disposal either way. Its failure is left to the promise
-  // nobody else took, which is where the page reports it.
-  async #release(renderer) {
-    try {
-      const { cpc, desk } = await this.#initialising
-
-      cpc.dispose()
-      desk.dispose()
-    } catch {
-      // Reported there; catching it here only keeps it from being told twice.
-    } finally {
-      renderer.dispose()
-    }
-  }
-
-  onResized([entry]) {
-    const { width, height } = entry.contentRect
-
-    this.#renderer.setSize(width, height)
-    this.#rig.resize(width, height)
-  }
 }
 
-CpcDeskElement.define("colophon-cpc-desk")
+DeskControlsElement.define("colophon-desk-controls")

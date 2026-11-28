@@ -8,13 +8,10 @@ import {
   Vector3
 } from "three/webgpu"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import Pose from "./pose"
 import REDUCED_MOTION from "./reduced_motion"
 
-// Where the camera stands, how far it may turn and how it travels are presentation choices, not measurements of the machine.
-const FIELD_OF_VIEW = 35,
-  NEAR_PLANE = 0.01
-
-// Each view looks at its subject from a heading and an elevation in degrees, keeping that share of the frame clear around it, and from no closer than its closest, in metres.
+// Where the camera stands, how far it may turn and how it travels are presentation choices, not measurements of the machine. Each view looks at its subject from a heading and an elevation in degrees, keeping that share of the frame clear around it, and from no closer than its closest, in metres.
 const DESK_VIEW = { heading: -32, elevation: 16, margin: 0.25 },
   SET_VIEW = { heading: 0, elevation: 14, margin: 0.03 },
   MONITOR_VIEW = { heading: 0, elevation: 6, margin: 0.12 },
@@ -78,19 +75,22 @@ function sphericalOf({ eye, target }) {
   return new Spherical().setFromVector3(offset)
 }
 
+// The camera sees through the one lens every view on the canvas shares, and
+// answers where it stands as a pose for the canvas to draw from.
 export default class CameraRig {
-  camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, NEAR_PLANE)
+  camera = new PerspectiveCamera(Pose.FIELD_OF_VIEW, 1)
   view = null
   #controls
   #flight = null
   #leadsTo = new Map()
   #models = []
+  #pose = new Pose()
   #raycaster = new Raycaster()
   #turning = false
   #views = null
 
-  constructor(canvas) {
-    const controls = new OrbitControls(this.camera, canvas),
+  constructor() {
+    const controls = new OrbitControls(this.camera),
       widest = MathUtils.degToRad(WIDEST_HEADING)
 
     controls.enablePan = false
@@ -105,19 +105,27 @@ export default class CameraRig {
     this.#controls = controls
   }
 
-  use({ machine, monitor }) {
+  // The whole desk is everything standing on it, the monitor among the
+  // pieces.
+  use({ computer, monitor, pieces }) {
     const glass = monitor.getObjectByName("screen"),
-      drive = machine.getObjectByName("drive"),
+      drive = computer.getObjectByName("drive"),
       leadsTo = this.#leadsTo
 
     // A box takes its object's ancestors as they last stood, and nothing has
-    // been drawn yet to carry the monitor to its place behind the machine.
-    machine.updateWorldMatrix(true, true)
-    monitor.updateWorldMatrix(true, true)
+    // been drawn yet to carry the pieces to their places about the computer.
+    for (const standing of [computer, ...pieces]) {
+      standing.updateWorldMatrix(true, true)
+    }
 
-    const whole = new Box3().setFromObject(machine).expandByObject(monitor),
+    const set = new Box3().setFromObject(computer).expandByObject(monitor),
+      whole = set.clone(),
       screen = new Box3().setFromObject(glass),
       driveFace = new Box3().setFromObject(drive)
+
+    for (const piece of pieces) {
+      whole.expandByObject(piece)
+    }
 
     // The drive runs deep into the machine; only its face, at the front, is framed.
     driveFace.min.z = driveFace.max.z
@@ -125,38 +133,46 @@ export default class CameraRig {
     monitor.traverse(part => leadsTo.set(part, "monitor"))
 
     for (const name of DRIVE_PARTS) {
-      const part = machine.getObjectByName(name)
+      const part = computer.getObjectByName(name)
 
       part.traverse(piece => leadsTo.set(piece, "drive"))
     }
 
     for (const name of POWER_PARTS) {
-      const part = machine.getObjectByName(name)
+      const part = computer.getObjectByName(name)
 
       part.traverse(piece => leadsTo.set(piece, "power"))
     }
 
     // The badge lies in the rear strip's top; only that face is framed, and the
     // lamp stands inside its footprint.
-    const plate = machine.getObjectByName("badge"),
+    const plate = computer.getObjectByName("badge"),
       badge = new Box3().setFromObject(plate)
 
     badge.min.y = badge.max.y
 
-    this.#models = [machine, monitor]
+    this.#models = [computer, monitor]
     this.#views = new Map([
       ["desk", { subject: whole, ...DESK_VIEW }],
-      ["set", { subject: whole, ...SET_VIEW }],
+      ["set", { subject: set, ...SET_VIEW }],
       ["monitor", { subject: screen, ...MONITOR_VIEW }],
       ["drive", { subject: driveFace, ...DRIVE_VIEW }],
       ["power", { subject: badge, ...POWER_VIEW }]
     ])
 
-    const pose = this.#pose("desk")
+    const pose = this.#standingFor("desk")
 
     this.view = "desk"
     this.#boundRetreat()
     this.#stand(pose)
+  }
+
+  // A drag on the element given turns the camera, and a wheel or a pinch
+  // carries it nearer or further; the function given is told whenever the
+  // controls move it, by hand or gliding on.
+  turnFrom(element, moved) {
+    this.#controls.addEventListener("change", moved)
+    this.#controls.connect(element)
   }
 
   look(view) {
@@ -166,7 +182,7 @@ export default class CameraRig {
     this.view = view
 
     if (still) {
-      const pose = this.#pose(view)
+      const pose = this.#standingFor(view)
 
       this.#flight = null
       this.#stand(pose)
@@ -189,7 +205,7 @@ export default class CameraRig {
     flight.started ??= now
 
     const progress = Math.min((now - flight.started) / FLIGHT_MILLISECONDS, 1),
-      to = this.#pose(this.view),
+      to = this.#standingFor(this.view),
       arrived = progress == 1
 
     if (arrived) {
@@ -212,22 +228,32 @@ export default class CameraRig {
     this.camera.lookAt(target)
   }
 
-  resize(width, height) {
+  // Where the camera stands, as the canvas draws it.
+  pose() {
+    const pose = this.#pose,
+      target = this.#controls.target,
+      offset = new Vector3().subVectors(this.camera.position, target),
+      distance = offset.length()
+
+    pose.aim.copy(target)
+    pose.distance = distance
+    pose.elevation = Math.asin(offset.y / distance)
+    pose.heading = Math.atan2(offset.x, offset.z)
+
+    return pose
+  }
+
+  // The views are fitted to a frame this wide for its height.
+  fit(aspect) {
     const camera = this.camera,
-      inUse = this.#views != null,
       standing = this.view != null && this.#flight == null
 
-    camera.aspect = width / height
+    camera.aspect = aspect
     camera.updateProjectionMatrix()
-
-    if (!inUse) {
-      return
-    }
-
     this.#boundRetreat()
 
     if (standing) {
-      const pose = this.#pose(this.view)
+      const pose = this.#standingFor(this.view)
 
       this.#stand(pose)
     }
@@ -287,15 +313,10 @@ export default class CameraRig {
     this.#letGlide()
   }
 
-  // Whatever the camera turns round lies within the whole desk's sphere, so the
-  // desk's far side is never further than the sphere's width beyond it.
   #boundRetreat() {
-    const whole = this.#pose("desk"),
-      furthest = whole.eye.distanceTo(whole.target) * FURTHEST_RETREAT
+    const whole = this.#standingFor("desk")
 
-    this.#controls.maxDistance = furthest
-    this.camera.far = furthest + whole.radius * 2
-    this.camera.updateProjectionMatrix()
+    this.#controls.maxDistance = whole.eye.distanceTo(whole.target) * FURTHEST_RETREAT
   }
 
   #stand({ eye, target, radius }) {
@@ -307,7 +328,7 @@ export default class CameraRig {
     controls.update()
   }
 
-  #pose(view) {
+  #standingFor(view) {
     const { subject, heading, elevation, margin, closest = 0 } = this.#views.get(view),
       camera = this.camera,
       polar = MathUtils.degToRad(90 - elevation),

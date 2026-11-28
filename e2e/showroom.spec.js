@@ -204,7 +204,7 @@ test("a piece chosen comes onto the desk and goes again, and the line says so", 
   await page.goto("/?computer=cpc464")
   await arrived(page)
 
-  const line = page.locator(".panel p"),
+  const line = page.locator(".panel > p"),
     drive = page.getByRole("checkbox", { name: /DDI-1/u }),
     before = await stillStage(page)
 
@@ -495,18 +495,83 @@ test.describe("for a reader of Spanish", function () {
   })
 })
 
-test("switching on asks the desk for what was chosen", async function ({ page }) {
-  await page.route("**/desk.html?*", function (route) {
-    return route.fulfill({ contentType: "text/html", body: "<!doctype html><html></html>" })
-  })
+test("switching on stands the desk chosen under an address of its own, and Back switches it off", async function ({
+  page
+}) {
+  const errors = errorsOf(page),
+    controls = page.locator("colophon-desk-controls")
+
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+  await page.getByRole("button", { name: "Switch on" }).click()
+  await arrived(page)
+
+  await expect(page).toHaveURL(/\?computer=cpc6128&language=en&monitor=ctm644$/u)
+  await expect(controls).toBeFocused()
+  await expect(page.getByRole("heading", { name: "Your English CPC 6128" })).toBeAttached()
+
+  await page.goBack()
+  await arrived(page)
+
+  await expect(page).toHaveURL(/\?computer=cpc6128$/u)
+  await expect(controls).toHaveCount(0)
+  await expect(page.getByRole("radio", { name: /CTM644/u })).toBeChecked()
+  await expectDrawnOnStage(page)
+  expect(errors).toEqual([])
+})
+
+test("an address naming a desk opens it switched on, and switching off sets it up as it stood", async function ({
+  page
+}) {
+  await page.goto("/?computer=cpc6128&language=es&monitor=ctm644&recorder=crc1001")
+  await arrived(page)
+  await expect(page.locator("colophon-desk-controls")).toBeFocused()
+
+  await page.getByRole("link", { name: "Switch off" }).click()
+  await arrived(page)
+
+  await expect(page).toHaveURL(/\?computer=cpc6128$/u)
+  await expect(page.getByRole("heading", { name: "Your Spanish CPC 6128" })).toBeVisible()
+  await expect(page.getByRole("radio", { name: /Spanish/u })).toBeChecked()
+  await expect(page.getByRole("checkbox", { name: /CRC-1001/u })).toBeChecked()
+})
+
+test("a desk that does not start leaves its set-up standing, which says why", async function ({
+  page
+}) {
+  const switchOn = page.getByRole("button", { name: "Switch on" })
+
+  await page.route("**/*.rom", route => route.fulfill({ status: 404 }))
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+  await switchOn.click()
+  await arrived(page)
+
+  await expect(page).toHaveURL(/\?computer=cpc6128$/u)
+  await expect(switchOn).toBeEnabled()
+  await expect(switchOn).toHaveAccessibleDescription(
+    /^The CPC 6128 did not start: .+ answered 404$/u
+  )
+  await expectDrawnOnStage(page)
+})
+
+test("a desk that does not run here cannot be switched on, and says why", async function ({
+  page
+}) {
+  const switchOn = page.getByRole("button", { name: "Switch on" })
+
   await page.goto("/?computer=cpc464")
   await arrived(page)
-  await page.getByRole("radio", { name: /CTM644/u }).check()
-  await page.getByRole("checkbox", { name: /DDI-1/u }).check()
-  await page.getByRole("button", { name: "Switch on" }).click()
+  await expect(switchOn).toBeDisabled()
+  await expect(switchOn).toHaveAccessibleDescription("The CPC 464 does not run here yet.")
 
-  await expect(page).toHaveURL(
-    /desk\.html\?computer=cpc464&language=en&monitor=ctm644&drive=ddi1$/u
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+  await expect(switchOn).toBeEnabled()
+  await page.getByRole("radio", { name: /GT65/u }).check()
+  await expect(switchOn).toBeDisabled()
+  await expect(switchOn).toHaveAccessibleDescription(
+    "The CPC 6128 does not run here with the GT65 yet."
   )
 })
 

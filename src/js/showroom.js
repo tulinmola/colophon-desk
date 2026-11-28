@@ -1,4 +1,5 @@
-import { Flight, LineUp, Model, REDUCED_MOTION, SetUp, Studio, drawViews } from "./models"
+import "./elements"
+import { Desk, Flight, LineUp, Model, REDUCED_MOTION, SetUp, Studio, drawViews } from "./models"
 import { NeutralToneMapping, PerspectiveCamera, WebGPURenderer } from "three/webgpu"
 import COMPUTERS from "./computers"
 import PIECES from "./pieces"
@@ -81,7 +82,7 @@ function languageOptionOf(language, keyboard, chosen) {
   </label>`
 }
 
-function formOf({ name, versions, displays, beside, chosenAtFirst }, language) {
+function formOf({ name, versions, displays, beside }, language, chosen) {
   const sold = Object.entries(versions),
     several = sold.length > 1,
     lettered = sold
@@ -95,14 +96,8 @@ function formOf({ name, versions, displays, beside, chosenAtFirst }, language) {
       : "",
     [first] = displays,
     { kind } = PIECES[first],
-    displayed = displays.map(each => optionOf(each, "radio", each == first)).join(""),
-    offeredBeside = beside
-      .map(function (each) {
-        const chosen = chosenAtFirst.includes(each)
-
-        return optionOf(each, "checkbox", chosen)
-      })
-      .join("")
+    displayed = displays.map(each => optionOf(each, "radio", chosen.includes(each))).join(""),
+    offeredBeside = beside.map(each => optionOf(each, "checkbox", chosen.includes(each))).join("")
 
   return html`<input type="hidden" name="computer" value="${name}" />
     ${languageChoice}
@@ -114,17 +109,72 @@ function formOf({ name, versions, displays, beside, chosenAtFirst }, language) {
       <legend>Beside it</legend>
       ${offeredBeside}
     </fieldset>
-    <button type="submit">Switch on</button>`
+    <button type="submit" aria-describedby="${name}-running">Switch on</button>
+    <p id="${name}-running"></p>`
 }
 
-// The address names the computer being set up, or none for the line-up. One
-// it does not know leads to the line-up.
-function computerAsked() {
+// What stops the desk running the computer with the display chosen, or nothing.
+function whyNotRunning({ name, title, displays }, display) {
+  const runs = Desk.runs(name, display),
+    runsAtAll = displays.some(each => Desk.runs(name, each))
+
+  if (runs) {
+    return ""
+  }
+
+  if (runsAtAll) {
+    return `The ${title} does not run here with the ${PIECES[display].title} yet.`
+  }
+
+  return `The ${title} does not run here yet.`
+}
+
+// A desk is asked for as the set-up's form asks for it: by the language it is
+// lettered in and by each piece chosen under the name of its kind. One naming
+// no display, or none the desk runs, is not a desk, and one naming a language
+// its computer was not sold in takes the first it would be set up in.
+function deskAsked(computer, query) {
+  const { name, versions, displays, beside } = computer,
+    asked = query.get("language"),
+    sold = Object.hasOwn(versions, asked),
+    language = sold ? asked : languageAtFirst(computer),
+    chosen = [...displays, ...beside].filter(each =>
+      query.getAll(PIECES[each].kind).includes(each)
+    ),
+    display = displays.find(each => chosen.includes(each)),
+    runs = Desk.runs(name, display)
+
+  return runs ? { language, chosen } : null
+}
+
+// What a computer is set up with: what the desk asked for stands with it, or
+// else its first display and whatever it is offered with from the start.
+function chosenFor({ displays, chosenAtFirst }, desk) {
+  const [first] = displays
+
+  return desk?.chosen ?? [first, ...chosenAtFirst]
+}
+
+function sameDesk(one, other) {
+  const either = one == null || other == null
+
+  if (either) {
+    return one == other
+  }
+
+  return one.language == other.language && one.chosen.join() == other.chosen.join()
+}
+
+// The address names the computer being set up, or none for the line-up, and
+// the desk it is switched on as. A computer it does not know leads to the
+// line-up, and a desk the desk does not run to its computer's set-up.
+function placeAsked() {
   const query = new URLSearchParams(location.search),
     name = query.get("computer"),
-    computer = COMPUTERS.find(each => each.name == name)
+    computer = COMPUTERS.find(each => each.name == name) ?? null,
+    desk = computer == null ? null : deskAsked(computer, query)
 
-  return computer ?? null
+  return { computer, desk }
 }
 
 function addressOf(computer) {
@@ -240,15 +290,19 @@ function openedElsewhere(event) {
   return event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
 }
 
-// One canvas under the whole page draws the line-up and a computer's set-up,
-// and carries the computer chosen from one to the other: only the pieces it
-// may be given are loaded on the way, and what leaves is freed once gone.
+// One canvas under the whole page draws the line-up, a computer's set-up and
+// its desk switched on, and carries the computer chosen from one to the next:
+// only the pieces it may be given are loaded on the way, and what leaves is
+// freed once gone.
 class Showroom {
   #anisotropy
   #arrived = false
   #busy = new Set()
   #camera = new PerspectiveCamera()
   #canvas
+  #controls = null
+  #deskHeading
+  #deskSection
   #drawing = false
   #drawn = null
   #flight = null
@@ -262,8 +316,12 @@ class Showroom {
   #lineUpSection
   #main
   #onFrame
+  #optionsPanel = null
   #panel
   #renderer
+  #running = null
+  #setUp = null
+  #setUpLink
   #setUpSection
   #showing = null
   #stage
@@ -271,6 +329,7 @@ class Showroom {
   #title
   #titled
   #travelling = false
+  #trouble = ""
   #wanted = null
 
   constructor(main) {
@@ -278,10 +337,14 @@ class Showroom {
       canvas = renderer.domElement,
       resized = this.onResized.bind(this),
       observer = new ResizeObserver(resized),
-      chosen = this.onChosen.bind(this),
+      linked = this.onLinked.bind(this),
       list = main.querySelector("ol"),
       back = main.querySelector(".panel a"),
-      stage = main.querySelector(".stage")
+      stage = main.querySelector(".stage"),
+      lineUpSection = main.querySelector(".line-up"),
+      setUpSection = main.querySelector(".set-up"),
+      deskSection = main.querySelector(".desk"),
+      setUpLink = deskSection.querySelector("a")
 
     renderer.setPixelRatio(devicePixelRatio)
     renderer.toneMapping = NeutralToneMapping
@@ -296,10 +359,10 @@ class Showroom {
         { computer } = item.dataset
 
       turnByHand(frame, {
-        turn: across => this.#byHand(true, lineUp => lineUp.turnBy(computer, across)),
-        letGo: () => this.#byHand(true, lineUp => lineUp.letGo(computer))
+        turn: across => this.#byHand(lineUpSection, lineUp => lineUp.turnBy(computer, across)),
+        letGo: () => this.#byHand(lineUpSection, lineUp => lineUp.letGo(computer))
       })
-      link.addEventListener("click", chosen)
+      link.addEventListener("click", linked)
       link.addEventListener("pointerenter", () => this.onPointerEnter(computer))
       link.addEventListener("pointerleave", () => this.onPointerLeave(computer))
       link.addEventListener("focus", () => this.onFocus(computer, link))
@@ -308,25 +371,30 @@ class Showroom {
     }
 
     this.#canvas = canvas
+    this.#deskHeading = deskSection.querySelector("h2")
+    this.#deskSection = deskSection
     this.#form = main.querySelector("form")
     this.#heading = main.querySelector(".set-up h2")
-    this.#line = main.querySelector(".set-up p")
-    this.#lineUpSection = main.querySelector(".line-up")
+    this.#line = main.querySelector(".panel > p")
+    this.#lineUpSection = lineUpSection
     this.#main = main
     this.#onFrame = this.onFrame.bind(this)
     this.#panel = main.querySelector(".panel")
     this.#renderer = renderer
-    this.#setUpSection = main.querySelector(".set-up")
+    this.#setUpLink = setUpLink
+    this.#setUpSection = setUpSection
     this.#stage = stage
     this.#title = main.querySelector(".line-up h2")
     this.#titled = document.title
     this.#form.addEventListener("change", event => this.onChanged(event))
-    back.addEventListener("click", event => this.onBack(event))
+    this.#form.addEventListener("submit", event => this.onSwitchedOn(event))
+    back.addEventListener("click", linked)
+    setUpLink.addEventListener("click", linked)
     addEventListener("popstate", () => this.onAddressChanged())
     addEventListener("scroll", () => this.#draw(), { passive: true })
     turnByHand(stage, {
-      turn: (across, down) => this.#byHand(false, setUp => setUp.turnBy(across, down)),
-      letGo: () => this.#byHand(false, setUp => setUp.letGo())
+      turn: (across, down) => this.#byHand(setUpSection, setUp => setUp.turnBy(across, down)),
+      letGo: () => this.#byHand(setUpSection, setUp => setUp.letGo())
     })
     observer.observe(canvas)
   }
@@ -337,11 +405,13 @@ class Showroom {
     await renderer.init()
     this.#anisotropy = renderer.getMaxAnisotropy()
     this.#studio = new Studio(renderer)
-    this.#wanted = computerAsked()
+    this.#ask()
     this.#travel()
   }
 
-  onChosen(event) {
+  // A link within the page travels where it leads, but one opened in a new
+  // tab or window opens there.
+  onLinked(event) {
     const elsewhere = openedElsewhere(event)
 
     if (elsewhere) {
@@ -350,25 +420,25 @@ class Showroom {
 
     event.preventDefault()
 
-    const { computer: name } = event.currentTarget.closest("li").dataset,
-      computer = COMPUTERS.find(each => each.name == name)
+    const address = new URL(event.currentTarget.href)
 
-    this.#go(computer)
+    this.#go(address)
   }
 
-  onBack(event) {
-    const elsewhere = openedElsewhere(event)
-
-    if (elsewhere) {
-      return
-    }
+  // Switching on travels to the desk the form asks for, under an address of
+  // its own.
+  onSwitchedOn(event) {
+    const data = new FormData(this.#form),
+      query = new URLSearchParams(data),
+      address = new URL(location.href)
 
     event.preventDefault()
-    this.#go(null)
+    address.search = query.toString()
+    this.#go(address)
   }
 
   onAddressChanged() {
-    this.#wanted = computerAsked()
+    this.#ask()
     this.#travel()
   }
 
@@ -384,6 +454,7 @@ class Showroom {
     const chosen = this.#piecesChosen(),
       framing = this.#framing()
 
+    this.#trouble = ""
     this.#tell()
     this.#drawn.choose(chosen, framing)
     this.#draw()
@@ -445,12 +516,24 @@ class Showroom {
     }
   }
 
-  #go(computer) {
-    const address = addressOf(computer)
-
+  #go(address) {
     history.pushState(null, "", address)
-    this.#wanted = computer
+    this.#ask()
     this.#travel()
+  }
+
+  // The place the address asks for; the language a desk asks for is its
+  // computer's from then on.
+  #ask() {
+    const place = placeAsked(),
+      { computer, desk } = place,
+      lettered = desk != null
+
+    if (lettered) {
+      this.#languages.set(computer.name, desk.language)
+    }
+
+    this.#wanted = place
   }
 
   // One journey at a time, each to wherever the address last asked for, so the
@@ -476,22 +559,55 @@ class Showroom {
   }
 
   #isThere() {
-    return this.#arrived && this.#showing == this.#wanted
+    const { computer, desk } = this.#wanted,
+      atComputer = this.#showing == computer,
+      atDesk = sameDesk(this.#running, desk)
+
+    return this.#arrived && atComputer && atDesk
   }
 
-  #stepToward(wanted) {
+  // A desk is left for its set-up, and a set-up for the line-up, before any
+  // other is reached.
+  #stepToward({ computer, desk }) {
     const first = !this.#arrived,
-      inLineUp = this.#showing == null
+      inLineUp = this.#showing == null,
+      running = this.#running != null
 
     if (first) {
-      return wanted == null ? this.#openLineUp() : this.#openSetUp(wanted)
+      return this.#open(computer, desk)
     }
 
     if (inLineUp) {
-      return this.#choose(wanted)
+      return this.#choose(computer, desk)
     }
 
-    return this.#back()
+    if (running) {
+      return this.#switchOff()
+    }
+
+    const elsewhere = computer != this.#showing
+
+    if (elsewhere) {
+      return this.#back()
+    }
+
+    return this.#switchOn(desk)
+  }
+
+  // Where the page first stands, carried there from nowhere.
+  #open(computer, desk) {
+    const inLineUp = computer == null,
+      running = desk != null
+
+    if (inLineUp) {
+      return this.#openLineUp()
+    }
+
+    if (running) {
+      return this.#openDesk(computer, desk)
+    }
+
+    return this.#openSetUp(computer)
   }
 
   async #openLineUp() {
@@ -510,18 +626,13 @@ class Showroom {
   }
 
   async #openSetUp(computer) {
-    const setUp = new SetUp(),
-      { language } = this.#letteredOf(computer),
-      seenSmall = { anisotropy: this.#anisotropy, small: true, language },
-      options = { ...this.#options(), language },
-      loading = [Model.load(computer.name, seenSmall), setUp.load(computer, options)],
-      [model] = await Promise.all(loading)
+    const chosenAtFirst = chosenFor(computer, null),
+      setUp = await this.#loadSetUp(computer)
 
-    setUp.stand(model)
     this.#drawn = setUp
     this.#showing = computer
     this.#arrived = true
-    this.#laySetUp(computer)
+    this.#laySetUp(computer, chosenAtFirst)
 
     const arriving = this.#animate(this.#panel, PANEL_ARRIVING, ARRIVING),
       chosen = this.#piecesChosen(),
@@ -533,18 +644,34 @@ class Showroom {
     arriving.cancel()
   }
 
+  async #openDesk(computer, desk) {
+    const loaded = await this.#loadDesk(computer, desk),
+      started = loaded != null
+
+    if (!started) {
+      return
+    }
+
+    this.#showing = computer
+    this.#arrived = true
+    this.#standDesk(computer, desk, loaded)
+    this.#draw()
+    this.#controls.focus({ preventScroll: true })
+  }
+
   // The others clear away while the pieces the chosen computer may be given
   // load, and it goes on as it was shown; then it flies to its place on the
   // desk, the panel coming only once it has left the panel's side, and they
   // come.
-  async #choose(computer) {
+  async #choose(computer, desk) {
     const { name, language } = this.#letteredOf(computer),
       lineUp = this.#drawn,
       setUp = new SetUp(),
       options = { ...this.#options(), language },
       loading = setUp.load(computer, options),
       leaving = this.#lineUpMotions(name),
-      left = leaving.map(animation => animation.finished)
+      left = leaving.map(animation => animation.finished),
+      chosenAtFirst = chosenFor(computer, desk)
 
     lineUp.show(name)
     this.#lineUpSection.inert = true
@@ -561,7 +688,7 @@ class Showroom {
     this.#drawn = setUp
     this.#showing = computer
     this.#flight = new Flight(name, { pose, frame })
-    this.#laySetUp(computer)
+    this.#laySetUp(computer, chosenAtFirst)
     this.#setUpSection.inert = true
 
     const waiting = { ...ARRIVING, delay: Flight.MILLISECONDS / 2 },
@@ -635,11 +762,146 @@ class Showroom {
     link.focus({ preventScroll: true })
   }
 
+  // The panel goes while the desk loads, and the set-up, brought into line
+  // with the desk asked for, is kept behind it for the way back; the desk then
+  // stands where the set-up stood, the eye carried from the set-up's view to
+  // the desk's. A desk that does not start leaves the set-up as it was.
+  async #switchOn(desk) {
+    const computer = this.#showing,
+      setUp = this.#drawn,
+      framing = this.#framing(),
+      loading = this.#loadDesk(computer, desk),
+      lettering = setUp.takeLanguage(desk.language),
+      panelKeyframes = PANEL_ARRIVING.toReversed(),
+      leaving = this.#animate(this.#panel, panelKeyframes, LEAVING)
+
+    this.#setUpSection.inert = true
+    setUp.choose(desk.chosen, framing)
+
+    const [loaded] = await Promise.all([loading, lettering, leaving.finished]),
+      started = loaded != null
+
+    if (!started) {
+      const returning = this.#animate(this.#panel, PANEL_ARRIVING, ARRIVING),
+        button = this.#form.querySelector("button")
+
+      leaving.cancel()
+      this.#tell()
+      this.#setUpSection.inert = false
+      button.focus({ preventScroll: true })
+      await returning.finished
+      returning.cancel()
+
+      return
+    }
+
+    const [from] = setUp.views(each => this.#frameOf(each))
+
+    this.#hide(this.#setUpSection)
+    this.#setUp = setUp
+    this.#standDesk(computer, desk, loaded)
+    this.#deskSection.inert = true
+    this.#flight = new Flight(computer.name, from)
+    await this.#fly()
+    this.#deskSection.inert = false
+    this.#controls.focus({ preventScroll: true })
+  }
+
+  // The machine goes off, and whatever it held with it; the eye is carried
+  // back to the set-up kept behind the desk, or to one set up afresh for a
+  // desk opened by its address, and the panel comes.
+  async #switchOff() {
+    this.#deskSection.inert = true
+
+    const computer = this.#showing,
+      { chosen } = this.#running,
+      drawn = this.#drawn,
+      { language } = this.#letteredOf(computer),
+      setUp = this.#setUp ?? (await this.#loadSetUp(computer))
+
+    await setUp.takeLanguage(language)
+
+    const [from] = drawn.views(each => this.#frameOf(each))
+
+    this.#controls.remove()
+    this.#optionsPanel.remove()
+    this.#controls = null
+    this.#optionsPanel = null
+    drawn.dispose()
+    this.#hide(this.#deskSection)
+    this.#setUp = null
+    this.#running = null
+    this.#drawn = setUp
+    this.#flight = new Flight(computer.name, from)
+    this.#laySetUp(computer, chosen)
+    this.#setUpSection.inert = true
+
+    const waiting = { ...ARRIVING, delay: Flight.MILLISECONDS / 2 },
+      arriving = this.#animate(this.#panel, PANEL_ARRIVING, waiting),
+      flying = this.#fly()
+
+    await Promise.all([flying, arriving.finished])
+    arriving.cancel()
+
+    const framing = this.#framing()
+
+    setUp.choose(chosen, framing)
+    this.#setUpSection.inert = false
+    this.#heading.focus({ preventScroll: true })
+    this.#draw()
+  }
+
   async #fly() {
     this.#draw()
     await this.#flight.finished
     this.#flight = null
     this.#draw()
+  }
+
+  // A set-up stands its computer, seen small, before every piece it may be
+  // given.
+  async #loadSetUp(computer) {
+    const setUp = new SetUp(),
+      { language } = this.#letteredOf(computer),
+      seenSmall = { anisotropy: this.#anisotropy, small: true, language },
+      options = { ...this.#options(), language },
+      loading = [Model.load(computer.name, seenSmall), setUp.load(computer, options)],
+      [model] = await Promise.all(loading)
+
+    setUp.stand(model)
+
+    return setUp
+  }
+
+  // A desk switched on is loaded afresh, its models seen close, and its
+  // shaders are compiled as it will first be seen, so that nothing waits on
+  // them once it is drawn. One that does not start is not switched on: the
+  // address goes back to its set-up, which says why.
+  async #loadDesk(computer, { language, chosen }) {
+    const loaded = new Desk(),
+      asked = { computer: computer.name, language, pieces: {} },
+      options = this.#options()
+
+    for (const piece of chosen) {
+      asked.pieces[PIECES[piece].kind] = piece
+    }
+
+    try {
+      await loaded.load(asked, options)
+    } catch (problem) {
+      this.#refuse(computer, problem)
+
+      return null
+    }
+
+    const canvas = this.#canvasSize(),
+      frame = { left: 0, top: 0, ...canvas },
+      [{ pose }] = loaded.views(() => frame)
+
+    pose.place(this.#camera, frame, canvas)
+    await this.#renderer.compileAsync(loaded.scene, this.#camera)
+
+    return loaded
   }
 
   #standLineUp(lineUp) {
@@ -664,20 +926,41 @@ class Showroom {
     this.#draw()
   }
 
-  #laySetUp(computer) {
+  #laySetUp(computer, chosen) {
     const { language } = this.#letteredOf(computer)
 
-    this.#form.innerHTML = formOf(computer, language)
+    this.#form.innerHTML = formOf(computer, language, chosen)
     this.#setUpSection.hidden = false
     scrollTo(0, 0)
     this.#name(computer, language)
     this.#tell()
   }
 
+  // The desk stands across a section of its own, under the reader's hands.
+  #standDesk(computer, desk, loaded) {
+    const controls = document.createElement("colophon-desk-controls"),
+      options = document.createElement("colophon-options"),
+      address = addressOf(computer)
+
+    this.#deskSection.append(controls, options)
+    controls.use(loaded)
+    options.use(loaded)
+    this.#controls = controls
+    this.#optionsPanel = options
+    this.#setUpLink.href = address
+    this.#deskSection.hidden = false
+    this.#drawn = loaded
+    this.#running = desk
+    this.#trouble = ""
+    scrollTo(0, 0)
+    this.#name(computer, desk.language)
+  }
+
   #name(computer, language) {
     const heading = headingOf(computer, language)
 
     this.#heading.textContent = heading
+    this.#deskHeading.textContent = heading
     document.title = `${heading} · ${this.#titled}`
   }
 
@@ -779,16 +1062,36 @@ class Showroom {
     return Array.from(inputs, input => input.value)
   }
 
-  // The line under the computer's name says what stands with it.
+  // The line under the computer's name says what stands with it, and Switch
+  // on is offered only where the desk runs what was chosen, the reason given
+  // where it does not, or why it did not start when last switched on.
   #tell() {
-    const chosen = this.#piecesChosen(),
+    const computer = this.#showing,
+      chosen = this.#piecesChosen(),
       named = chosen.map(function (value) {
         const { title, description } = PIECES[value]
 
         return `the ${title} ${description}`
-      })
+      }),
+      display = computer.displays.find(each => chosen.includes(each)),
+      reason = whyNotRunning(computer, display),
+      runs = reason == "",
+      button = this.#form.querySelector("button"),
+      note = this.#form.querySelector("p")
 
     this.#line.textContent = `with ${named.join(" and ")}`
+    button.disabled = !runs
+    note.textContent = runs ? this.#trouble : reason
+  }
+
+  // The reader is told why the desk did not start, and so is the page.
+  #refuse(computer, problem) {
+    const address = addressOf(computer)
+
+    reportError(problem)
+    history.replaceState(null, "", address)
+    this.#ask()
+    this.#trouble = `The ${computer.title} did not start: ${problem.message}`
   }
 
   #show() {
@@ -805,10 +1108,22 @@ class Showroom {
     return { anisotropy: this.#anisotropy, studio: this.#studio }
   }
 
+  // The section whatever is drawn stands in.
+  #sectionShown() {
+    const inLineUp = this.#showing == null,
+      running = this.#running != null
+
+    if (inLineUp) {
+      return this.#lineUpSection
+    }
+
+    return running ? this.#deskSection : this.#setUpSection
+  }
+
   // A press can outlast the section it began in, and turns only what is drawn
   // there.
-  #byHand(inLineUp, act) {
-    const drawnThere = (this.#showing == null) == inLineUp
+  #byHand(section, act) {
+    const drawnThere = this.#sectionShown() == section
 
     if (drawnThere) {
       act(this.#drawn)
@@ -816,14 +1131,21 @@ class Showroom {
     }
   }
 
-  // A computer in the line-up stands in its own frame there, and on its desk
-  // in the set-up's stage.
+  // A computer in the line-up stands in its own frame there, on its desk in
+  // the set-up's stage, and switched on across the whole of the desk's section.
   #frameOf(name) {
-    const inLineUp = this.#showing == null,
-      item = this.#items.get(name),
-      element = inLineUp ? item.querySelector(".frame") : this.#stage
+    const section = this.#sectionShown(),
+      inLineUp = section == this.#lineUpSection,
+      running = section == this.#deskSection
 
-    return rectOf(element)
+    if (inLineUp) {
+      const item = this.#items.get(name),
+        frame = item.querySelector(".frame")
+
+      return rectOf(frame)
+    }
+
+    return rectOf(running ? this.#deskSection : this.#stage)
   }
 
   #draw() {

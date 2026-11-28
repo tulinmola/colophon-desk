@@ -8,14 +8,16 @@ const WINDOWS = [
 ]
 
 // Where the glass stands on the canvas in the whole desk's view, as a fraction of its size.
-const GLASS = { x: 0.48, y: 0.38 }
+const GLASS = { x: 0.494, y: 0.443 }
 
 const BESIDE = { x: 0.1, y: 0.5 },
   MIDDLE = { x: 0.5, y: 0.5 }
 
-// The colours along the canvas's outermost whole pixels, and the one at its middle.
+// The colours along the canvas's outermost whole pixels, and the one at its
+// middle. The bottom row is left out: the glass the desk stands on runs on
+// below it, and may carry its reflection out of the window there.
 async function readEdge(page) {
-  const box = await page.locator("colophon-cpc-desk canvas").boundingBox(),
+  const box = await page.locator("colophon-desk canvas").boundingBox(),
     picture = await scene(page),
     encoded = picture.toString("base64")
 
@@ -45,7 +47,6 @@ async function readEdge(page) {
 
       for (let across = left; across <= right; across++) {
         edge.add(colourAt(across, top))
-        edge.add(colourAt(across, bottom))
       }
 
       for (let down = top; down <= bottom; down++) {
@@ -76,7 +77,7 @@ test("the whole desk stands inside a window of any shape", async function ({ pag
   test.setTimeout(allowed)
   await stand(page)
 
-  const desk = page.locator("colophon-cpc-desk"),
+  const desk = page.locator("colophon-desk"),
     canvas = desk.locator("canvas")
 
   for (const size of WINDOWS) {
@@ -106,7 +107,7 @@ test("the monitor's button carries the eye to the glass, and the desk's brings i
 }) {
   await stand(page)
 
-  const desk = page.locator("colophon-cpc-desk"),
+  const desk = page.locator("colophon-desk"),
     monitor = desk.getByRole("button", { name: "The monitor" }),
     whole = desk.getByRole("button", { name: "The whole desk" }),
     original = await settled(page)
@@ -115,7 +116,7 @@ test("the monitor's button carries the eye to the glass, and the desk's brings i
   await monitor.click()
   await expect(monitor).toHaveAttribute("aria-pressed", "true")
   await expect(whole).toHaveAttribute("aria-pressed", "false")
-  await expect(desk).toBeFocused()
+  await expect(desk.locator("colophon-desk-controls")).toBeFocused()
 
   await expect
     .poll(async function () {
@@ -142,8 +143,8 @@ test("the monitor and the drive answer the pointer, and a turn begun on one leav
   await page.emulateMedia({ reducedMotion: "reduce" })
   await stand(page)
 
-  const desk = page.locator("colophon-cpc-desk"),
-    canvas = desk.locator("canvas"),
+  const desk = page.locator("colophon-desk"),
+    surface = desk.locator(".surface"),
     monitor = desk.getByRole("button", { name: "The monitor" }),
     drive = desk.getByRole("button", { name: "The disc drive" }),
     glass = await pointAt(page, GLASS),
@@ -151,7 +152,7 @@ test("the monitor and the drive answer the pointer, and a turn begun on one leav
     beside = await pointAt(page, BESIDE)
 
   await page.mouse.move(slot.x, slot.y)
-  await expect(canvas).toHaveAttribute("data-answers")
+  await expect(surface).toHaveAttribute("data-answers")
   await expect(drive).toHaveAttribute("data-pointed")
 
   await page.mouse.move(glass.x, glass.y)
@@ -159,7 +160,7 @@ test("the monitor and the drive answer the pointer, and a turn begun on one leav
   await expect(drive).not.toHaveAttribute("data-pointed")
 
   await page.mouse.move(beside.x, beside.y)
-  await expect(canvas).not.toHaveAttribute("data-answers")
+  await expect(surface).not.toHaveAttribute("data-answers")
   await expect(monitor).not.toHaveAttribute("data-pointed")
 
   await page.mouse.click(glass.x, glass.y)
@@ -198,7 +199,7 @@ test("the eye turns and backs away no further than its bounds", async function (
 test("a view chosen while the eye still glides is reached exactly", async function ({ page }) {
   await stand(page)
 
-  const desk = page.locator("colophon-cpc-desk"),
+  const desk = page.locator("colophon-desk"),
     whole = desk.getByRole("button", { name: "The whole desk" }),
     middle = await pointAt(page, MIDDLE),
     original = await settled(page)

@@ -3,11 +3,11 @@ import { expect, test } from "@playwright/test"
 import { deflateRawSync } from "node:zlib"
 
 // Where the eject button stands on the canvas in the drive's view, as a fraction of its size.
-const EJECT_BUTTON = { x: 0.594, y: 0.506 }
+const EJECT_BUTTON = { x: 0.698, y: 0.518 }
 
 // The badge over the power lamp, in the whole desk's view and then in its own,
 // which the first click carries the eye to.
-const BADGE = { x: 0.613, y: 0.581 },
+const BADGE = { x: 0.646, y: 0.643 },
   BADGE_CLOSE = { x: 0.5, y: 0.5 }
 
 // A disc offered while one is in comes out before it goes back in, which takes
@@ -183,11 +183,11 @@ async function chooseAtDrive(page, laidOut, file) {
 
 // The machine drops keys typed while it is still drawing its prompt.
 async function catalogue(page) {
-  const desk = page.locator("colophon-cpc-desk"),
-    monitor = desk.getByRole("button", { name: "The monitor" })
+  const controls = page.locator("colophon-desk-controls"),
+    monitor = controls.getByRole("button", { name: "The monitor" })
 
   await settled(page)
-  await desk.focus()
+  await controls.focus()
   await page.keyboard.type("cat")
   await page.keyboard.press("Enter")
   await monitor.click()
@@ -416,10 +416,10 @@ test("a machine left on by the answer is still running", async function ({ page 
   await page.mouse.click(badge.x, badge.y)
   await leaveOn.click()
 
-  const desk = page.locator("colophon-cpc-desk"),
+  const controls = page.locator("colophon-desk-controls"),
     waiting = await settled(page)
 
-  await desk.focus()
+  await controls.focus()
   await page.keyboard.type("PRINT 1")
   await page.keyboard.press("Enter")
 
@@ -486,7 +486,7 @@ test("the eject button leaves the machine as if it had never been given a disc",
 test("a choice cancelled takes the camera back to the view it left", async function ({ page }) {
   await standListening(page)
 
-  const desk = page.locator("colophon-cpc-desk"),
+  const desk = page.locator("colophon-desk"),
     driveButton = desk.getByRole("button", { name: "The disc drive" }),
     wholeButton = desk.getByRole("button", { name: "The whole desk" }),
     fileInput = desk.locator("input[type='file']"),

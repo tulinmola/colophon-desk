@@ -1,9 +1,11 @@
 import { expect } from "@playwright/test"
 
+// The controls hold the focus, which an element hidden would lose, so only
+// what they show is hidden.
 const SCENE_ONLY = {
   fullPage: true,
-  style: `colophon-cpc-desk { outline: none !important; }
-    colophon-cpc-desk > :not(canvas) { visibility: hidden; }`
+  style: `colophon-desk-controls { outline: none !important; }
+    colophon-desk-controls > *, colophon-options { visibility: hidden; }`
 }
 
 // Where frames are slow the desk takes seconds to stand and a picture seconds
@@ -11,7 +13,7 @@ const SCENE_ONLY = {
 const SLOW_WAIT = { timeout: 30000 }
 
 // Where the drive's face stands on the canvas in the whole desk's view, as a fraction of its size.
-const DRIVE = { x: 0.8, y: 0.645 }
+const DRIVE = { x: 0.822, y: 0.7 }
 
 async function stand(page) {
   const options = page.locator("colophon-options")
@@ -55,7 +57,7 @@ async function blank(page) {
 }
 
 async function pointAt(page, { x, y }) {
-  const box = await page.locator("colophon-cpc-desk canvas").boundingBox()
+  const box = await page.locator("colophon-desk canvas").boundingBox()
 
   return { x: box.x + box.width * x, y: box.y + box.height * y }
 }

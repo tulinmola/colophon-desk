@@ -12,7 +12,7 @@ Node and npm build the site and check it. Compiling the machine it runs wants Em
 
 ```sh
 npm install
-npm start              # serve the line-up and the set-up, and the desk at /desk.html
+npm start              # serve the line-up, the set-up and the desk switched on, and the element alone at /desk.html
 npm run build          # write the site to dist/
 npm run models:build   # write the models and their prints to src/assets/
 npm run emulator:build # compile the machine and this host into src/js/vendor/

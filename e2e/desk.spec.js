@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test"
 test("the desk lays a canvas the size of itself", async function ({ page }) {
   await page.goto("/desk.html")
 
-  const desk = page.locator("colophon-cpc-desk"),
+  const desk = page.locator("colophon-desk"),
     canvas = desk.locator("canvas")
 
   await expect(canvas).toBeVisible()
@@ -27,10 +27,10 @@ test("the desk stands once its machine has booted", async function ({ page }) {
 // Nothing on this machine moves on its own at the prompt, so a picture that
 // changed has been typed on.
 test("a keystroke let go of within the frame still reaches the machine", async function ({ page }) {
-  const desk = page.locator("colophon-cpc-desk")
+  const controls = page.locator("colophon-desk-controls")
 
   await stand(page)
-  await desk.focus()
+  await controls.focus()
 
   const quiet = await settled(page)
 
@@ -67,7 +67,7 @@ test("the options keep their own arrow keys, which the machine also reads", asyn
 test("a desk laid again lays one canvas, not two", async function ({ page }) {
   await page.goto("/desk.html")
 
-  const desk = page.locator("colophon-cpc-desk"),
+  const desk = page.locator("colophon-desk"),
     canvas = desk.locator("canvas")
 
   await expect(canvas).toBeVisible()
@@ -87,12 +87,12 @@ async function startUpIn(page, language) {
   await page.route("**/desk.html", async function (route) {
     const response = await route.fetch(),
       markup = await response.text(),
-      body = markup.replace("<colophon-cpc-desk", `<colophon-cpc-desk language="${language}"`)
+      body = markup.replace("<colophon-desk", `<colophon-desk language="${language}"`)
 
     return route.fulfill({ response, body })
   })
   await stand(page)
-  await page.locator("colophon-cpc-desk").getByRole("button", { name: "The monitor" }).click()
+  await page.locator("colophon-desk").getByRole("button", { name: "The monitor" }).click()
 
   return settled(page)
 }
@@ -114,4 +114,23 @@ test("each language starts a machine of its own", async function ({ page }) {
 
     expect(alike).toBe(false)
   }
+})
+
+test("a display the desk does not run the computer with is refused", async function ({ page }) {
+  const errors = []
+
+  page.on("pageerror", error => errors.push(error.message))
+  await page.route("**/desk.html", async function (route) {
+    const response = await route.fetch(),
+      markup = await response.text(),
+      body = markup.replace('monitor="ctm644"', 'monitor="gt65"')
+
+    return route.fulfill({ response, body })
+  })
+  await page.goto("/desk.html")
+
+  await expect
+    .poll(() => errors, SLOW_WAIT)
+    .toContain("The desk does not run the cpc6128 with the gt65")
+  await expect(page.locator("colophon-desk-controls")).toHaveCount(0)
 })

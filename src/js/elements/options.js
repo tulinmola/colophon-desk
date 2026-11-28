@@ -92,7 +92,7 @@ class OptionsElement extends Element {
     this.hidden = true
   }
 
-  use(settings) {
+  use({ settings }) {
     this.#settings = settings
     this.#bindings.clear()
 
