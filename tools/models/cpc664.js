@@ -1,5 +1,6 @@
 import {
   draw,
+  drawCircle,
   drawRectangle,
   drawRoundedRectangle,
   makeBox,
@@ -7,6 +8,8 @@ import {
   makeCylinder,
   makeSphere
 } from "replicad"
+import buildCl1 from "./cl1.js"
+import buildCordDc from "./cord_dc.js"
 import drawSchneiderMark from "./schneider.js"
 
 // x runs from the left end, y back from the front and z up from the cabinet bottom's base, in millimetres. The feet stand below it, under a negative z.
@@ -205,15 +208,18 @@ const VENTS = { first: 28.6, count: 105, pitch: 4.99, width: 2.4, onTop: 4, down
 const LOWER_VENTS = { foot: 1, belowBand: 1 }
 
 // Every socket opens at the rear [A], CPC664 User Instructions, https://archive.org/details/amstrad-cpc664-user-manual: their middles across from the left end on the rear photograph, scaled as the vents are, ±2, where the service manual's board drawing set by a fit to the same photograph puts them within 3 but for the expansion's, 6.5 further right, and the second drive's, 9.7 [E]. Their sizes and depths below the parting line are read on it too: the edge connectors 81.5, 85.2 and 66.1 wide, 9.1 to 16.2 below; the DINs 15 across, the jack 6, the DC socket 9 square and the joystick's D 19 by 11.
-// The sockets stand in panels recessed 1 into the case's rear, rising over the parting line 1.4, and behind the monitor's sockets and the tape's 15.5 and 18.3. The cord D.C. that leaves between the DC socket and the expansion's [A], CPC664 Service Manual p3, is not drawn.
-const REAR_SOCKETS = [
+// The sockets stand in panels recessed 1 into the case's rear, rising over the parting line 1.4, and behind the monitor's sockets and the tape's 15.5 and 18.3. The cord D.C. leaves between the DC socket and the expansion's [A], CPC664 Service Manual p3.
+const DC_SOCKET = { kind: "box", middle: 364.6, width: 9, height: 9, below: 7 },
+  MONITOR_SOCKET = { kind: "round", middle: 390.3, diameter: 15, below: 3.5 },
+  TAPE_SOCKET = { kind: "round", middle: 91.1, diameter: 15, below: 0.7 },
+  REAR_SOCKETS = [
     { kind: "round", middle: 36, diameter: 6, below: 7 },
     { kind: "box", middle: 61.7, width: 19, height: 11, below: 3.5 },
-    { kind: "round", middle: 91.1, diameter: 15, below: 0.7 },
+    TAPE_SOCKET,
     { kind: "edge", middle: 165.3, width: 81.5 },
     { kind: "edge", middle: 265.9, width: 85.2 },
-    { kind: "box", middle: 364.6, width: 9, height: 9, below: 7 },
-    { kind: "round", middle: 390.3, diameter: 15, below: 3.5 },
+    DC_SOCKET,
+    MONITOR_SOCKET,
     { kind: "edge", middle: 464.2, width: 66.1 }
   ],
   REAR_PANELS = [
@@ -223,6 +229,12 @@ const REAR_SOCKETS = [
   ],
   EDGE_CONNECTOR = { top: 9.1, bottom: 16.2 },
   PANEL_DEPTH = 1
+
+// The 12V DC cord, the 6128's own part as cord_dc.js gives it, leaves from a block in the monitor's panel 341.6 to 357 across and from 6.9 up to the parting line, its boot's middle 350.0 across and 19.7 up, ±2 and ±0.7, square-on on the rear photograph scaled by its 105 vent slots; and the boot is about 9.2 across at its root and tapers to about 6.8 over 16.4 straight back, read from below on the underside photograph at about 5 pixels to the millimetre [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. How far the block stands proud is not measured, and 0.5 is taken. The boot's five grooves are not drawn.
+// On the rear photograph the boot's outline reads 10.6 tall against its 9.2 across, and it is drawn round; and the sockets' middles read 2 to 4 lower than they are drawn here, the boot's 1.7 above the MONITOR socket's, where here it stands 0.4 below. The disagreements stand.
+const CORD_BLOCK = { left: 341.6, right: 357, bottom: 6.9, standing: 0.5 },
+  DC_CORD = { middle: 350, height: 19.7, diameter: 9.2, tipDiameter: 6.8, length: 16.4 },
+  BOOT_ROOT = DEPTH - PANEL_DEPTH + CORD_BLOCK.standing
 
 // The right end of the cabinet bottom holds a recessed panel 42.1 to 124.3 from the front and from 3.0 to 22.3 up, with the VOLUME wheel's window 55.2 to 77.5 back and 14.8 to 19.5 up, and the POWER slide's slot 98.6 to 112.7 and 13.2 to 20.3, ±1 [E], on the end's photograph. The service manual names the knob and the switch, 170806 and 170809 [A]. How far each stands proud is not measured: a knob a third of its slot long standing 2, and a wheel standing 1 and stopping 1 short of its window's ends, are taken, the knob at ON, toward the rear, as the end reads "OFF I I ON" with the front at the left.
 const END_PANEL = { front: 42.1, rear: 124.3, bottom: 3, top: 22.3, depth: 1.5 },
@@ -234,6 +246,11 @@ const END_PANEL = { front: 42.1, rear: 124.3, bottom: 3, top: 22.3, depth: 1.5 }
 
 // Colours sampled against a near-white drum in the Rouen photograph, and on a UK unit indoors, neither calibrated, good for the hue and no more [E]: the case reads #504c49 to #56524f warm in the one and #4c5258 blue in the other, and their middle is taken; the nameplate's ground #4f5053; the grey caps #d6cec0 to #ddd6cd warm and #adb6be blue, the middle taken; the light blue #72acef on the unfaded indoor unit, where the Rouen unit's has faded to #bbccc6; the legends #231813 to #362e26, taken neutral; the drive plate's ground #2b2c2e indoors.
 // The cabinet bottom, the bezel and the inside read near black and take the 6128's blacks, the feet the 464's, and the switches a near black of their own, a guess; the lamps the dark red of the Rouen unit's, #510104.
+// The cord, its boot and its plug take the 6128's colours, being the 6128's part. On the rear photograph the block reads 0.65 of the case's rear face above it in linear light, the share the 6128's boot reads of its band, and the boot and the coil, standing out into the light, sample #59 to #83, a neutral grey [E]: the 6128's grey is kept.
+const CORD = { name: "cord", colour: "#434343" },
+  PLUG_PLASTIC = { name: "black-plastic", colour: "#2e2f31" },
+  NICKEL = { name: "nickel", colour: "#a3a199" }
+
 const CABINET_TOP = { name: "cabinet-top", colour: "#4f4f50" },
   CABINET_BOTTOM = { name: "cabinet-bottom", colour: "#262729" },
   FOOT_RUBBER = { name: "foot", colour: "#2a2a2c" },
@@ -850,6 +867,63 @@ function buildSocketOpenings() {
   )
 
   return makeCompound(openings)
+}
+
+function buildCordBlock() {
+  const face = DEPTH - PANEL_DEPTH,
+    block = makeBox(
+      [CORD_BLOCK.left, face - OVERRUN, CORD_BLOCK.bottom],
+      [CORD_BLOCK.right, face + CORD_BLOCK.standing, PARTING_HEIGHT]
+    )
+
+  return { name: "dc-cord-block", shape: block.translate(CENTRING), material: CORD }
+}
+
+function cordSection(diameter, y) {
+  return drawCircle(diameter / 2)
+    .translate(DC_CORD.middle, DC_CORD.height)
+    .sketchOnPlane("XZ", -y)
+}
+
+// The boot runs out of the block, full width as far as its face and tapering beyond it.
+function buildDcCord() {
+  const root = cordSection(DC_CORD.diameter, BOOT_ROOT - OVERRUN),
+    rooted = cordSection(DC_CORD.diameter, BOOT_ROOT),
+    tip = cordSection(DC_CORD.tipDiameter, BOOT_ROOT + DC_CORD.length),
+    boot = root.loftWith([rooted, tip], { ruled: true })
+
+  return { name: "dc-cord", shape: boot.translate(CENTRING), material: CORD }
+}
+
+// Where a monitor's plugs stand in the MONITOR and 5V DC sockets, which the page finds by name: each facing out of the rear, its shoulder against the panel's face.
+function socketMouths() {
+  const face = DEPTH - PANEL_DEPTH,
+    monitorMouth = centred([MONITOR_SOCKET.middle, face, PARTING_HEIGHT - MONITOR_SOCKET.below]),
+    dcMouth = centred([DC_SOCKET.middle, face, PARTING_HEIGHT - DC_SOCKET.below])
+
+  return [
+    { name: "monitor-mouth", place: monitorMouth, turn: 180, parts: [] },
+    { name: "5v-dc-mouth", place: dcMouth, turn: 180, parts: [] }
+  ]
+}
+
+// The CL-1 goes along the rear to whatever stands at the right, passing 60 behind the rear, clear of the plugs standing out of it, and 10 right of the right end: a drawing choice.
+const TAPE_WAY = { behind: 60, right: 10 }
+
+function buildTapeLead() {
+  const face = DEPTH - PANEL_DEPTH,
+    mouth = centred([TAPE_SOCKET.middle, face, PARTING_HEIGHT - TAPE_SOCKET.below]),
+    stowed = centred([WIDTH / 2, DEPTH / 2, DC_CORD.height]),
+    way = [centred([WIDTH + TAPE_WAY.right, DEPTH + TAPE_WAY.behind, 0])]
+
+  return buildCl1({ mouth, turn: 180, stowed, way, metal: NICKEL })
+}
+
+function buildDcLead() {
+  const tip = centred([DC_CORD.middle, BOOT_ROOT + DC_CORD.length, DC_CORD.height]),
+    stowed = centred([DC_CORD.middle, DEPTH / 2, DC_CORD.height])
+
+  return buildCordDc({ tip, stowed, plastic: PLUG_PLASTIC, metal: NICKEL })
 }
 
 // The housing's end is carried across the whole width and the keyboard cut out of it left of the housing, so that the two are one moulding. Rounding the housing's front left corner rounds its top left edge too, the kernel carrying a fillet along edges that meet tangentially.
@@ -2176,7 +2250,12 @@ export function buildCpc664() {
       buildPowerLamp(),
       buildDrivePlate(),
       buildPowerKnob(),
-      buildVolumeWheel()
+      buildVolumeWheel(),
+      buildCordBlock(),
+      buildDcCord(),
+      ...buildDcLead(),
+      ...buildTapeLead(),
+      ...socketMouths()
     ],
     prints: [
       { name: LEGENDS_PRINT, language: ENGLISH, svg: drawLegends(lettered), pixels: LEGEND_PIXELS },

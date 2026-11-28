@@ -15,6 +15,7 @@ import {
   PLATE_PIXELS,
   TESSELLATION,
   buildBadgePanel,
+  buildCords,
   buildFrontCabinet,
   buildGrilleFloor,
   buildPanelPlate,
@@ -443,7 +444,8 @@ export function buildGt65() {
       buildScreen(),
       buildBadgePanel(BADGE_PANEL),
       buildPanelPlate(LEGEND_PANEL, LEGEND_FACE),
-      buildPanelPlate(DC_PANEL, DC_FACE)
+      buildPanelPlate(DC_PANEL, DC_FACE),
+      ...buildCords()
     ],
     prints: drawPrints()
   }

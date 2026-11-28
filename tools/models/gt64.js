@@ -8,6 +8,7 @@ import {
   PLATE_PIXELS,
   TESSELLATION,
   buildBadgePanel,
+  buildCords,
   buildFrontCabinet,
   buildGrilleFloor,
   buildPanelPlate,
@@ -102,7 +103,8 @@ export function buildGt64() {
       buildPowerButton(),
       buildScreen(),
       buildBadgePanel(BADGE_PANEL),
-      buildPanelPlate(LEGEND_PANEL, LEGEND_FACE)
+      buildPanelPlate(LEGEND_PANEL, LEGEND_FACE),
+      ...buildCords()
     ],
     prints: [
       { name: BADGE_FACE.name, language: ENGLISH, svg: drawBadge(), pixels: PLATE_PIXELS },

@@ -1,12 +1,13 @@
 import { Box3, MathUtils, PerspectiveCamera, Scene, Vector3 } from "three/webgpu"
+import { arrange, interfacePlug } from "./arrangement"
 import Flight from "./flight"
 import GlassTop from "./glass_top"
 import Model from "./model"
 import Motion from "./motion"
 import PIECES from "../pieces"
+import Plug from "./plug"
 import Pose from "./pose"
 import REDUCED_MOTION from "./reduced_motion"
-import arrange from "./arrangement"
 import boundsOf from "./bounds_of"
 
 // The desk is seen whole from its front left and above, the eye standing where every piece the computer could be given has room, so that it stays put while they are chosen. Presentation choices: the heading and the elevation in degrees, and how much room, as a share of what the pieces need.
@@ -48,7 +49,7 @@ function cornersOf({ min, max }) {
 }
 
 // Each piece stands as the kind the desk takes it as: a monitor, a television,
-// a drive or a recorder.
+// a drive, a recorder or a power supply.
 function piecesBy(names, models) {
   const pieces = {}
 
@@ -60,9 +61,11 @@ function piecesBy(names, models) {
 }
 
 // Where a piece and each of its parts stand: arranging a desk moves a piece
-// whole, or its parts, as the drive's.
-function stanceOf(piece) {
-  return [piece, ...piece.children].map(function (part) {
+// whole, or its parts, as the drive's, but for the parts the hand carries.
+function stanceOf(piece, carried) {
+  const parts = [piece, ...piece.children].filter(part => !carried.includes(part))
+
+  return parts.map(function (part) {
     const { position, quaternion, scale } = part
 
     return {
@@ -119,12 +122,25 @@ function aside(stance, offset) {
   return [{ ...whole, position }, ...parts]
 }
 
+// The leads still joined to a piece once it has gone are put away in their
+// owner.
+function putAwayFrom(piece, leads) {
+  for (const lead of leads) {
+    const joining = lead.joined == piece
+
+    if (joining) {
+      lead.stow()
+      lead.plug.putAway()
+    }
+  }
+}
+
 export default class SetUp {
   scene = new Scene()
+  #awaiting = new Map()
   #computer = null
   #corners = []
   #display = null
-  #landing = null
   #eye = new PerspectiveCamera()
   #glass
   #middle = new Vector3()
@@ -132,6 +148,7 @@ export default class SetUp {
   #name
   #offered
   #pieces = new Map()
+  #interfaces = new Map()
   #pose = new Pose()
   #posedFor = null
   #standing = new Set()
@@ -139,21 +156,30 @@ export default class SetUp {
   #turnedPose = new Pose()
   #width
 
-  // Every piece the computer may be given is loaded, so that choosing one never
-  // waits on it.
-  async load({ name, displays, beside }, { anisotropy, studio, language }) {
-    const names = [...displays, ...beside],
+  // Every piece the computer may be given, or always stands with, is loaded, so
+  // that choosing one never waits on it.
+  async load({ name, displays, beside, alongside = [] }, { anisotropy, studio, language }) {
+    const names = [...displays, ...beside, ...alongside],
       loading = names.map(each => Model.load(each, { anisotropy, small: true, language })),
       pieces = await Promise.all(loading)
 
     this.#name = name
-    this.#offered = { displays, beside }
+    this.#offered = { displays, beside, alongside }
     studio.light(this.scene)
 
     for (const [index, piece] of pieces.entries()) {
+      const pieceName = names[index],
+        drive = PIECES[pieceName].kind == "drive"
+
       piece.visible = false
-      this.#pieces.set(names[index], piece)
+      this.#pieces.set(pieceName, piece)
       this.scene.add(piece)
+
+      if (drive) {
+        const carried = interfacePlug(piece)
+
+        this.#interfaces.set(pieceName, carried)
+      }
     }
   }
 
@@ -179,13 +205,19 @@ export default class SetUp {
     this.#motions.set(computer, motion)
   }
 
-  // Pieces no longer chosen go, those chosen come, and those that stay move to
-  // where the new arrangement stands them, the stage framed on the canvas as
-  // given. A piece still on its way is taken from wherever it has reached.
+  // Pieces no longer chosen go, once whatever is plugged into them is pulled
+  // out, those chosen come, and those that stay move to where the new
+  // arrangement stands them, the stage framed on the canvas as given. A piece
+  // still on its way is taken from wherever it has reached.
   choose(chosen, framing) {
-    const wanted = chosen.filter(name => this.#pieces.has(name)),
-      going = [...this.#standing].filter(name => !wanted.includes(name)),
-      waiting = going.length > 0 ? GOING_MILLISECONDS : 0,
+    const stood = this.#standing,
+      offered = chosen.filter(name => this.#pieces.has(name)),
+      wanted = [...offered, ...this.#offered.alongside],
+      going = [...stood].filter(name => !wanted.includes(name)),
+      { leads } = this.#computer,
+      joinedBefore = leads.map(lead => [lead, lead.joined]),
+      pulling = this.#pull(going),
+      waiting = this.#clearing(going, pulling),
       current = new Map(),
       arranged = new Map()
 
@@ -193,7 +225,7 @@ export default class SetUp {
       const shown = piece.visible
 
       if (shown) {
-        const stance = stanceOf(piece),
+        const stance = this.#stanceOf(name),
           reach = boundsOf(piece)
 
         current.set(name, { stance, reach })
@@ -207,10 +239,15 @@ export default class SetUp {
     const pieces = piecesBy(wanted, this.#pieces)
 
     arrange(this.#computer, pieces)
+    this.#standing = new Set(wanted)
+    this.#display = wanted.find(name => this.#offered.displays.includes(name))
+    this.#findSockets()
+
+    this.#leaveBehind(joinedBefore)
 
     for (const name of wanted) {
       const piece = this.#pieces.get(name),
-        stance = stanceOf(piece),
+        stance = this.#stanceOf(name),
         reach = boundsOf(piece)
 
       arranged.set(name, { stance, reach })
@@ -221,7 +258,7 @@ export default class SetUp {
     }
 
     for (const name of going) {
-      this.#go(name, current.get(name), framing)
+      this.#go(name, current.get(name), framing, pulling)
     }
 
     let arrivals = 0
@@ -229,8 +266,9 @@ export default class SetUp {
     for (const name of wanted) {
       const { stance: to, reach } = arranged.get(name),
         piece = this.#pieces.get(name),
-        stayed = this.#standing.has(name),
-        underway = this.#motions.has(piece),
+        stayed = stood.has(name),
+        motion = this.#motions.get(piece),
+        underway = motion != null && motion.begun,
         delay = stayed ? (underway ? 0 : waiting) : waiting + arrivals * STAGGER,
         was = current.get(name)
 
@@ -249,9 +287,6 @@ export default class SetUp {
       this.#come(name, from, to, { delay, stayed })
     }
 
-    this.#standing = new Set(wanted)
-    this.#awaitDisplay(pieces.monitor ?? pieces.television)
-
     const clear = this.#glass.presence < 1
 
     if (clear) {
@@ -259,28 +294,42 @@ export default class SetUp {
     }
   }
 
-  // Everything on the desk goes but the computer, and the glass with it.
+  // Everything on the desk goes but the computer, once pulled out of it, and
+  // the glass with it; the computer's leads are put away at once. Answers when
+  // every piece, and any still going from before, has gone.
   leave(framing) {
-    const going = [this.#fade(0)],
-      { lead } = this.#computer
+    const { leads } = this.#computer,
+      standing = [...this.#standing],
+      going = [this.#fade(0)]
 
-    if (lead) {
+    for (const lead of leads) {
+      this.#motions.delete(lead.plug.part)
+      this.#awaiting.delete(lead.plug)
       lead.stow()
+      lead.plug.putAway()
     }
+
+    const pulling = this.#pull(standing)
 
     this.#display = null
-    this.#landing = null
+    this.#standing = new Set()
 
-    for (const name of this.#standing) {
+    for (const name of standing) {
       const piece = this.#pieces.get(name),
-        stance = stanceOf(piece),
-        reach = boundsOf(piece),
-        gone = this.#go(name, { stance, reach }, framing)
+        stance = this.#stanceOf(name),
+        reach = boundsOf(piece)
 
-      going.push(gone)
+      this.#go(name, { stance, reach }, framing, pulling)
     }
 
-    this.#standing = new Set()
+    for (const piece of this.#pieces.values()) {
+      const motion = this.#motions.get(piece),
+        moving = motion != null
+
+      if (moving) {
+        going.push(motion.finished)
+      }
+    }
 
     return Promise.all(going)
   }
@@ -298,12 +347,16 @@ export default class SetUp {
       moving ||= going
     }
 
-    const landing = this.#landing,
-      landed = landing != null && !this.#motions.has(landing)
+    for (const [plug, piece] of this.#awaiting) {
+      const still = [piece, plug.part].every(each => !this.#motions.has(each))
 
-    if (landed) {
-      this.#computer.lead.show(true)
-      this.#landing = null
+      if (still) {
+        const plugging = plug.plugIn()
+
+        this.#awaiting.delete(plug)
+        this.#motions.set(plug.part, plugging)
+        moving = true
+      }
     }
 
     return moving
@@ -380,49 +433,207 @@ export default class SetUp {
     this.#glass.dispose()
   }
 
-  #go(name, { stance: from, reach }, framing) {
+  #go(name, { stance: from, reach }, framing, delay) {
     const piece = this.#pieces.get(name),
+      { leads } = this.#computer,
       offstage = this.#offstageOf(name, reach, framing),
       to = aside(from, offstage),
       duration = REDUCED_MOTION.matches ? 0 : GOING_MILLISECONDS,
-      timing = { duration, ease: Motion.easeIn },
+      timing = { duration, delay, ease: Motion.easeIn },
       motion = new Motion(timing, function (progress) {
+        const gone = progress == 1
+
         standBetween(from, to, progress)
-        piece.visible = progress < 1
+        piece.visible = !gone
+
+        if (gone) {
+          putAwayFrom(piece, leads)
+        }
       })
 
     this.#motions.set(piece, motion)
-
-    return motion.finished
   }
 
   #come(name, from, to, { delay, stayed }) {
     const piece = this.#pieces.get(name),
+      [whole] = from,
+      [wholeTo] = to,
+      displayed = name == this.#display,
+      shifting = stayed && displayed && !whole.position.equals(wholeTo.position),
       reduced = REDUCED_MOTION.matches,
       duration = stayed ? MOVING_MILLISECONDS : COMING_MILLISECONDS,
       ease = stayed ? Motion.easeInOut : Motion.easeOut,
       timing = reduced ? { duration: 0, ease } : { duration, delay, ease },
-      motion = new Motion(timing, progress => standBetween(from, to, progress))
+      moving = { from, to, shifting },
+      motion = new Motion(timing, progress => this.#move(name, moving, progress))
 
-    standBetween(from, from, 0)
+    this.#move(name, { from, to: from, shifting }, 0)
     piece.visible = true
     this.#motions.set(piece, motion)
   }
 
-  // A computer's lead, laid anew by every arrangement, stays hidden while a
-  // display newly chosen, or one still on its way, travels, and shows once it
-  // stands.
-  #awaitDisplay(display) {
-    const { lead } = this.#computer,
-      shifting = display != this.#display,
-      underway = this.#landing != null,
-      awaiting = lead != null && (shifting || underway)
+  // A piece moving stands between where it stood and where it goes, and what
+  // it carries follows it: a drive's ribbon is laid again, and while a display
+  // shifts where it stands the leads joining it to the computer are placed
+  // again in their sockets, so that a plug in its socket stays there.
+  #move(name, { from, to, shifting }, progress) {
+    const piece = this.#pieces.get(name),
+      plug = this.#interfaces.get(name),
+      computer = this.#computer
 
-    this.#display = display
+    standBetween(from, to, progress)
+    plug?.layTrail()
 
-    if (awaiting) {
-      lead.show(false)
-      this.#landing = display
+    if (shifting) {
+      const laid = piece.leads.filter(lead => lead.joined != null),
+        joining = computer.leads.filter(lead => lead.joined == piece)
+
+      for (const lead of [...laid, ...joining]) {
+        lead.place(lead.joined)
+        lead.plug.findSocket()
+      }
+    }
+  }
+
+  // How long until every piece going has gone, those going now once pulled
+  // out of whatever joins them and those still going from before.
+  #clearing(going, pulling) {
+    let clearing = going.length > 0 ? pulling + GOING_MILLISECONDS : 0
+
+    for (const [name, piece] of this.#pieces) {
+      const goneBefore = piece.visible && !this.#standing.has(name)
+
+      if (goneBefore) {
+        const motion = this.#motions.get(piece)
+
+        clearing = Math.max(clearing, motion.remaining)
+      }
+    }
+
+    return clearing
+  }
+
+  // Each of the computer's leads the arrangement leaves nowhere to go stays
+  // joined to the piece it was in, while that piece is going, its plug pulled
+  // out, until the piece has gone.
+  #leaveBehind(joinedBefore) {
+    for (const [lead, piece] of joinedBefore) {
+      const leftBehind = lead.joined == null && piece != null && piece.visible
+
+      if (leftBehind) {
+        lead.place(piece)
+        lead.plug.findSocket()
+      }
+    }
+  }
+
+  // The parts of a piece the hand carries: a drive's interface, or the plugs
+  // of its leads.
+  #carriedBy(name) {
+    const piece = this.#pieces.get(name),
+      plug = this.#interfaces.get(name),
+      plugs = piece.leads.map(lead => lead.plug)
+
+    if (plug) {
+      plugs.push(plug)
+    }
+
+    return plugs
+  }
+
+  #stanceOf(name) {
+    const piece = this.#pieces.get(name),
+      carried = this.#carriedBy(name),
+      parts = carried.map(plug => plug.part)
+
+    return stanceOf(piece, parts)
+  }
+
+  // Each plug joining the computer to a piece standing, with that piece's
+  // name: the plugs a piece carries, its leads and a drive's interface, onto
+  // the computer, and then the computer's leads into whichever standing piece
+  // each is laid in, which lie over the others and so are moved after them.
+  #joints() {
+    const joints = new Map(),
+      { leads } = this.#computer
+
+    for (const name of this.#standing) {
+      const carried = this.#carriedBy(name)
+
+      for (const plug of carried) {
+        joints.set(plug, name)
+      }
+    }
+
+    for (const lead of leads) {
+      const name = this.#nameOf(lead.joined),
+        standing = this.#standing.has(name)
+
+      if (standing) {
+        joints.set(lead.plug, name)
+      }
+    }
+
+    return joints
+  }
+
+  // The name a piece was offered by, or nothing for what is not one.
+  #nameOf(model) {
+    const [name] = [...this.#pieces].find(([, piece]) => piece == model) ?? []
+
+    return name
+  }
+
+  // Whatever joins the computer to a piece going is pulled out first, but for
+  // a reader who would see less motion, for whom no hand moves it; answers how
+  // long that takes.
+  #pull(going) {
+    const reduced = REDUCED_MOTION.matches
+
+    let pulling = 0
+
+    for (const [plug, name] of this.#joints()) {
+      const parting = going.includes(name),
+        pulled = parting && !plug.loose && !reduced
+
+      if (parting) {
+        this.#awaiting.delete(plug)
+      }
+
+      if (pulled) {
+        const taking = plug.pullOut()
+
+        this.#motions.set(plug.part, taking)
+        pulling = Plug.TAKING_OUT_MILLISECONDS
+      }
+    }
+
+    return pulling
+  }
+
+  // Every plug joining the computer to a piece standing finds its socket
+  // where the arrangement stood it, and one lying loose goes in once its piece
+  // stands still. Where motion is reduced no hand moves it, and whatever the
+  // hand was doing stops.
+  #findSockets() {
+    const reduced = REDUCED_MOTION.matches
+
+    for (const [plug, name] of this.#joints()) {
+      const piece = this.#pieces.get(name)
+
+      if (reduced) {
+        this.#motions.delete(plug.part)
+      }
+
+      plug.findSocket()
+
+      const { loose } = plug
+
+      if (loose) {
+        this.#awaiting.set(plug, piece)
+      } else {
+        this.#awaiting.delete(plug)
+      }
     }
   }
 
@@ -501,12 +712,12 @@ export default class SetUp {
   // marks a place, as a slot or a connector, reaches nowhere. The glass lies
   // under the whole of them.
   #frame() {
-    const { displays, beside } = this.#offered,
-      { lead } = this.#computer,
+    const { displays, beside, alongside } = this.#offered,
+      { leads } = this.#computer,
       whole = new Box3()
 
     for (const display of displays) {
-      const pieces = piecesBy([display, ...beside], this.#pieces)
+      const pieces = piecesBy([display, ...beside, ...alongside], this.#pieces)
 
       arrange(this.#computer, pieces)
 
@@ -525,7 +736,7 @@ export default class SetUp {
       }
     }
 
-    if (lead) {
+    for (const lead of leads) {
       lead.stow()
     }
 

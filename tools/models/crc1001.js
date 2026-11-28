@@ -280,9 +280,9 @@ const SOCKET_PANEL = { fromRear: 47, toRear: 182, foot: 1, depth: 1.5 },
   AC_INLET = { middle: 56, share: 0.34, length: 14, height: 12 },
   DIN_SOCKET = { middle: 106.6, share: 0.32, diameter: 13.3 },
   JACKS = [
-    { middle: 124.9, share: 0.24, bore: 3.5, ring: 5.4 },
-    { middle: 163.3, share: 0.24, bore: 2.5, ring: 3.6 },
-    { middle: 173, share: 0.24, bore: 3.5, ring: 5.4 }
+    { name: "ear", middle: 124.9, share: 0.24, bore: 3.5, ring: 5.4 },
+    { name: "rem", middle: 163.3, share: 0.24, bore: 2.5, ring: 3.6 },
+    { name: "mic", middle: 173, share: 0.24, bore: 3.5, ring: 5.4 }
   ],
   VOLUME_SLOT = { middle: 143, length: 20, bottomShare: 0.17, topShare: 0.32 },
   WHEEL = { diameter: 24, thickness: 5, standing: 1 },
@@ -1381,6 +1381,17 @@ function drawSocketPanel() {
   ].join("\n")
 }
 
+// Where a plug's shoulder stands in each jack, on its ring's face, by the name the desk joins it by.
+function jackMouths() {
+  const face = SIDE + SOCKET_PANEL.depth
+
+  return JACKS.map(function ({ name, middle, share }) {
+    const place = centred([face, backOf(middle), sideHeight(share)])
+
+    return { name: `${name}-mouth`, place, turn: -90, parts: [] }
+  })
+}
+
 export function buildCrc1001() {
   const prints = [
     [TOP_PRINT, drawTopShell(), TOP_PIXELS],
@@ -1410,7 +1421,8 @@ export function buildCrc1001() {
       buildSocketPanel(),
       buildSocketBodies(),
       buildJackRings(),
-      buildVolumeWheel()
+      buildVolumeWheel(),
+      ...jackMouths()
     ],
     prints: prints.map(([name, svg, pixels]) => ({ name, language: LANGUAGE, svg, pixels }))
   }

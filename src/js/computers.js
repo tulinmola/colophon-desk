@@ -11,6 +11,7 @@
 const COMPUTERS = [
   // Shown to the press in London on 23 April 1982 [C]: https://en.wikipedia.org/wiki/ZX_Spectrum. Its box reads "48K RAM" [B]: https://www.computerhistory.org/collections/catalog/102678097. It loads from "a normal domestic cassette recorder" [A], the ZX Spectrum Introduction, chapter six: https://worldofspectrum.org/ZXSpectrumIntroduction/chapter_six.html
   // Sinclair stood a Sony television behind it on page 3 of its 1982 brochure [A], known by its cabinet as the KV-1400 [E]: https://spectrumforeveryone.com/wp-content/uploads/2020/08/Spectrum-Brochure.pdf. Having no recorder of its own, it is offered one from the start; tools/models/crc1001.js says why it is the Computone.
+  // It has no switch, "to turn it on you just connect it to the power supply", which came in its box with "An aerial lead about 2 metres long" and "A pair of leads about 75 cms long with 3.5 mm jack plugs at each end" [A], ZX Spectrum Introduction, ch. 1: https://worldofspectrum.org/ZXSpectrumIntroduction/chapter_one.html. The supply stands beside it whatever else is chosen.
   {
     name: "spectrum48",
     title: "ZX Spectrum 48K",
@@ -20,6 +21,7 @@ const COMPUTERS = [
     versions: { en: "QWERTY, with £" },
     displays: ["kv1400"],
     beside: ["crc1001"],
+    alongside: ["uk1400"],
     chosenAtFirst: ["crc1001"]
   },
   // Introduced in Britain in June 1984, with "64 KB RAM and an internal cassette deck" [C]: https://en.wikipedia.org/wiki/Amstrad_CPC. The deck is the datacorder, Amstrad's own name for it [A], CPC464 Service Manual: https://archive.org/details/Amstrad_CPC464_Service_Manual_1985_Amstrad_Consumer_Electronics

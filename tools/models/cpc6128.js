@@ -7,6 +7,8 @@ import {
   makeCompound,
   makeCylinder
 } from "replicad"
+import buildCl1 from "./cl1.js"
+import buildCordDc from "./cord_dc.js"
 import drawSchneiderMark from "./schneider.js"
 
 // x runs from the left end, y back from the front and z up from the cabinet top's lower edge, where it meets the cabinet bottom, in millimetres. The cabinet bottom and the feet stand below it, under a negative z.
@@ -464,21 +466,6 @@ const END_ENGLISH_WORDS = [
     de: END_ENGLISH_WORDS
   }
 
-// The 12V DC cord, Cord DC 170822, ends in a "5mm plug" for the monitor's socket [A], CPC6128 Service Manual p3 and specification: https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a. The User Instructions draw its lead straight from the computer, then coiled about a dozen times, then straight into the plug [A], ch. 1 p. 2: https://archive.org/details/amstrad-cpc-6128-user-manual
-// A Schneider unit's lead lying free, read from above at 5.12 pixels to the millimetre by the case's 510, runs about 35 straight from the boot before its first turn, where the desk lays it down at once, and is about 3.5 thick, in turns about 21 across, at least 8 of them seen, to a straight black plug: its barrel stands about 7.6 out of a nose about 8 across, widening to a body about 10 across and 23 long, its relief running on at least 5 [E]: https://commons.wikimedia.org/wiki/File:Schneider_CPC_664_und_CPC_6128_(54853121982).jpg. The UK units photographed beside their monitors carry a dark lead, the others a grey one [E], https://commons.wikimedia.org/wiki/File:Amstrad_CPC-6128_(monochrome_and_colour)_-_Retrosystems_2010.jpg: the boot's grey is kept.
-// How many turns there are, how far the nose widens and how the relief tapers are not known: the drawing's dozen, 4, and 8 long from 7 across are taken. Where the lead lies is the desk's to say.
-const DC_PLUG = {
-    barrel: 5,
-    barrelLength: 7.6,
-    nose: 8,
-    widening: 4,
-    body: 10,
-    length: 23,
-    reliefStart: 7,
-    relief: 8
-  },
-  DC_LEAD = { cable: 3.5, coil: 21, turns: 12 }
-
 // The nameplate and the colour badge lie in shallow recesses in the rear strip, their outlines measured on the Spanish photograph from above, ±0.3 across and ±0.4 in depth [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html. The light lines along their rear edges, at the photograph's own blur limit, bound the recesses under about 1.5, with no lower bound and no way to separate a recess's depth from its plate's thickness, so each recess is taken at the plate's thickness.
 // The badge's lamp shows through a window 5.25 by 2.05, its lens standing behind it as the drive's does.
 const NAMEPLATE = { left: 25.2, right: 143.2, fromRear: 8.6, depth: 13.2 },
@@ -500,7 +487,7 @@ const BEZEL = { name: "bezel", colour: "#1c1918" }
 // Sampled through the vent slots of the 1989 Spanish unit and a 1988 French one, #010102 to #0c0e0f, and taken at the middle: the inside of the case is black [E]: https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 const INTERIOR = { name: "interior", colour: "#07080a" }
 
-// Sampled on the two rears and corrected by the band's own reading against the cabinet's: the jacks' housings read 0.29 to 0.39 of the band's light, the wheel and the switch's knob as dark, and the cord's boot 0.54 to 0.76 in red and green, where the backdrop takes its blue, and is taken a neutral grey at 0.65. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
+// Sampled on the two rears and corrected by the band's own reading against the cabinet's: the jacks' housings read 0.29 to 0.39 of the band's light, the wheel and the switch's knob as dark, and the cord's boot 0.54 to 0.76 in red and green, where the backdrop takes its blue, and is taken a neutral grey at 0.65. The UK units photographed beside their monitors carry a dark lead, the others a grey one, as cord_dc.js gives: the boot's grey is kept. Uncalibrated, good for the hue and no more [E]: https://retroordenadoresorty.blogspot.com/2021/08/amstrad-cpc-6128-128k-ordenador.html and https://retroordenadoresorty.blogspot.com/p/ordenadores-amstrad-y-schneider-amstrad.html
 const BLACK_PLASTIC = { name: "black-plastic", colour: "#2e2f31" },
   CORD = { name: "cord", colour: "#434343" }
 
@@ -2010,40 +1997,37 @@ function buildBandOverOpenings() {
   }
 }
 
-function plugSection(diameter, y) {
-  return drawCircle(diameter / 2).sketchOnPlane("XZ", -y)
+function centred(point) {
+  return point.map((value, axis) => value + CENTRING[axis])
 }
 
-// The plug is drawn about its shoulder, its barrel ahead along y and its tail behind, where the lead leaves it, and stowed inside the case, so that the computer's bounds hold the same with it as without it: the desk lays it in the monitor's socket.
+// The CL-1 goes round the rear to whatever stands at the right, passing 60 behind the rear, clear of the plugs standing out of it, and 60 left of the left end and 10 right of the right: a drawing choice.
+const TAPE_WAY = { behind: 60, left: 60, right: 10 }
+
+function buildTapeLead() {
+  const mouth = centred([endHousingFace(), TAPE_MOUTH.middle, TAPE_MOUTH.height]),
+    stowed = centred([WIDTH / 2, DEPTH / 2, CUT_TOP]),
+    rear = DEPTH + TAPE_WAY.behind,
+    way = [centred([-TAPE_WAY.left, rear, 0]), centred([WIDTH + TAPE_WAY.right, rear, 0])]
+
+  return buildCl1({ mouth, turn: -90, stowed, way, metal: NICKEL })
+}
+
 function buildDcLead() {
-  const { barrel, barrelLength, nose, widening, body, length, reliefStart, relief } = DC_PLUG,
-    tail = -(length + relief),
-    metal = makeCylinder(barrel / 2, barrelLength, [0, 0, 0], [0, 1, 0]),
-    shoulder = plugSection(nose, 0),
-    widened = plugSection(body, -widening),
-    back = plugSection(body, -length),
-    moulding = shoulder.loftWith([widened, back], { ruled: true }),
-    reliefFront = plugSection(reliefStart, -length),
-    reliefEnd = plugSection(DC_LEAD.cable, tail),
-    strainRelief = reliefFront.loftWith(reliefEnd, { ruled: true }),
-    plug = moulding.fuse(strainRelief),
-    tip = [DC_CORD.middle, DEPTH + DC_CORD.length, CUT_TOP].map(
-      (value, axis) => value + CENTRING[axis]
-    ),
-    stowed = [DC_CORD.middle, DEPTH / 2, CUT_TOP].map((value, axis) => value + CENTRING[axis])
+  const tip = centred([DC_CORD.middle, DEPTH + DC_CORD.length, CUT_TOP]),
+    stowed = centred([DC_CORD.middle, DEPTH / 2, CUT_TOP])
+
+  return buildCordDc({ tip, stowed, plastic: BLACK_PLASTIC, metal: NICKEL })
+}
+
+// Where a monitor's plugs stand in the MONITOR and 5V DC sockets, which the page finds by name: each facing out of the rear, the DIN plug's shoulder against the band's face, its moulding being wider than the jack's window, and the DC plug's against its jack.
+function socketMouths() {
+  const monitorMouth = centred([MONITOR_MOUTH.middle, DEPTH - BAND.depth, MONITOR_MOUTH.height]),
+    dcMouth = centred([DC_BORE.middle, DEPTH - DC_JACK.behind, DC_BORE.height])
 
   return [
-    { name: "dc-cord-tip", place: tip, parts: [] },
-    {
-      name: "dc-cord-lead",
-      place: stowed,
-      lead: DC_LEAD,
-      parts: [
-        { name: "dc-cord-plug", shape: plug, material: BLACK_PLASTIC },
-        { name: "dc-cord-barrel", shape: metal, material: NICKEL },
-        { name: "dc-cord-plug-tail", place: [0, tail, 0], parts: [] }
-      ]
-    }
+    { name: "monitor-mouth", place: monitorMouth, turn: 180, parts: [] },
+    { name: "5v-dc-mouth", place: dcMouth, turn: 180, parts: [] }
   ]
 }
 
@@ -3156,6 +3140,8 @@ export function buildCpc6128() {
       buildReceptacleInsulators(),
       buildBails(),
       ...buildDcLead(),
+      ...buildTapeLead(),
+      ...socketMouths(),
       buildEndLettering(),
       buildTapeJack(),
       buildJoystickSocket(),

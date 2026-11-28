@@ -17,6 +17,7 @@ import { buildGt65 } from "./models/gt65.js"
 import { buildKv1400 } from "./models/kv1400.js"
 import { buildSoundOnSoundC15 } from "./models/sound_on_sound_c15.js"
 import { buildSpectrum48 } from "./models/spectrum48.js"
+import { buildUk1400 } from "./models/uk1400.js"
 import { fileURLToPath } from "node:url"
 import opencascade from "replicad-opencascadejs"
 import { setOC } from "replicad"
@@ -89,6 +90,13 @@ function tiltAboutX(degrees) {
   const half = (degrees * Math.PI) / 360
 
   return [Math.sin(half), 0, 0, Math.cos(half)]
+}
+
+// A turn about the upright, given in the models' terms, about z.
+function turnAboutUpright(degrees) {
+  const half = (degrees * Math.PI) / 360
+
+  return [0, Math.sin(half), 0, Math.cos(half)]
 }
 
 const FONT_NAMES = readdirSync(FONTS_DIR).filter(fontName => fontName.endsWith(".otf")),
@@ -269,12 +277,30 @@ function createPartNode(
   return node
 }
 
-// A lead's figures, its lengths in metres as the page reads every length.
-function leadExtras({ cable, coil, turns }) {
+// A lead's figures, its lengths in metres as the page reads every length,
+// and the names of the parts it runs between, of any plug holding it and of
+// the cable it is a core of with others.
+function leadExtras({
+  cable,
+  coil,
+  turns,
+  tip,
+  tail,
+  sheath,
+  socket,
+  anchor = null,
+  bundle = null
+}) {
   return {
     cable: cable * METRES_PER_MILLIMETRE,
     coil: coil * METRES_PER_MILLIMETRE,
-    turns
+    turns,
+    tip,
+    tail,
+    sheath,
+    socket,
+    anchor,
+    bundle
   }
 }
 
@@ -288,17 +314,24 @@ function createNode(model, part) {
 
   const node = model.document.createNode(part.name),
     placed = Object.hasOwn(part, "place"),
-    turned = Object.hasOwn(part, "tilt"),
+    tilted = Object.hasOwn(part, "tilt"),
+    turned = Object.hasOwn(part, "turn"),
     leading = Object.hasOwn(part, "lead")
 
   if (placed) {
     placeNode(node, part.place)
   }
 
-  if (turned) {
+  if (tilted) {
     const tilt = tiltAboutX(part.tilt)
 
     node.setRotation(tilt)
+  }
+
+  if (turned) {
+    const turn = turnAboutUpright(part.turn)
+
+    node.setRotation(turn)
   }
 
   if (leading) {
@@ -366,6 +399,7 @@ const models = [
   { name: "gt65", built: buildGt65() },
   { name: "kv1400", built: buildKv1400() },
   { name: "spectrum48", built: buildSpectrum48() },
+  { name: "uk1400", built: buildUk1400() },
   { name: "cf2", built: buildCf2() },
   { name: "ct15", built: buildCt15() },
   { name: "ddi1", built: buildDdi1() },

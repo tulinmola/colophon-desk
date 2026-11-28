@@ -166,12 +166,18 @@ const HANDLE_WELL = { across: 190, depth: 24, behind: 190, sunk: 12 },
 const EARPHONE = { behind: SEAM.behind + 13, across: 3, height: 10, middles: [84, 106], depth: 5 }
 
 // No view shows the rear. Sony's 385 reaches 48 past the side panel [E], and what fills it is drawn as a rear cover over the tube's neck, centred on the glass, 240 by 220 where it leaves the cabinet and 200 by 180 at its end, its corners rounded over 25: all taken.
-// Sony names a 75 Ω aerial socket [A], https://www.manualslib.com/manual/3463898/Sony-Trinitron-Kv-1400e.html?page=2, a cord anchor, and a rear cover held by "all the screws around it" [A]: https://www.manualslib.com/manual/4267546/Sony-Trinitron-Kv-1400e.html?page=6 — none is drawn.
+// Sony names a 75 Ω aerial socket [A], https://www.manualslib.com/manual/3463898/Sony-Trinitron-Kv-1400e.html?page=2, a cord anchor, and a rear cover held by "all the screws around it" [A]: https://www.manualslib.com/manual/4267546/Sony-Trinitron-Kv-1400e.html?page=6 — the cord anchor and the screws are not drawn.
 const REAR_COVER = {
   start: { width: 240, height: 220 },
   end: { width: 200, height: 180 },
   radius: 25
 }
+
+// The aerial socket serves VHF and UHF alike, on an aerial terminal board at the chassis's right rear [A], exploded view (2): https://archive.org/download/manualslib-id-4267546/page/n19.jpg. A television's is the female, 9.525 inside, taking the male [C]: https://en.wikipedia.org/wiki/Belling-Lee_connector
+// Sony's drawing opens it on the board's right-hand end, facing right, which puts it behind the side panel's rear edge, where the white set's right side shows bare to that edge [D, E], http://www.gadgetmuseum.org.uk/userdata/PRODPIC-1646.jpg; read so, it needs a flank the cabinet as drawn lacks. It is drawn instead through the rear face, as sets commonly carry it, 325 from the left side and 120 up by the drawing's scales [E], partly a guess; the disagreement stands. Its boss, 14 across and standing 3 proud about a bore 8 deep, is a guess.
+// A lead into it comes round the set's right side, passing 10 clear of its front right corner and of its rear right corner on the desk: a drawing choice.
+const AERIAL_SOCKET = { across: 325, height: 120, boss: 14, standing: 3, bore: 9.525, depth: 8 },
+  AERIAL_WAY_CLEARANCE = 10
 
 // Sinclair's photograph is a halftone print; balanced to its own paper, its white reads #d3ccca [E], and surviving sets have yellowed to #f8ecda and #ead0b2. The strip, the frame and the emblem read black, #272a28 on the white set, and its POWER button #bdbeb6 [E]. No frame holds a card: each is good for the hue and no more, and a guess. The jack's slots are taken as dark as the other sets' insides, and the glass as dark as their tubes'.
 const CABINET = { name: "cabinet", colour: "#d3ccca" },
@@ -828,6 +834,41 @@ function drawEmblem() {
   return drawPanel(EMBLEM_PANEL, EMBLEM_FACE.colour, word)
 }
 
+function buildAerialSocket() {
+  const { across, height, boss, standing, bore, depth } = AERIAL_SOCKET,
+    face = SIDE_DEPTH + standing,
+    body = makeCylinder(
+      boss / 2,
+      standing + OVERRUN,
+      [across, SIDE_DEPTH - OVERRUN, height],
+      [0, 1, 0]
+    ),
+    hole = makeCylinder(bore / 2, depth + OVERRUN, [across, face - depth, height], [0, 1, 0]),
+    socket = body.cut(hole)
+
+  return { name: "aerial-socket", shape: socket.translate(CENTRING), material: INSIDE }
+}
+
+// Where a plug's shoulder stands in the aerial socket, and the way a lead comes to it, by the names the desk joins it by.
+function aerialMouth() {
+  const { across, height, standing } = AERIAL_SOCKET,
+    clear = AERIAL_WAY_CLEARANCE,
+    mouth = placed([across, SIDE_DEPTH + standing, height]),
+    front = placed([WIDTH + clear, -clear, 0]),
+    rear = placed([WIDTH + clear, DEPTH + clear, 0])
+
+  return [
+    { name: "aerial-mouth", place: mouth, turn: 180, parts: [] },
+    {
+      name: "aerial-mouth-way",
+      parts: [
+        { name: "aerial-mouth-way-front", place: front, parts: [] },
+        { name: "aerial-mouth-way-rear", place: rear, parts: [] }
+      ]
+    }
+  ]
+}
+
 export function buildKv1400() {
   return {
     tessellation: TESSELLATION,
@@ -844,7 +885,9 @@ export function buildKv1400() {
       buildPlate(CONTROL_PRINT, STRIP_PANEL, STRIP_FACE, CONTROL_FACE, stripOutline),
       buildPlate(SENSOR_PRINT, SENSOR_PANEL, LEDGE_FACE, SENSOR_FACE, panelOutline),
       buildPlate(BADGE_PRINT, BADGE_PANEL, MASK, BADGE_FACE, panelOutline),
-      buildEmblem()
+      buildEmblem(),
+      buildAerialSocket(),
+      ...aerialMouth()
     ],
     prints: [
       { name: CONTROL_PRINT, language: LANGUAGE, svg: drawControlPanel(), pixels: PLATE_PIXELS },

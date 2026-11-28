@@ -11,6 +11,7 @@ export default class Motion {
   #delay
   #duration
   #ease
+  #elapsed = 0
   #resolve
   #startedAt = null
   #step
@@ -25,11 +26,22 @@ export default class Motion {
     })
   }
 
+  // Whether it has done waiting, as of the last frame that advanced it.
+  get begun() {
+    return this.#elapsed >= this.#delay
+  }
+
+  // How long it has still to wait and run, as of the last frame that advanced it.
+  get remaining() {
+    return this.#delay + this.#duration - this.#elapsed
+  }
+
   // Answers whether it goes on.
   advance(now) {
     this.#startedAt ??= now
+    this.#elapsed = now - this.#startedAt
 
-    const elapsed = now - this.#startedAt - this.#delay,
+    const elapsed = this.#elapsed - this.#delay,
       done = elapsed >= this.#duration,
       begun = elapsed >= 0,
       progress = done ? 1 : Math.max(elapsed, 0) / this.#duration,

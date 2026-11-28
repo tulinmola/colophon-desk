@@ -245,6 +245,78 @@ test("a display chosen away and back stands as it stood", async function ({ page
   expect(restored).toBe(true)
 })
 
+test("a display chosen while a piece beside it is still coming troubles nothing", async function ({
+  page
+}) {
+  const errors = errorsOf(page)
+
+  await page.clock.install()
+  await page.goto("/?computer=cpc6128")
+  await arrived(page)
+
+  const now = await page.evaluate(() => Date.now())
+
+  await page.clock.pauseAt(now + 1000)
+  await page.getByRole("checkbox", { name: /CRC-1001/u }).check()
+  await page.clock.runFor(16)
+  await page.getByRole("radio", { name: /GT65/u }).check()
+  await page.clock.resume()
+  await stillStage(page)
+
+  expect(errors).toEqual([])
+})
+
+test("a piece taken away from the leads joining it troubles nothing", async function ({ page }) {
+  const errors = errorsOf(page)
+
+  await page.goto("/?computer=spectrum48")
+  await arrived(page)
+  await stillStage(page)
+  await page.getByRole("checkbox", { name: /CRC-1001/u }).uncheck()
+  await stillStage(page)
+
+  expect(errors).toEqual([])
+})
+
+test("what a hand carries into its socket ends where it stands at once for a reader who would see less motion", async function ({
+  page,
+  context
+}) {
+  const quiet = await context.newPage()
+
+  await quiet.emulateMedia({ reducedMotion: "reduce" })
+
+  for (const { computer, choose } of [
+    { computer: "cpc6128", choose: each => each.getByRole("radio", { name: /GT65/u }).check() },
+    { computer: "cpc464", choose: each => each.getByRole("checkbox", { name: /DDI-1/u }).check() },
+    {
+      computer: "cpc664",
+      choose: each => each.getByRole("checkbox", { name: /CRC-1001/u }).check()
+    },
+    {
+      computer: "spectrum48",
+      choose: async function (each) {
+        const recorder = each.getByRole("checkbox", { name: /CRC-1001/u })
+
+        await recorder.uncheck()
+        await recorder.check()
+      }
+    }
+  ]) {
+    for (const each of [page, quiet]) {
+      await each.goto(`/?computer=${computer}`)
+      await arrived(each)
+      await choose(each)
+    }
+
+    const carried = await stillStage(page),
+      placed = await stillStage(quiet),
+      same = carried.equals(placed)
+
+    expect(same).toBe(true)
+  }
+})
+
 // Where a press on the element lands, and how wide the element is.
 async function middleOf(locator) {
   const { x, y, width, height } = await locator.boundingBox()

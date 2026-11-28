@@ -6,6 +6,7 @@ import {
   makeCylinder,
   makeSphere
 } from "replicad"
+import buildMonitorCords from "./monitor_cords.js"
 
 // x runs from the left end, y back from the front face and z up from the desk, in millimetres.
 
@@ -184,6 +185,17 @@ const CABINET = { name: "cabinet", colour: "#4e5357" },
   FITTING = { name: "fitting", colour: "#2c2c2f" },
   FOOT = { name: "foot", colour: "#252424" },
   PHOSPHOR = { name: "phosphor", colour: "#0b0c0d" }
+
+// The leads leave through two round holes in the plinth's face, 7.4 across, ±0.7, their middles 125 and 142 across, ±3, with no grommet [E], on a Schneider CTM644-2's plinth seen close, mapped along the strip by its "12V DC" and its jack, and on an Amstrad unit's front rectified at 4 pixels to the millimetre: https://www.nightfallcrew.com/08/09/2013/amstrad-schneider-colour-monitor-ctm-644/ and https://web.archive.org/web/2023/https://oldcrap.org/2020/01/25/amstrad-ctm644-colour-monitor/. The 6128's User Instructions draw the leads right of the jack [A], ch. 1 p. 2, https://archive.org/details/amstrad-cpc-6128-user-manual, where both photographs put them left of it; the photographs are taken.
+// The close photograph reads the plinth 13.5 tall and the foot under it 5.9, which Amstrad's 340 less the face's 324 does not allow, and the holes' middles 0.4 of the way up it; the disagreement stands, and the holes are taken at the middle of the plinth drawn here, where they fit. Which is the DIN lead's is not read, and the right is taken, so that the two run to the computer's sockets without crossing, 5V DC being left of MONITOR on every CPC; how far each runs in before the dark inside is not measured, and 4 is taken, its floor drawn 0.5 thick.
+const CORD_HOLES = { places: [125, 142], diameter: 7.4, rise: 0.5, depth: 4, floor: 0.5 },
+  CORD_HEIGHT = UNDERSIDE + CORD_HOLES.rise * (FACE_BOTTOM - UNDERSIDE),
+  CORD_FLOOR = PLINTH_SET_BACK + CORD_HOLES.depth
+
+// The Amstrad unit's leads read as dark as its cabinet, the Schneider's lighter [E], on the same photographs; the Amstrad's are taken, in the cabinet's own grey. The inside, which the holes' floors and the DIN plug's insert show, is taken as dark as the green monitors', and the plugs' metal the 6128's nickel, both guesses.
+const CORD = { name: "cord", colour: CABINET.colour },
+  INSIDE = { name: "inside", colour: "#141414" },
+  CORD_METAL = { name: "nickel", colour: "#a3a199" }
 
 // Sampled on the same view, which reads the strip #292f32 where the face reads #4e5357, and corrected by that difference [E]: every legend's ink then passes white, so white is what it is taken for, and the model plate stands a little darker than the cabinet at #464a50.
 // A printed part carries a material of its own because the page inks a print over the material it finds, and a material shared with the shell would carry the print onto the shell.
@@ -393,6 +405,43 @@ function buildHandleRecess() {
     .extrude(HANDLE_RECESS.floor + OVERRUN)
 }
 
+function centred(point) {
+  return point.map((value, axis) => value + CENTRING[axis])
+}
+
+function cordHoleAt(across, radius, from, to) {
+  return makeCylinder(radius, to - from, [across, from, CORD_HEIGHT], [0, 1, 0])
+}
+
+function buildCordHoles() {
+  const radius = CORD_HOLES.diameter / 2,
+    holes = CORD_HOLES.places.map(across =>
+      cordHoleAt(across, radius, PLINTH_SET_BACK - OVERRUN, CORD_FLOOR)
+    )
+
+  return holes.reduce((whole, hole) => whole.fuse(hole))
+}
+
+// The holes' floors read dark, the inside of the shell showing through them.
+function buildCordHoleFloors() {
+  const radius = CORD_HOLES.diameter / 2 - HAIRLINE,
+    front = CORD_FLOOR - CORD_HOLES.floor,
+    floors = CORD_HOLES.places.map(across => cordHoleAt(across, radius, front, CORD_FLOOR)),
+    both = floors.reduce((whole, each) => whole.fuse(each))
+
+  return { name: "cord-hole-floors", shape: both.translate(CENTRING), material: INSIDE }
+}
+
+// The leads run out of the holes' floors, and their plugs are stowed in the middle of the cabinet.
+function buildCords() {
+  const [dcAcross, dinAcross] = CORD_HOLES.places,
+    stowed = centred([WIDTH / 2, DEPTH / 2, HEIGHT / 2]),
+    din = { exit: centred([dinAcross, CORD_FLOOR, CORD_HEIGHT]), stowed },
+    dc = { exit: centred([dcAcross, CORD_FLOOR, CORD_HEIGHT]), stowed }
+
+  return buildMonitorCords({ din, dc, sheath: CORD, metal: CORD_METAL, insulator: INSIDE })
+}
+
 function buildFrontCabinet() {
   const shell = buildFrontShell(),
     surround = buildSurround(),
@@ -407,6 +456,7 @@ function buildFrontCabinet() {
     knobRecess = buildKnobRecess(),
     handleRecess = buildHandleRecess(),
     plinthEnds = buildPlinthEnds(),
+    cordHoles = buildCordHoles(),
     cut = shell
       .cut(cavity)
       .cut(stripRecess)
@@ -418,6 +468,7 @@ function buildFrontCabinet() {
       .cut(knobRecess)
       .cut(handleRecess)
       .cut(plinthEnds)
+      .cut(cordHoles)
 
   return { name: "front-cabinet", shape: cut.translate(CENTRING), material: CABINET }
 }
@@ -501,9 +552,7 @@ function buildKnob() {
 
 // The socket's mouth, which the page finds by name to lay a computer's 12V lead in it.
 function jackMouth() {
-  const place = [JACK.middle, STRIP_SET_BACK, JACK.height].map(
-    (value, axis) => value + CENTRING[axis]
-  )
+  const place = centred([JACK.middle, STRIP_SET_BACK, JACK.height])
 
   return { name: "jack-mouth", place, parts: [] }
 }
@@ -652,7 +701,9 @@ export function buildCtm644() {
       modelPlate,
       dcLegend,
       powerLegend,
-      { name: "feet", shape: feet.translate(CENTRING), material: FOOT }
+      { name: "feet", shape: feet.translate(CENTRING), material: FOOT },
+      buildCordHoleFloors(),
+      ...buildCords()
     ],
     prints: [
       { name: AMSTRAD_PRINT, language: ENGLISH, svg: drawAmstradPanel(), pixels: PLATE_PIXELS },

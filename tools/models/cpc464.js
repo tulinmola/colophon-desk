@@ -1178,6 +1178,23 @@ function centred(place) {
   return [place[0] + CENTRING[0], place[1] + CENTRING[1], place[2] + CENTRING[2]]
 }
 
+// Where a monitor's plugs stand in the MONITOR and 5V DC sockets, which the page finds by name: each facing out of the rear, its shoulder against the panel's face.
+function socketMouths() {
+  const dinAcross = (DIN_SOCKET.left + DIN_SOCKET.right) / 2,
+    dcAcross = (DC_SOCKET.left + DC_SOCKET.right) / 2,
+    dinHeight = heightUpRearFace(DIN_SOCKET.upFace),
+    dcHeight = heightUpRearFace(DC_SOCKET.upFace),
+    dinFace = rearFaceAt(dinHeight) - REAR_PANEL.depth,
+    dcFace = rearFaceAt(dcHeight) - REAR_PANEL.depth,
+    monitor = centred([dinAcross, dinFace, dinHeight]),
+    power = centred([dcAcross, dcFace, dcHeight])
+
+  return [
+    { name: "monitor-mouth", place: monitor, turn: 180, parts: [] },
+    { name: "5v-dc-mouth", place: power, turn: 180, parts: [] }
+  ]
+}
+
 // The dome rises from the case's top through the badge plate's hole.
 function buildPowerLamp() {
   const radius = POWER_LAMP.diameter / 2,
@@ -2197,6 +2214,7 @@ export function buildCpc464() {
       ...buildPianoKeys(),
       buildPowerKnob(),
       floppyDisc(),
+      ...socketMouths(),
       buildVolumeWheel()
     ],
     prints: [

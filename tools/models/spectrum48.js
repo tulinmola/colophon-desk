@@ -1,4 +1,12 @@
-import { draw, drawRoundedRectangle, makeBox, makeCompound, makeCylinder } from "replicad"
+import { SINCLAIR_MARK, drawSinclairMark } from "./sinclair.js"
+import {
+  draw,
+  drawCircle,
+  drawRoundedRectangle,
+  makeBox,
+  makeCompound,
+  makeCylinder
+} from "replicad"
 import { Resvg } from "@resvg/resvg-js"
 import { resolve } from "node:path"
 
@@ -98,12 +106,27 @@ const REAR_WALL = 2,
   FINGERS = { first: 117.1, pitch: 2.54, count: 28, polarising: 4, width: 1.8, length: 8 },
   POLARISING_SLOT = { width: 2, depth: 8.5 },
   JACKS = [
-    { middle: 68, seen: 11.9 },
-    { middle: 82.6, seen: 11.9 }
+    { name: "ear", middle: 68, seen: 11.9 },
+    { name: "mic", middle: 82.6, seen: 11.9 }
   ],
   JACK = { width: 7.2, boss: 6, bossDepth: 1.2, bore: 3.5 },
   POWER_SOCKET = { middle: 214.5, seen: 13.3, width: 9, bore: 6.3, pin: 2, pinInside: 1 },
   SOCKET_BORE_DEPTH = 5
+
+// Its tape lead is "A pair of leads about 75 cms long with 3.5 mm jack plugs at each end" [A], ZX Spectrum Introduction, ch. 1, https://worldofspectrum.org/ZXSpectrumIntroduction/chapter_one.html: "one lead should connect the microphone input socket on the recorder to the socket marked 'MIC' on the back of the computer and the other should connect the earphone output socket on the recorder to the 'EAR' socket" [A], ch. 6, https://worldofspectrum.org/ZXSpectrumIntroduction/chapter_six.html.
+// A museum's, with a Spectrum+, is "a double wire cable, each end finishing with two seperate mono jack plugs, one each with a grey casing and one each with a black casing", 800 long [B], V&A B.42-2011: https://collections.vam.ac.uk/item/O1227590/zx-spectrum-computer-sinclair-radionics; the length's disagreement stands. A boxed 48K's shows the cable black and the bodies grey and black, about three times the shaft across [D, E]: https://vintagecomputermuseum.com/collection/sinclair-zx-spectrum-48k/
+// A 3.5 mm plug's shaft is 15 long [C]: https://en.wikipedia.org/wiki/Phone_connector_(audio). Which colour goes to EAR is not recorded; grey is taken. The bodies' length and their reliefs, the slots in the grey ones' and the cores' size are not read: bodies 10 across and 20 long, reliefs 10 tapering from 7, no slots and cores 2.8 across, are guesses, each body stopping against its jack's boss.
+const TAPE_LEAD = { cable: 2.8, coil: 2.8, turns: 0 },
+  TAPE_PLUG = { shaft: 3.5, shaftLength: 15, body: 10, length: 20, reliefStart: 7, relief: 10 }
+
+// The aerial lead is "about 2 metres long" [A], ch. 1 above, a "phono connector to aerial connector" [C]: https://popeymongames.co.uk/2023/03/13/beginners-guide-to-the-sinclair-zx-spectrum-quick-set-up-guide/. A dealer's, sold as Sinclair's own, shows a black round cable, a black-bodied phono plug with a metal shell and pin, and a black-bodied straight coaxial plug with a bright metal outer [D]: https://retroleum.co.uk/uploads/products/image-114.jpg
+// A phono plug's shell is a third of an inch across, 8.47 [C], https://en.wikipedia.org/wiki/RCA_connector, and the aerial plug's 9.525 [C], https://en.wikipedia.org/wiki/Belling-Lee_connector. The shells' lengths, the bodies, the reliefs and the cable are not measured: shells 6 and 10 long, bodies 10 across by 22 and 13 by 28, reliefs 10 tapering from 7 and 9, and a cable 5 across, are guesses. The phono plug's shell stops on the TV recess's floor.
+const AERIAL_LEAD = { cable: 5, coil: 5, turns: 0 },
+  PHONO_PLUG = { shell: 8.47, shellLength: 6, body: 10, length: 22, reliefStart: 7, relief: 10 },
+  AERIAL_PLUG = { shell: 9.525, shellLength: 10, body: 13, length: 28, reliefStart: 9, relief: 10 }
+
+// How far a lead's cable shows out of the relief of the plug holding it, where the page takes the cable's colour from.
+const CABLE_SHOWING = 1
 
 // The labels are printed in red capitals on the rear face over their sockets [E]: "9V DC" 11.6 wide about 214.6, from 21.7 to 24.4; MIC 7.1 wide about 82.6 and EAR 7.7 wide over its socket's middle at 68.0, from 17.6 to 20.5; and TV 5.2 wide about 21.0, from 21.8 to 24.6, which the photograph shows standing on the TV recess's top: it is drawn just clear of it, from 22.1. Each is set from its capitals' height and spaced out to its width.
 const REAR_LABELS = [
@@ -114,42 +137,9 @@ const REAR_LABELS = [
 ]
 
 // "sinclair" is moulded in smooth relief on the raised top's grain, and "ZX Spectrum" printed white under it, both from 10.6 [E], on the photograph from above at 17.85 pixels to the millimetre about the case's middle.
-// The logotype is eight blocks 8.0 tall from 5.0 behind the rear, where another reading of the same photograph has it reach 14.1, parted by gaps 0.56 wide; the i's dots and the l's stem rise 3.08 above them, the dots standing 0.67 clear. Measured from its left edge: s 0 to 14.45, grooved 2.58 down from 2.41 to its right edge and 5.55 down from its left edge to 11.93; i 15.01 to 17.37; n 17.93 to 32.77, open below from 20.73 to 30.25 under a bar 2.24 deep; c 33.33 to 48.18, open to the right from 35.85 between 2.24 and 5.83 down; l 48.63 to 50.98; a 51.54 to 66.33, grooved 2.58 down from its left edge to 63.75 and 5.55 down from 54.23 to 63.75; i 66.89 to 69.47; and r 70.03 to 84.76, a bar 2.24 deep over a stem to 72.66. The grooves read about 0.45 wide [E]; the dark edge each block is drawn with, 0.15 wide, stands for the light falling off its relief and is a guess.
+// The logotype stands from 5.0 behind the rear, where another reading of the same photograph has it reach 14.1 [E]; its blocks are drawn as sinclair.js measures them.
 // "ZX Spectrum" stands 32.3 wide, its capitals 3.87 tall from 17.5 behind the rear, in a bold grotesque TeX Gyre Heros stands in for [E].
-const SINCLAIR = {
-    left: 10.6,
-    fromRear: 5,
-    height: 8,
-    gap: 0.56,
-    rise: 3.08,
-    dotGap: 0.67,
-    groove: 0.45,
-    edge: 0.15
-  },
-  SINCLAIR_BLOCKS = [
-    {
-      left: 0,
-      right: 14.45,
-      grooves: [
-        { left: 2.41, right: 14.45, middle: 2.58 },
-        { left: 0, right: 11.93, middle: 5.55 }
-      ]
-    },
-    { left: 15.01, right: 17.37, dot: true },
-    { left: 17.93, right: 32.77, opening: { left: 20.73, right: 30.25, top: 2.24, bottom: 8 } },
-    { left: 33.33, right: 48.18, opening: { left: 35.85, right: 48.18, top: 2.24, bottom: 5.83 } },
-    { left: 48.63, right: 50.98, stem: true },
-    {
-      left: 51.54,
-      right: 66.33,
-      grooves: [
-        { left: 51.54, right: 63.75, middle: 2.58 },
-        { left: 54.23, right: 63.75, middle: 5.55 }
-      ]
-    },
-    { left: 66.89, right: 69.47, dot: true },
-    { left: 70.03, right: 84.76, opening: { left: 72.66, right: 84.76, top: 2.24, bottom: 8 } }
-  ],
+const SINCLAIR = { left: 10.6, fromRear: 5 },
   MODEL_NAME = { word: "ZX Spectrum", left: 10.6, width: 32.3, fromRear: 17.5, capHeight: 3.87 }
 
 // The "Keyboard Template" [A], service manual table 5.1, an "Ano coil printed keyboard overlay" [A] on the designer's sketch, https://www.flickr.com/photos/9574086@N02/697782712/, and "a black metal plate" to PCW [B], held by double-sided tape "around all four edges" [A].
@@ -385,6 +375,14 @@ const TEMPLATE_METAL = { name: "keyboard-template", colour: TEMPLATE_BLACK, roug
   NAME_PLATE = { name: "zx-spectrum", colour: CASE.colour },
   LABEL_PLATE = { name: "rear-labels", colour: CASE.colour },
   BOARD_PLATE = { name: "board", colour: BOARD_EDGE }
+
+// The leads' black and the grey plugs' are not sampled, and the shafts' nickel is not measured: guesses.
+const LEAD_BLACK = { name: "lead", colour: "#1c1c1d" },
+  TAPE_PLUG_PLASTIC = {
+    ear: { name: "grey-plug", colour: "#8a8b89" },
+    mic: LEAD_BLACK
+  },
+  NICKEL = { name: "nickel", colour: "#a3a199", roughness: 0.3 }
 
 // How finely a print is rendered: the legends' atlas, a tile a key across the whole field, stands 3520 wide at 16 pixels to the millimetre, inside the 4096 a mobile GPU may hold; the template 12, the case's own words 16, and the board 8.
 const LEGEND_PIXELS = 16,
@@ -855,9 +853,9 @@ function raisedTopPlate({ left, right, fromRear: rearDistance, toRear }) {
 
 const SINCLAIR_OUTLINE = {
     left: SINCLAIR.left - PRINT_MARGIN,
-    right: SINCLAIR.left + SINCLAIR_BLOCKS.at(-1).right + PRINT_MARGIN,
-    fromRear: SINCLAIR.fromRear - SINCLAIR.rise - PRINT_MARGIN,
-    toRear: SINCLAIR.fromRear + SINCLAIR.height + PRINT_MARGIN
+    right: SINCLAIR.left + SINCLAIR_MARK.width + PRINT_MARGIN,
+    fromRear: SINCLAIR.fromRear - SINCLAIR_MARK.rise - PRINT_MARGIN,
+    toRear: SINCLAIR.fromRear + SINCLAIR_MARK.height + PRINT_MARGIN
   },
   NAME_OUTLINE = {
     left: MODEL_NAME.left - PRINT_MARGIN,
@@ -1016,6 +1014,122 @@ function buildSockets() {
     all = makeCompound([...jacks, power, modulator])
 
   return { name: "sockets", shape: all.translate(CENTRING), material: ROOM_DARK }
+}
+
+function plugSection(diameter, y) {
+  return drawCircle(diameter / 2).sketchOnPlane("XZ", -y)
+}
+
+// A plug's moulded body and strain relief, standing so far back of its shoulder, ahead of which it enters its socket along y, its tail behind where the cable leaves it.
+function plugMoulding({ body, length, reliefStart, relief }, cable, behind = 0) {
+  const back = behind + length,
+    moulding = makeCylinder(body / 2, length, [0, -back, 0], [0, 1, 0]),
+    reliefFront = plugSection(reliefStart, -back),
+    reliefEnd = plugSection(cable, -(back + relief)),
+    strainRelief = reliefFront.loftWith(reliefEnd, { ruled: true })
+
+  return moulding.fuse(strainRelief)
+}
+
+// A lead held in one of the case's sockets by a plug of its own, the anchor, whose shoulder stands where given, running from the anchor's tail, where its cable shows, to the plug the desk carries into the socket the lead names. Unlaid, it stands stowed inside the case.
+function buildAnchoredLead({ name, at, anchorTail, anchorParts, plugTail, plugParts, lead }) {
+  const anchor = `${name}-anchor`,
+    [across, along, height] = at,
+    showing = anchorTail + CABLE_SHOWING,
+    cable = makeCylinder(lead.cable / 2, 2 * CABLE_SHOWING, [0, -showing, 0], [0, 1, 0]),
+    tip = centred([across, along + showing, height]),
+    stowed = centred([WIDTH / 2, DEPTH / 2, REAR_HEIGHT / 2])
+
+  return [
+    {
+      name: anchor,
+      place: centred(at),
+      turn: 180,
+      parts: [...anchorParts, { name: `${anchor}-cable`, shape: cable, material: LEAD_BLACK }]
+    },
+    { name: `${name}-tip`, place: tip, parts: [] },
+    {
+      name: `${name}-lead`,
+      place: stowed,
+      lead: {
+        ...lead,
+        tip: `${name}-tip`,
+        tail: `${name}-plug-tail`,
+        sheath: `${anchor}-cable`,
+        anchor
+      },
+      parts: [...plugParts, { name: `${name}-plug-tail`, place: [0, -plugTail, 0], parts: [] }]
+    }
+  ]
+}
+
+// Each tape lead is held in its jack by a plug whose body stands against the jack's boss, and runs to the recorder's jack of the same name, the two the cores of one twin cable.
+function buildTapeLeads() {
+  const { shaft, shaftLength, length, relief } = TAPE_PLUG,
+    tail = length + relief,
+    shoulder = fromRear(BOARD.fromRear - JACK.bossDepth)
+
+  return JACKS.flatMap(function ({ name, middle, seen }) {
+    const height = heightBehind(seen, BOARD.fromRear),
+      material = TAPE_PLUG_PLASTIC[name],
+      moulding = plugMoulding(TAPE_PLUG, TAPE_LEAD.cable),
+      shaftShape = makeCylinder(shaft / 2, shaftLength, [0, 0, 0], [0, 1, 0])
+
+    return buildAnchoredLead({
+      name,
+      at: [middle, shoulder, height],
+      anchorTail: tail,
+      anchorParts: [{ name: `${name}-anchor-plug`, shape: moulding, material }],
+      plugTail: tail,
+      plugParts: [
+        { name: `${name}-plug`, shape: moulding, material },
+        { name: `${name}-shaft`, shape: shaftShape, material: NICKEL }
+      ],
+      lead: { ...TAPE_LEAD, socket: `${name}-mouth`, bundle: "tape" }
+    })
+  })
+}
+
+// The aerial lead is held in the TV socket by a phono plug whose shell stands on the recess's floor, and runs to the television's aerial socket.
+function buildAerialLead() {
+  const phono = PHONO_PLUG,
+    aerial = AERIAL_PLUG,
+    cable = AERIAL_LEAD.cable,
+    shoulder = fromRear(TV_RECESS.depth),
+    phonoShell = makeCylinder(
+      phono.shell / 2,
+      phono.shellLength,
+      [0, -phono.shellLength, 0],
+      [0, 1, 0]
+    ),
+    phonoMoulding = plugMoulding(phono, cable, phono.shellLength),
+    aerialShell = makeCylinder(aerial.shell / 2, aerial.shellLength, [0, 0, 0], [0, 1, 0]),
+    aerialMoulding = plugMoulding(aerial, cable)
+
+  return buildAnchoredLead({
+    name: "tv",
+    at: [TV_SOCKET.middle, shoulder, TV_HEIGHT],
+    anchorTail: phono.shellLength + phono.length + phono.relief,
+    anchorParts: [
+      { name: "tv-anchor-shell", shape: phonoShell, material: NICKEL },
+      { name: "tv-anchor-plug", shape: phonoMoulding, material: LEAD_BLACK }
+    ],
+    plugTail: aerial.length + aerial.relief,
+    plugParts: [
+      { name: "tv-plug", shape: aerialMoulding, material: LEAD_BLACK },
+      { name: "tv-shell", shape: aerialShell, material: NICKEL }
+    ],
+    lead: { ...AERIAL_LEAD, socket: "aerial-mouth" }
+  })
+}
+
+// Where a plug's shoulder stands in the power socket, by the name the desk joins it by.
+function socketMouths() {
+  const { middle, seen } = POWER_SOCKET,
+    height = heightBehind(seen, BOARD.fromRear),
+    power = centred([middle, fromRear(BOARD.fromRear), height])
+
+  return [{ name: "9v-dc-mouth", place: power, turn: 180, parts: [] }]
 }
 
 // The metal that shows at the rear: the TV socket's ring, from its recess's floor into the modulator, and the power socket's pin.
@@ -1462,62 +1576,13 @@ function drawSinclair() {
     depth = toRear - rearDistance,
     x = SINCLAIR.left - left,
     y = SINCLAIR.fromRear - rearDistance,
-    { height, rise, dotGap, groove, gap } = SINCLAIR,
-    edged = { fill: RELIEF_FACE, stroke: RELIEF_GAP, thickness: SINCLAIR.edge },
-    band = {
-      left: x + SINCLAIR_BLOCKS[0].left,
-      right: x + SINCLAIR_BLOCKS.at(-1).right,
-      top: y,
-      bottom: y + height
-    },
-    drawn = [
-      svgOpen(width, depth),
-      drawGround(width, depth, CASE.colour),
-      drawRectangle(band, { fill: RELIEF_GAP })
-    ]
+    placing = { x, y, scale: 1, below: PRINT_MARGIN },
+    inks = { face: RELIEF_FACE, gap: RELIEF_GAP, ground: CASE.colour },
+    mark = drawSinclairMark(placing, inks)
 
-  for (const block of SINCLAIR_BLOCKS) {
-    const top = block.stem ? y - rise : y,
-      face = { left: x + block.left, right: x + block.right, top, bottom: y + height },
-      drawnFace = drawRectangle(face, edged)
-
-    drawn.push(drawnFace)
-
-    if (block.dot) {
-      const dot = { left: face.left, right: face.right, top: y - rise, bottom: y - dotGap },
-        drawnDot = drawRectangle(dot, edged)
-
-      drawn.push(drawnDot)
-    }
-
-    if (block.opening) {
-      const opening = {
-          left: x + block.opening.left,
-          right: x + block.opening.right + gap,
-          top: y + block.opening.top,
-          bottom: y + block.opening.bottom + PRINT_MARGIN
-        },
-        drawnOpening = drawRectangle(opening, { ...edged, fill: CASE.colour })
-
-      drawn.push(drawnOpening)
-    }
-
-    for (const cut of block.grooves ?? []) {
-      const line = {
-          left: x + cut.left,
-          right: x + cut.right,
-          top: y + cut.middle - groove / 2,
-          bottom: y + cut.middle + groove / 2
-        },
-        drawnGroove = drawRectangle(line, { fill: RELIEF_GAP, radius: groove / 2 })
-
-      drawn.push(drawnGroove)
-    }
-  }
-
-  drawn.push("</svg>")
-
-  return drawn.join("\n")
+  return [svgOpen(width, depth), drawGround(width, depth, CASE.colour), ...mark, "</svg>"].join(
+    "\n"
+  )
 }
 
 function drawModelName() {
@@ -1650,7 +1715,10 @@ export function buildSpectrum48() {
       buildInside(openings, slot),
       buildBoard(),
       buildSockets(),
-      buildRearMetal()
+      buildRearMetal(),
+      ...socketMouths(),
+      ...buildTapeLeads(),
+      ...buildAerialLead()
     ],
     prints: prints.map(([print, svg, pixels]) => ({ name: print, language: LANGUAGE, svg, pixels }))
   }

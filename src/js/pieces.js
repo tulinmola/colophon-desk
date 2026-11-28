@@ -16,7 +16,13 @@ const PIECES = {
     kind: "recorder",
     description: "cassette recorder"
   },
-  ddi1: { title: "DDI-1", maker: "Amstrad", kind: "drive", description: "disc drive" }
+  ddi1: { title: "DDI-1", maker: "Amstrad", kind: "drive", description: "disc drive" },
+  uk1400: {
+    title: "ZX Power Supply",
+    maker: "Sinclair",
+    kind: "supply",
+    description: "power supply"
+  }
 }
 
 export default PIECES

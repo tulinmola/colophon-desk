@@ -1,7 +1,7 @@
 import { DirectionalLight, HemisphereLight, Scene, Vector3 } from "three/webgpu"
 import Disc from "./disc"
 import Model from "./model"
-import arrange from "./arrangement"
+import { arrange } from "./arrangement"
 import boundsOf from "./bounds_of"
 import { loadHandwriting } from "./handwriting"
 

@@ -40,7 +40,7 @@ function standIn(part, language) {
 
 export default class Model extends Group {
   keyboard = null
-  lead = null
+  leads = []
   #asked
   #printing
   #prints = []
@@ -53,9 +53,8 @@ export default class Model extends Group {
       model = new Model(),
       printed = [],
       lettered = [],
-      versioned = []
-
-    let leading = null
+      versioned = [],
+      leading = []
 
     model.name = name
     model.add(...gltf.scene.children)
@@ -78,7 +77,7 @@ export default class Model extends Group {
       }
 
       if (hasLead) {
-        leading = part
+        leading.push(part)
       }
     })
 
@@ -90,9 +89,7 @@ export default class Model extends Group {
       standIn(part, language)
     }
 
-    if (leading) {
-      model.lead = new Lead(model, leading)
-    }
+    model.leads = Lead.sideBySide(model, leading)
 
     const byAtlas = Map.groupBy(lettered, keycap => keycap.userData.legends),
       capSets = byAtlas.values(),

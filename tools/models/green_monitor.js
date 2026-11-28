@@ -7,6 +7,7 @@ import {
   makeCylinder,
   makeSphere
 } from "replicad"
+import buildMonitorCords from "./monitor_cords.js"
 
 // x runs from the left side, y back from the lower edge of the face and z up from the desk, in millimetres.
 
@@ -119,11 +120,19 @@ const GRILLE = {
 const PLATE_THICKNESS = 0.3,
   PLATE_PIXELS = 12
 
+// Both leads leave together from under the lower panel's foot about a middle 212 across, ±8, and run forward along the desk [E], on a Schneider GT64's lower front and an English GT65's, each mapped by the guide lines and controls its panel carries: https://www.kleinanzeigen.de/s-anzeige/schneider-cpc464-mit-gruenmonitor/3557591301-228-9501 and https://oldwiki.cpcwiki.eu/imgs/b/b8/GT65_front_dials.jpg. Seen from below on the English one, scaled by the cable's own 4.5, they leave side by side about 10 apart, ±3 [E]: https://oldwiki.cpcwiki.eu/imgs/0/02/GT65_under.jpg. Which is the DIN lead is not read, and it is taken on the right, so that the two run to the computer's sockets without crossing, 5V DC being left of MONITOR on every CPC; the notch they leave through is not measured, and 24 across, 6 tall and 5 deep are taken.
+const CORDS = { middle: 212, apart: 10 },
+  CORD_NOTCH = { width: 24, height: 6, depth: 5 }
+
 // Amstrad's photographs show the monitor and the 464 in one plastic [E]; the 464's top, sampled in the BnF's studio, is taken for both. The BnF's later GT65-2 reads 0.55 to 0.65 of the 464's light against the same backdrop [E], which may be its moulding or the light it stood in. The thumbwheels and the button are taken as dark as the 464's own volume wheel, and the inside as dark as the 464's seen through its vents.
 const CABINET = { name: "cabinet", colour: "#454648" },
   FITTING = { name: "fitting", colour: "#2d2d2d" },
   INSIDE = { name: "inside", colour: "#141414" },
   PHOSPHOR = { name: "phosphor", colour: "#0b0c0d" }
+
+// The leads and their plugs read 1.8 to 2.4 times the cabinet's light on the Bibliothèque nationale's GT65-2, https://commons.wikimedia.org/wiki/File:Collection_Charles_Cros._Micro-ordinateurs_(m%C3%A9dia_-_multim%C3%A9dias)._Micro-ordinateurs_Amstrad_-_CPC_464._Micro-ordinateur_Amstrad_CPC_464,_n%C2%B0_de_s%C3%A9rie_du_clavier_533-7834019_-_btv1b55013024n_(14_of_20).jpg, lighter than it on the English GT65, and as dark as it on a Schneider GT64 [E]; the lighter is taken, at 2.1 times. The plugs' metal is taken the 6128's nickel, and the DIN plug's insert the inside's black, both guesses.
+const CORD = { name: "cord", colour: "#636466" },
+  CORD_METAL = { name: "nickel", colour: "#a3a199" }
 
 // The lettering reads light grey, and the 464's legend ink in the same studio is taken for it.
 // A printed part carries a material of its own because the page inks a print over the material it finds, and a material shared with the shell would carry the print onto the shell. Each monitor's badge and panel words are printed on one plate each, named alike.
@@ -286,6 +295,16 @@ function buildControlHoles() {
   return makeCompound([...slots, button])
 }
 
+function buildCordNotch() {
+  const { middle } = CORDS,
+    { width, height, depth } = CORD_NOTCH
+
+  return makeBox(
+    [middle - width / 2, PANEL_SET_BACK - OVERRUN, -OVERRUN],
+    [middle + width / 2, PANEL_SET_BACK + depth, height]
+  )
+}
+
 // The front moulding around the plates its badge and its panel words lie in, and whatever else the monitor's own front is cut for.
 function buildFrontCabinet(badge, legends, openings = []) {
   const shell = buildFrontShell(),
@@ -293,7 +312,8 @@ function buildFrontCabinet(badge, legends, openings = []) {
     badgeRecess = buildBadgeRecess(badge),
     legendRecess = buildPanelRecess(legends),
     controlHoles = buildControlHoles(),
-    cut = shell.cut(tunnel).cut(badgeRecess).cut(legendRecess).cut(controlHoles),
+    cordNotch = buildCordNotch(),
+    cut = shell.cut(tunnel).cut(badgeRecess).cut(legendRecess).cut(controlHoles).cut(cordNotch),
     front = openings.reduce((whole, opening) => whole.cut(opening), cut)
 
   return { name: "front-cabinet", shape: front.translate(CENTRING), material: CABINET }
@@ -535,6 +555,18 @@ function downOn(outline, drop) {
   return outline.top - CONTROLS_HEIGHT + drop
 }
 
+// The leads run out of the notch's back, at its middle height, and their plugs are stowed in the middle of the cabinet.
+function buildCords() {
+  const { middle, apart } = CORDS,
+    y = PANEL_SET_BACK + CORD_NOTCH.depth,
+    z = CORD_NOTCH.height / 2,
+    stowed = placed([WIDTH / 2, REAR_DEPTH / 2, HEIGHT / 2]),
+    dc = { exit: placed([middle - apart / 2, y, z]), stowed },
+    din = { exit: placed([middle + apart / 2, y, z]), stowed }
+
+  return buildMonitorCords({ din, dc, sheath: CORD, metal: CORD_METAL, insulator: INSIDE })
+}
+
 function panelFrame(outline) {
   return { left: outline.left, right: outline.right, top: 0, bottom: outline.top - outline.bottom }
 }
@@ -556,6 +588,7 @@ export {
   PLATE_PIXELS,
   TESSELLATION,
   buildBadgePanel,
+  buildCords,
   buildFrontCabinet,
   buildGrilleFloor,
   buildPanelPlate,
