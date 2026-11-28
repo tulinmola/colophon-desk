@@ -28,10 +28,14 @@ const DESK_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
   DRIVE_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
     <rect x="2" y="6" width="20" height="12" rx="2" />
     <path d="M6 10h12M6 14h.01M15 14h3" />
+  </svg>`,
+  SOUND_ICON = html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M3 9h4l5-4v14l-5-4H3z" />
+    <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
   </svg>`
 
 const CONTROLS = html`<div class="surface"></div>
-  <menu aria-label="Views" hidden>
+  <menu aria-label="Views">
     <li>
       <button type="button" data-view="desk" title="The whole desk" aria-pressed="false">
         ${DESK_ICON}
@@ -53,6 +57,7 @@ const CONTROLS = html`<div class="surface"></div>
       </button>
     </li>
   </menu>
+  <button type="button" name="sound" title="Sound" aria-pressed="true">${SOUND_ICON}</button>
   <input type="file" accept=".dsk,.zip" hidden />
   <output name="drive"></output>
   <dialog name="discs">
@@ -74,7 +79,8 @@ const NOTHING_PICKED = { name: null, view: null }
 
 // The reader's hands on a running desk: the machine's keys while it holds the
 // focus, the camera turned and parts pressed on its surface, the views, the
-// disc drive and the power. It is laid once the desk it is given stands.
+// sound, the disc drive and the power. It is laid once the desk it is given
+// stands.
 class DeskControlsElement extends Element {
   #chooser
   #desk = null
@@ -88,6 +94,7 @@ class DeskControlsElement extends Element {
   #powerDialog
   #pressedAt = new Vector2()
   #shown = { view: null, lead: null, answers: false }
+  #soundButton
   #surface
   #viewBeforeChoosing
   #viewBeforeSwitching
@@ -102,6 +109,7 @@ class DeskControlsElement extends Element {
     this.#driveNotice = this.querySelector("output[name='drive']")
     this.#menu = this.querySelector("menu")
     this.#powerDialog = this.querySelector("dialog[name='power']")
+    this.#soundButton = this.querySelector("button[name='sound']")
     this.#surface = this.querySelector(".surface")
 
     this.addEventListener("keydown", this.onKeyDown.bind(this), { signal })
@@ -112,6 +120,7 @@ class DeskControlsElement extends Element {
     this.#surface.addEventListener("pointerleave", this.onPointerLeave.bind(this), { signal })
     this.#surface.addEventListener("click", this.onSurfaceClicked.bind(this), { signal })
     this.#menu.addEventListener("click", this.onViewChosen.bind(this), { signal })
+    this.#soundButton.addEventListener("click", this.onSoundSwitched.bind(this), { signal })
     this.#chooser.addEventListener("change", this.onDiscChosen.bind(this), { signal })
     this.#chooser.addEventListener("cancel", this.onChoiceCancelled.bind(this), { signal })
     this.#discsDialog.addEventListener("close", this.onDiscPicked.bind(this), { signal })
@@ -128,7 +137,7 @@ class DeskControlsElement extends Element {
   use(desk) {
     this.#desk = desk
     desk.turnFrom(this.#surface, () => this.#showViews())
-    this.#menu.hidden = false
+    this.#soundButton.setAttribute("aria-pressed", String(desk.heard))
     this.#showViews()
   }
 
@@ -196,6 +205,16 @@ class DeskControlsElement extends Element {
     this.#desk.look(button.dataset.view)
     this.focus()
     this.#showViews()
+  }
+
+  // The sound switched hands the focus back too.
+  onSoundSwitched() {
+    const desk = this.#desk,
+      heard = !desk.heard
+
+    desk.heard = heard
+    this.#soundButton.setAttribute("aria-pressed", String(heard))
+    this.focus()
   }
 
   // The chooser is emptied before the read, or the same file chosen again

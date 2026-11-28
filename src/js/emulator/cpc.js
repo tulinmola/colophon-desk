@@ -56,6 +56,7 @@ export default class Cpc {
   #pendingReleases = new Set()
   #presentCount = 0
   #pressedAt = new Map()
+  #soundAt
   #ticksPerFrame
   #ticksPerMillisecond
 
@@ -71,6 +72,7 @@ export default class Cpc {
 
     module.HEAPU8.set(rom, romAt)
     module.HEAPU8.set(amsdos, amsdosAt)
+    module._desk_make_resampler()
     module._desk_boot_cpc6128(maker)
 
     return new Cpc(module, { anisotropy, maker })
@@ -91,6 +93,7 @@ export default class Cpc {
     this.keys = new Array(lines * BITS_A_LINE)
     this.#matrix = module.HEAPU8.subarray(matrixAt, matrixAt + lines)
     this.#discAt = module._desk_disc()
+    this.#soundAt = module._desk_sound() / Float32Array.BYTES_PER_ELEMENT
     this.discCapacity = module._desk_disc_capacity()
     this.#maker = maker
     this.#module = module
@@ -164,6 +167,28 @@ export default class Cpc {
       sentence = heap.subarray(at, end)
 
     return TEXT.decode(sentence)
+  }
+
+  // The socket heard from now on, at the rate given in samples a second.
+  listen(rate) {
+    this.#module._desk_listen(rate)
+  }
+
+  stopListening() {
+    this.#module._desk_stop_listening()
+  }
+
+  setListeningRate(rate) {
+    this.#module._desk_set_listening_rate(rate)
+  }
+
+  // What the socket sounded since it was last heard, its two sides
+  // interleaved, good until the machine next runs.
+  hear() {
+    const samples = this.#module._desk_hear(),
+      start = this.#soundAt
+
+    return this.#module.HEAPF32.subarray(start, start + samples)
   }
 
   // The machine's own power, which the disc in its drive outlives.

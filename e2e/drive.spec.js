@@ -1,6 +1,9 @@
 import { DRIVE, SLOW_WAIT, blank, pointAt, settled, stand } from "./desk_scene.js"
 import { expect, test } from "@playwright/test"
 import { deflateRawSync } from "node:zlib"
+import { resolve } from "node:path"
+
+const MACHINE_PROBE = resolve(import.meta.dirname, "machine_probe.js")
 
 // Where the eject button stands on the canvas in the drive's view, as a fraction of its size.
 const EJECT_BUTTON = { x: 0.698, y: 0.518 }
@@ -503,51 +506,35 @@ test("a choice cancelled takes the camera back to the view it left", async funct
 // the line that lights it is read from the machine itself, which is run here
 // with nothing drawn.
 function catalogueOnMachine(page, disc) {
-  return page.evaluate(async function (encoded) {
-    const { Cpc, KEY_MATRIX } = await import("/js/emulator/index.js"),
-      machine = new AbortController(),
-      cpc = await Cpc.create(machine.signal, { anisotropy: 1, language: "es" })
+  return page.evaluate(
+    async function ([url, encoded]) {
+      const { default: machineAtPrompt } = await import(url),
+        { cpc, run, type } = await machineAtPrompt("es")
 
-    let clock = 0
+      if (encoded != null) {
+        const decoded = atob(encoded),
+          bytes = Uint8Array.from(decoded, letter => letter.charCodeAt(0))
 
-    function run(milliseconds) {
-      clock += milliseconds
-      cpc.advance(clock)
-    }
+        cpc.insertDisc(bytes)
+      }
 
-    for (let frame = 0; frame < 80; frame++) {
-      run(80)
-    }
+      const atPrompt = cpc.driveInUse()
 
-    if (encoded != null) {
-      const decoded = atob(encoded),
-        bytes = Uint8Array.from(decoded, letter => letter.charCodeAt(0))
+      type(["KeyC", "KeyA", "KeyT", "Enter"])
 
-      cpc.insertDisc(bytes)
-    }
+      let lit = false
 
-    const atPrompt = cpc.driveInUse()
+      for (let frame = 0; frame < 200 && !lit; frame++) {
+        run(20)
+        lit = cpc.driveInUse()
+      }
 
-    for (const code of ["KeyC", "KeyA", "KeyT", "Enter"]) {
-      const [key] = KEY_MATRIX[code]
+      cpc.dispose()
 
-      cpc.pressKey(key)
-      run(80)
-      cpc.releaseKey(key)
-      run(80)
-    }
-
-    let lit = false
-
-    for (let frame = 0; frame < 200 && !lit; frame++) {
-      run(20)
-      lit = cpc.driveInUse()
-    }
-
-    cpc.dispose()
-
-    return { atPrompt, lit }
-  }, disc)
+      return { atPrompt, lit }
+    },
+    [`/@fs${MACHINE_PROBE}`, disc]
+  )
 }
 
 test("the drive's lamp line goes up while the machine reads the disc", async function ({ page }) {

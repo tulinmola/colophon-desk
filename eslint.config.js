@@ -44,5 +44,9 @@ export default defineConfig([
       "sort-keys": "off",
       "sort-vars": "off"
     }
+  },
+  {
+    files: ["src/js/sound/amplifier_processor.js"],
+    languageOptions: { globals: globals.audioWorklet }
   }
 ])

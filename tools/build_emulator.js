@@ -7,6 +7,8 @@ import { resolve } from "node:path"
 const HERE = fileURLToPath(import.meta.url),
   ROOT = resolve(HERE, "../.."),
   EMULATOR_DIR = resolve(ROOT, process.env.EMULATOR_DIR ?? "../colophon-emulator"),
+  // The machine, and what every host compiles beside it.
+  COMPILED = ["src", "lib"],
   MACHINE_DIR = resolve(EMULATOR_DIR, "src"),
   HOST_DIR = resolve(ROOT, "emulator"),
   VENDOR_DIR = resolve(ROOT, "src/js/vendor"),
@@ -39,17 +41,24 @@ function machineVersion() {
     // A build from uncommitted sources must not answer to a commit's name, and
     // every .c in the tree is compiled, so an untracked one counts as a change
     // where `git diff` would not see it.
-    changes = git("status", "--porcelain", "--", "src"),
+    changes = git("status", "--porcelain", "--", ...COMPILED),
     clean = changes.length == 0
 
   return clean ? commit : `${commit}-dirty`
 }
 
 function machineSources() {
-  const names = readdirSync(MACHINE_DIR),
-    sources = names.filter(name => name.endsWith(".c"))
+  return COMPILED.flatMap(function (directory) {
+    const path = resolve(EMULATOR_DIR, directory),
+      names = readdirSync(path),
+      sources = names.filter(name => name.endsWith(".c"))
 
-  return sources.map(name => resolve(MACHINE_DIR, name))
+    return sources.map(name => resolve(path, name))
+  })
+}
+
+function machineIncludes() {
+  return COMPILED.flatMap(directory => ["-I", resolve(EMULATOR_DIR, directory)])
 }
 
 const stood = existsSync(MACHINE_DIR)
@@ -72,8 +81,7 @@ execFileSync(
   [
     ...machineSources(),
     HOST,
-    "-I",
-    MACHINE_DIR,
+    ...machineIncludes(),
     "-std=c99",
     "-Wall",
     "-Wextra",
@@ -98,7 +106,7 @@ execFileSync(
     "-s",
     `EXPORTED_FUNCTIONS=@${EXPORTS}`,
     "-s",
-    "EXPORTED_RUNTIME_METHODS=HEAPU8",
+    "EXPORTED_RUNTIME_METHODS=HEAPU8,HEAPF32",
     "-o",
     module
   ],

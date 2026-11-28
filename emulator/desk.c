@@ -1,6 +1,7 @@
 /*
  * desk.c — what the desk asks of a machine: a 6128 that runs, the frame it
- * has just finished drawing, and the disc in its drive.
+ * has just finished drawing, the disc in its drive, and the sound at its
+ * socket.
  */
 #include <stdbool.h>
 #include <stdint.h>
@@ -10,6 +11,7 @@
 #include "dsk.h"
 #include "floppy.h"
 #include "gate_array.h"
+#include "resampler.h"
 
 /* A 6128's 128K, and the 32K image holding its operating system and BASIC
    beside the 16K AMSDOS that comes with the disc interface. */
@@ -17,6 +19,16 @@
 #define DESK_ROM_SIZE 0x8000
 #define DESK_BASIC_AT 0x4000
 #define DESK_AMSDOS_SIZE 0x4000
+
+/* Which type of 6845 a given 6128 carried is not settled here, and type 0, the
+   HD6845S or UM6845, is taken: "it can be assumed that the first CRTC's used
+   were type 0s, since this function is used and programmed by the ROM" [C],
+   The Amstrad CPC CRTC Compendium v1.11 ch. 4.2,
+   https://shaker.logonsystem.eu/ACCC1.11-EN.pdf, and MAME builds the 6128 with
+   an HD6845S [C],
+   https://github.com/mamedev/mame/blob/079ac58c453b09a3ffd8267d1c611b4d2c63795b/src/mame/amstrad/amstrad.cpp#L928.
+   A choice, not a measurement of any one machine. */
+#define DESK_CRTC_TYPE 0
 
 /* The 6128's own drive is A, the one the core numbers 0. */
 #define DESK_DRIVE 0
@@ -76,6 +88,65 @@ static bool drive_at_work(void) {
   return answering || unit->seeking;
 }
 
+/* What is heard is the "3.5mm stereo socket for stereo sound output" [A],
+   CPC6128 Service Manual, specification:
+   https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a
+   — its two sides, as cpc_sound_socket gives them, and not the loudspeaker,
+   whose path through the machine's amplifier the core does not model. */
+#define DESK_SOUND_CHANNELS 2
+
+/* Room for the longest run a page hears between two calls to desk_hear: the
+   80ms it may owe and a frame past them, at a device's 192kHz and more. What
+   comes past the end is dropped. */
+#define DESK_SOUND_FRAMES 32768
+
+#define DESK_TICKS_PER_SECOND (CPC_TICKS_PER_MILLISECOND * 1000.0)
+
+/* The resampler is the host's, never the machine's, and is started afresh
+   each time the socket is listened to. */
+static bool listening;
+static resampler_t resampler;
+static uint32_t ticks_unheard; /* heard, and not yet run through the resampler */
+static float sound_samples[DESK_SOUND_FRAMES * DESK_SOUND_CHANNELS];
+static uint32_t sound_frames;
+
+/* The sound chip's outputs as the last tick left them, a byte each: the
+   socket moves with them and with nothing else. */
+static uint32_t last_outputs;
+
+static uint32_t outputs_now(void) {
+  const uint8_t *output = cpc.psg.output;
+
+  return (uint32_t)output[0] | (uint32_t)output[1] << 8 | (uint32_t)output[2] << 16;
+}
+
+static void run_sound(uint32_t clocks) {
+  float *room = sound_samples + (size_t)sound_frames * DESK_SOUND_CHANNELS;
+  const size_t capacity = DESK_SOUND_FRAMES - (size_t)sound_frames;
+
+  sound_frames += (uint32_t)resampler_run(&resampler, clocks, room, capacity);
+}
+
+/* A level is laid down at the tick it changed on, and the ticks between two
+   changes are run through at once. */
+static void hear(void) {
+  const uint32_t outputs = outputs_now();
+  const bool moved = outputs != last_outputs;
+
+  if (moved) {
+    uint16_t left = 0, right = 0;
+
+    cpc_sound_socket(&cpc, &left, &right);
+    run_sound(ticks_unheard);
+    ticks_unheard = 0;
+    resampler_change(&resampler, 0, left);
+    resampler_change(&resampler, 1, right);
+    last_outputs = outputs;
+  }
+
+  ticks_unheard++;
+}
+
 /* The sync as of the last tick, kept between calls. The monitor holds the flag
    up for the length of the pulse and not an instant, so a frame is its rising
    edge and never its level. */
@@ -107,7 +178,7 @@ void desk_boot_cpc6128(uint8_t manufacturer) {
      is a choice and not a figure: a real 6128 wakes in whatever its memory
      held, and a machine made here is made new. */
   memset(ram, 0, sizeof ram);
-  cpc_init(&cpc, ram, DESK_RAM_SIZE, rom);
+  cpc_init(&cpc, ram, DESK_RAM_SIZE, rom, DESK_CRTC_TYPE);
   cpc_set_links(&cpc, DESK_FIFTY_HZ, manufacturer);
   cpc_set_upper_rom(&cpc, 0, rom + DESK_BASIC_AT);
   cpc_fit_disc_interface(&cpc, true);
@@ -148,6 +219,10 @@ uint32_t desk_run_until_retrace(uint32_t limit) {
   for (uint32_t ticks = 0; ticks < limit; ticks++) {
     cpc_tick(&cpc);
     drive_worked = drive_worked || drive_at_work();
+
+    if (listening) {
+      hear();
+    }
 
     const bool syncing = cpc.monitor.frame_retraced;
     const bool ended = syncing && !retraced;
@@ -220,3 +295,47 @@ bool desk_drive_in_use(void) {
 
 /* Why the last disc offered was refused, or NULL when it was not. */
 const char *desk_disc_problem(void) { return disc_problem; }
+
+/* The kernel takes the milliseconds resampler.h warns of to make, so it is
+ * made once, as the machine is first made, and never while frames are drawn;
+ * the rate is set by whoever listens. */
+void desk_make_resampler(void) { resampler_init(&resampler, DESK_SOUND_CHANNELS, 1.0); }
+
+/* Heard from now on, at the rate given in samples a second, starting from the
+ * levels the socket stands at. */
+void desk_listen(double rate) {
+  uint16_t left = 0, right = 0;
+
+  resampler_restart(&resampler);
+  resampler_set_ratio(&resampler, rate / DESK_TICKS_PER_SECOND);
+  cpc_sound_socket(&cpc, &left, &right);
+  resampler_start_at(&resampler, 0, left);
+  resampler_start_at(&resampler, 1, right);
+  last_outputs = outputs_now();
+  ticks_unheard = 0;
+  sound_frames = 0;
+  listening = true;
+}
+
+void desk_stop_listening(void) { listening = false; }
+
+/* A rate nudged while listening, by a page keeping its sound card fed. */
+void desk_set_listening_rate(double rate) {
+  resampler_set_ratio(&resampler, rate / DESK_TICKS_PER_SECOND);
+}
+
+/* How many samples have been heard since the last call, the socket's two
+ * sides interleaved, finishing what the ticks heard so far can finish. They
+ * stand at desk_sound until the next call. */
+uint32_t desk_hear(void) {
+  run_sound(ticks_unheard);
+  ticks_unheard = 0;
+
+  const uint32_t frames = sound_frames;
+
+  sound_frames = 0;
+
+  return frames * DESK_SOUND_CHANNELS;
+}
+
+float *desk_sound(void) { return sound_samples; }

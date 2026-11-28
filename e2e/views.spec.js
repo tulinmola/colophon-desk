@@ -167,7 +167,7 @@ test("the monitor and the drive answer the pointer, and a turn begun on one leav
   await expect(monitor).toHaveAttribute("aria-pressed", "true")
 
   await drag(page, glass, { x: 60, y: 0 })
-  const pressed = desk.locator("button[aria-pressed='true']")
+  const pressed = desk.getByLabel("Views").locator("button[aria-pressed='true']")
 
   await expect(pressed).toHaveCount(0)
 })

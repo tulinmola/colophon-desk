@@ -1,1 +1,1 @@
-export { default } from "../vendor/colophon-emulator-0acb962-aa43f26.mjs"
+export { default } from "../vendor/colophon-emulator-e0ab265-12c5d03.mjs"

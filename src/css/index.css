@@ -66,6 +66,7 @@ colophon-desk-controls {
 }
 
 colophon-desk-controls > menu button,
+colophon-desk-controls > button,
 colophon-options > button {
   display: grid;
   place-items: center;
@@ -109,10 +110,12 @@ colophon-desk-controls > menu {
   margin: 0;
   padding: 0;
   list-style: none;
+}
 
-  &[hidden] {
-    display: none;
-  }
+colophon-desk-controls > button[name="sound"] {
+  position: absolute;
+  right: var(--inset);
+  bottom: var(--inset);
 }
 
 colophon-desk-controls > output {

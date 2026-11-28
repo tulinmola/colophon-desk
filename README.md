@@ -47,10 +47,11 @@ Every figure is cited at the line that uses it. This is the other view: what the
 
 **The machine.**
 
-- [CPC6128 Service Manual](https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a) — Amstrad's own dimensions and technical specifications, the mouldings by part number, the cabinet bottom's rear wall as its exploded view draws it, and the 12V cord's 5mm plug.
+- [CPC6128 Service Manual](https://archive.org/details/Amstrad_CPC6128_Service_Manual_1985_Amstrad_Consumer_Electronics_a) — Amstrad's own dimensions and technical specifications, the mouldings by part number, the cabinet bottom's rear wall as its exploded view draws it, the 12V cord's 5mm plug, and the stereo socket the machine is heard at.
 - [CPC464 Service Manual](https://archive.org/details/Amstrad_CPC464_Service_Manual_1985_Amstrad_Consumer_Electronics) — the 464's overall size, the datacorder's keys by name and part number, the cassette compartment's floor and the lid's pivot hooks.
 - [CPC464, CTM640 and GT64 Service Manual](https://archive.org/details/amstrad-cpc-464-micro-computer-ctm-640-color-monitor-gt-64-green-monitor-service-manual) — the GT64's mouldings and fittings by part number, its overall size, its tube, and the board whose pots set its thumbwheels' pitch, and its leads to the computer, the D.C. and D.I.N. cords, with the DC plug's 5 mm.
 - [CPC6128, CTM644 and GT65 Service Manual](https://archive.org/details/amstrad-cpc-6128-micro-computer-ctm-644-color-monitor-gt-65-green-monitor-service-manual) — the GT65's front moulding, and the rear it shares with the GT64, and the CTM644's 12 V socket, and both monitors' leads to the computer by part number.
+- [The Amstrad CPC CRTC Compendium](https://shaker.logonsystem.eu/ACCC1.11-EN.pdf), v1.11, and [MAME's Amstrad driver](https://github.com/mamedev/mame/blob/079ac58c453b09a3ffd8267d1c611b4d2c63795b/src/mame/amstrad/amstrad.cpp#L928) — the type 0 6845 the Compendium assumes the first CPCs carried and MAME builds the 6128 with, which the desk runs its 6128 with.
 - [SOFT 968](https://archive.org/details/SOFT968TheAmstrad6128FirmwareManual) — the firmware manual, each key's number in the matrix, the DATA format a blank disc is laid out in, Amstrad's Spanish and French systems with the French keytops, and the link that sets 50 Hz.
 - [Schneider's CPC6128 Handbuch](https://archive.org/details/Schneider_CPC6128_Handbuch_1985_Schneider_Computer_Division_DE) and [CPCWiki on Schneider](https://web.archive.org/web/20210601095905/http://www.cpcwiki.eu/index.php/Schneider) — Germany's CPCs were Schneider's, lettered as the UK's and starting up under Schneider's name.
 - [CPC464 user instructions](https://archive.org/details/cpc464.en) — how a cassette goes into the datacorder's lid and is carried down onto its spindles, and the two monitors the 464 is set up with.
@@ -171,6 +172,13 @@ Every figure is cited at the line that uses it. This is the other view: what the
 - [Caprice32](https://github.com/ColinPitrat/caprice32) — the UK 6128's firmware, and Amstrad's AMSDOS image, the ROM the disc interface brings, whose own format table gives the filler byte the tests' discs are formatted with.
 - [zenzx](https://github.com/ha1tch/zenzx) — the French 6128's firmware, whole, at a fixed commit.
 - [Bread80's disassembly of the 6128's firmware](https://github.com/Bread80/CPC6128-Firmware-Source) — the maker's name the firmware starts up with, read from the board's links.
+
+**The sound.**
+
+- [HTML's activation-triggering input events](https://html.spec.whatwg.org/multipage/interaction.html#activation-triggering-input-event) — which presses a page may start its sound after.
+
+- [jsbeeb](https://github.com/mattgodbolt/jsbeeb) — how far past its mark a sound card's lead may run, and for how long, before it is let go, and how hard its worklet steers the rate.
+- [RetroArch](https://github.com/libretro/RetroArch) — how far a sound card's crystal is off, and how hard RetroArch steers the rate against it.
 
 **The glass.**
 

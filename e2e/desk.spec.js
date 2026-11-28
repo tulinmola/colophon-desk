@@ -134,3 +134,63 @@ test("a display the desk does not run the computer with is refused", async funct
     .toContain("The desk does not run the cpc6128 with the gt65")
   await expect(page.locator("colophon-desk-controls")).toHaveCount(0)
 })
+
+// Whether each delivery the desk hands its sound card moves at all, counted
+// where it is handed over.
+function overhear(page) {
+  return page.addInitScript(function () {
+    const Delivered = window.AudioWorkletNode
+
+    window.overheard = []
+    window.AudioWorkletNode = class extends Delivered {
+      constructor(...given) {
+        super(...given)
+
+        const post = this.port.postMessage.bind(this.port)
+
+        this.port.postMessage = function (message, transfer) {
+          const delivery = message.kind == "samples"
+
+          if (delivery) {
+            const { samples, length } = message,
+              [first] = samples,
+              moved = samples.subarray(0, length).some(sample => sample != first)
+
+            window.overheard.push(moved)
+          }
+
+          return post(message, transfer)
+        }
+      }
+    }
+  })
+}
+
+test("the machine is heard while its sound is on, and not once it is off", async function ({
+  page
+}) {
+  const controls = page.locator("colophon-desk-controls"),
+    sound = controls.getByRole("button", { name: "Sound" }),
+    deliveries = () => page.evaluate(() => window.overheard.length)
+
+  await overhear(page)
+  await stand(page)
+  await controls.focus()
+  await settled(page)
+  await page.keyboard.type("sound 1,142,300")
+  await page.keyboard.press("Enter")
+
+  await expect
+    .poll(() => page.evaluate(() => window.overheard.includes(true)), SLOW_WAIT)
+    .toBe(true)
+
+  await sound.click()
+  await expect(sound).toHaveAttribute("aria-pressed", "false")
+  await expect(controls).toBeFocused()
+  await settled(page)
+
+  const silenced = await deliveries()
+
+  await settled(page)
+  expect(await deliveries()).toBe(silenced)
+})

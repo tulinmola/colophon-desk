@@ -1,4 +1,5 @@
 import { Box3, Scene, Vector3 } from "three/webgpu"
+import { Amplifier } from "../sound"
 import CameraRig from "./camera_rig"
 import { Cpc } from "../emulator"
 import Disc from "./disc"
@@ -22,13 +23,15 @@ const LAMP_GLOW = 1
 // picture on: the CTM644's colour mask is the only glass drawn yet.
 const RUNNING = { cpc6128: ["ctm644"] }
 
-// The desk switched on: the computer running, its picture on the glass, and a
-// disc lying before the drive, all seen by a camera the reader turns.
+// The desk switched on: the computer running, its picture on the glass, its
+// sound heard, and a disc lying before the drive, all seen by a camera the
+// reader turns.
 export default class Desk {
   scene = new Scene()
   disc = null
   machine = null
   settings
+  #amplifier
   #aspect = null
   #computer
   #driveLens
@@ -88,6 +91,16 @@ export default class Desk {
     this.#layGlass()
     studio.light(this.scene)
     this.#rig.use({ computer: model, monitor: byKind.monitor, pieces: models })
+    this.#amplifier = new Amplifier(machine)
+  }
+
+  // Whether what the machine sounds is heard.
+  get heard() {
+    return this.#amplifier.on
+  }
+
+  set heard(heard) {
+    this.#amplifier.on = heard
   }
 
   get view() {
@@ -124,6 +137,7 @@ export default class Desk {
     const machine = this.machine
 
     machine.advance(now)
+    this.#amplifier.advance()
     this.#rig.advance(now)
     this.disc.advance(now)
 
@@ -153,6 +167,7 @@ export default class Desk {
   }
 
   dispose() {
+    this.#amplifier.close()
     this.#rig.dispose()
     this.machine.dispose()
     this.#computer.dispose()
